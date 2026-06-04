@@ -1,0 +1,128 @@
+.ticket-preview {
+  --ticket-accent: var(--tava-gold, #c9a227);
+  max-width: 320px;
+  margin: 0 auto;
+  border-radius: 14px;
+  overflow: hidden;
+  background: linear-gradient(145deg, #1a1410 0%, #2d2218 55%, #1a1410 100%);
+  color: #f5e6c8;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(201, 162, 39, 0.35);
+  font-family: var(--tava-font-body, system-ui, sans-serif);
+
+  &--vip {
+    --ticket-accent: #e8c547;
+    box-shadow: 0 12px 40px rgba(201, 162, 39, 0.25), 0 0 0 2px rgba(232, 197, 71, 0.6);
+  }
+
+  &__head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.65rem 1rem;
+    background: rgba(201, 162, 39, 0.15);
+    border-bottom: 1px dashed rgba(201, 162, 39, 0.4);
+  }
+
+  &__brand {
+    font-size: 0.7rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ticket-accent);
+    font-weight: 700;
+  }
+
+  &__kind {
+    font-size: 0.65rem;
+    padding: 0.15rem 0.5rem;
+    border: 1px solid var(--ticket-accent);
+    border-radius: 999px;
+    color: var(--ticket-accent);
+  }
+
+  &__image {
+    height: 72px;
+    background-size: cover;
+    background-position: center;
+    opacity: 0.85;
+  }
+
+  &__body {
+    padding: 1rem 1rem 0.75rem;
+    text-align: center;
+  }
+
+  &__event {
+    margin: 0 0 0.35rem;
+    font-family: var(--tava-font-display, Georgia, serif);
+    font-size: 1.15rem;
+    color: var(--ticket-accent);
+    line-height: 1.2;
+  }
+
+  &__meta,
+  &__venue {
+    margin: 0;
+    font-size: 0.75rem;
+    opacity: 0.85;
+  }
+
+  &__type {
+    margin: 0.75rem 0 0.25rem;
+    font-weight: 700;
+    font-size: 0.95rem;
+  }
+
+  &__benefits {
+    margin: 0.25rem 0;
+    font-size: 0.72rem;
+    opacity: 0.8;
+    font-style: italic;
+  }
+
+  &__holder {
+    margin: 0.5rem 0 0.25rem;
+    font-size: 0.8rem;
+    opacity: 0.7;
+  }
+
+  &__price {
+    margin: 0.5rem 0 0;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--ticket-accent);
+  }
+
+  &__foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    border-top: 1px dashed rgba(201, 162, 39, 0.35);
+    background: rgba(0, 0, 0, 0.2);
+  }
+
+  &__qr {
+    display: grid;
+    grid-template-columns: repeat(4, 6px);
+    gap: 2px;
+
+    span {
+      width: 6px;
+      height: 6px;
+      background: #f5e6c8;
+      border-radius: 1px;
+
+      &:nth-child(3n) {
+        opacity: 0.35;
+      }
+    }
+  }
+
+  &__code {
+    margin: 0;
+    font-size: 0.6rem;
+    letter-spacing: 0.08em;
+    opacity: 0.6;
+  }
+}

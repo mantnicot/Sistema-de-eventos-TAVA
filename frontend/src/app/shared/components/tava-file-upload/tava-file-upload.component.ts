@@ -1,5 +1,6 @@
 import { Component, inject, input, output, signal } from '@angular/core';
 import { MediaUploadService } from '../../../core/services/media-upload.service';
+import { randomTheatricalMessage } from '../../../core/utils/theatrical-messages.util';
 
 @Component({
   selector: 'tava-file-upload',
@@ -24,7 +25,7 @@ import { MediaUploadService } from '../../../core/services/media-upload.service'
       <p class="upload-zone__label">{{ label() }}</p>
       <p class="upload-zone__hint">Arrastra aquí o haz clic · {{ kind() === 'video' ? 'MP4, WebM' : 'JPG, PNG, WebP' }}</p>
       @if (uploading()) {
-        <span class="upload-zone__status">Subiendo…</span>
+        <span class="upload-zone__status">{{ uploadLine() }}</span>
       }
       @if (lastUrl()) {
         <p class="upload-zone__done">✓ Archivo listo</p>
@@ -97,6 +98,7 @@ export class TavaFileUploadComponent {
   readonly uploaded = output<string>();
 
   readonly uploading = signal(false);
+  readonly uploadLine = signal('');
   readonly lastUrl = signal<string | null>(null);
   readonly previewUrl = signal<string | null>(null);
 
@@ -115,6 +117,7 @@ export class TavaFileUploadComponent {
 
   private upload(file: File): void {
     this.uploading.set(true);
+    this.uploadLine.set(randomTheatricalMessage('upload'));
     if (this.kind() === 'image') {
       this.previewUrl.set(URL.createObjectURL(file));
     }

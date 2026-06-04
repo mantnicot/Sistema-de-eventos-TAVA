@@ -12,11 +12,10 @@
     </label>
     <button type="submit" class="tava-btn-primary" [disabled]="submitting">Entrar</button>
     @if (needsVerification) {
-      <p class="hint warn">Debes verificar tu correo antes de ingresar.</p>
-      <button type="button" class="link-btn" (click)="resendVerification()">Reenviar enlace de verificación</button>
-      @if (resendLink) {
-        <p class="hint"><a [href]="resendLink">Abrir enlace de verificación</a></p>
-      }
+      <p class="hint warn">Debes verificar tu correo antes de ingresar. Revisa tu bandeja y spam.</p>
+      <button type="button" class="link-btn" [disabled]="resending" (click)="resendVerification()">
+        Reenviar correo de verificación
+      </button>
     }
     <p class="hint">¿No tienes cuenta? <a routerLink="/registro">Regístrate</a></p>
   </form>

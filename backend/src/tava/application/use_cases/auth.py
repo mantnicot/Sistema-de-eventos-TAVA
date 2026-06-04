@@ -48,7 +48,16 @@ class AuthUseCase:
         raw_token = await self._create_verification_token(user.id)
         verify_url = f"{settings.frontend_url.rstrip('/')}/verificar-email?token={raw_token}"
         email_sent = await send_verification_email(user.email, user.full_name, verify_url)
-        return user, verify_url, email_sent
+        if not email_sent:
+            result = await self._session.execute(select(UserModel).where(UserModel.id == user.id))
+            pending = result.scalar_one_or_none()
+            if pending:
+                await self._session.delete(pending)
+                await self._session.flush()
+            raise ValueError(
+                "Falló el envío del correo. Vamos revisando cómo solucionarlo; inténtalo de nuevo en un rato."
+            )
+        return user, email_sent
 
     async def _create_verification_token(self, user_id: UUID) -> str:
         raw = generate_verification_token()
@@ -95,7 +104,11 @@ class AuthUseCase:
         raw_token = await self._create_verification_token(model.id)
         verify_url = f"{settings.frontend_url.rstrip('/')}/verificar-email?token={raw_token}"
         email_sent = await send_verification_email(model.email, model.full_name, verify_url)
-        return verify_url, email_sent
+        if not email_sent:
+            raise ValueError(
+                "Falló el envío del correo. Vamos revisando cómo solucionarlo; inténtalo de nuevo en un rato."
+            )
+        return email_sent
 
     async def login(self, email: str, password: str):
         model = await self._users.get_model_by_email(email)

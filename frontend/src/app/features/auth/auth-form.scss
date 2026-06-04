@@ -68,24 +68,23 @@
   .verify-pending {
     text-align: center;
 
-    .verify-link {
-      display: inline-block;
+    .ok-msg {
+      color: #2d6a4f;
+      font-size: 1rem;
+      margin: 0.75rem 0;
+    }
+
+    .theatrical-line {
+      font-style: italic;
+      font-size: 0.85rem;
+      color: var(--tava-gold-glow);
       margin: 1rem 0;
+    }
+
+    .tava-btn-primary {
+      margin-top: 1rem;
+      display: inline-block;
       text-decoration: none;
-    }
-
-    .warn-box {
-      background: rgba(201, 162, 39, 0.15);
-      padding: 0.75rem;
-      border-radius: 8px;
-      font-size: 0.88rem;
-      color: var(--tava-cream);
-    }
-
-    .mono {
-      font-size: 0.7rem;
-      word-break: break-all;
-      opacity: 0.8;
     }
   }
 }

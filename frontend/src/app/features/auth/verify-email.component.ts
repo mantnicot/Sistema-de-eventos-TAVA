@@ -2,6 +2,7 @@ import { Component, inject, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
 import { NotificationService } from '../../core/services/notification.service';
+import { randomTheatricalMessage } from '../../core/utils/theatrical-messages.util';
 
 @Component({
   selector: 'app-verify-email',
@@ -12,7 +13,7 @@ import { NotificationService } from '../../core/services/notification.service';
       <div class="auth-form tava-card verify">
         <h1 class="tava-glow-text">Verificación de correo</h1>
         @if (loading()) {
-          <p>Validando enlace…</p>
+          <p>{{ loadingLine() }}</p>
         } @else if (ok()) {
           <p class="ok">{{ message() }}</p>
           <a routerLink="/ingresar" class="tava-btn-primary">Ir a ingresar</a>
@@ -33,6 +34,7 @@ export class VerifyEmailComponent implements OnInit {
   readonly loading = signal(true);
   readonly ok = signal(false);
   readonly message = signal('');
+  readonly loadingLine = signal(randomTheatricalMessage('verify'));
 
   ngOnInit(): void {
     const token = this.route.snapshot.queryParamMap.get('token');
@@ -41,14 +43,17 @@ export class VerifyEmailComponent implements OnInit {
       this.message.set('Enlace inválido: falta el token.');
       return;
     }
+    this.notify.loadingTheatrical('Verificando', 'verify');
     this.auth.verifyEmail(token).subscribe({
       next: (res) => {
+        this.notify.hide();
         this.loading.set(false);
         this.ok.set(true);
         this.message.set(res.message);
         this.notify.success('Correo verificado', res.message);
       },
       error: () => {
+        this.notify.hide();
         this.loading.set(false);
         this.message.set('El enlace no es válido o ya expiró. Solicita uno nuevo desde el login.');
       },

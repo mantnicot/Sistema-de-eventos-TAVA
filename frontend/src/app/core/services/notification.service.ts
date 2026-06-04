@@ -1,5 +1,6 @@
 import { Injectable, signal } from '@angular/core';
 import { ParsedHttpError } from '../utils/http-error.util';
+import { randomTheatricalMessage } from '../utils/theatrical-messages.util';
 
 export type NotifyType = 'success' | 'error' | 'confirm' | 'warning' | 'loading';
 
@@ -40,6 +41,11 @@ export class NotificationService {
 
   loading(title: string, message = 'Cargando...'): void {
     this.show({ visible: true, type: 'loading', title, message });
+  }
+
+  /** Mensaje de espera con humor teatral TAVA. */
+  loadingTheatrical(title: string, context = 'general'): void {
+    this.loading(title, randomTheatricalMessage(context));
   }
 
   confirm(title: string, message: string, onConfirm: () => void, confirmLabel = 'Confirmar'): void {

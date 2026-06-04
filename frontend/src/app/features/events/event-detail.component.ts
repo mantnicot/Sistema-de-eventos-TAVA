@@ -7,11 +7,12 @@ import { AuthService } from '../../core/services/auth.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { TavaEventDetail } from '../../core/models/event.model';
 import { resolveMediaUrl } from '../../core/utils/media-url.util';
+import { TavaTicketPreviewComponent } from '../../shared/components/tava-ticket-preview/tava-ticket-preview.component';
 
 @Component({
   selector: 'app-event-detail',
   standalone: true,
-  imports: [RouterLink, FormsModule, DecimalPipe],
+  imports: [RouterLink, FormsModule, DecimalPipe, TavaTicketPreviewComponent],
   templateUrl: './event-detail.component.html',
   styleUrl: './event-detail.component.scss',
 })
@@ -19,11 +20,18 @@ export class EventDetailComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly api = inject(ApiService);
-  private readonly auth = inject(AuthService);
+  readonly auth = inject(AuthService);
   private readonly notify = inject(NotificationService);
   readonly event = signal<TavaEventDetail | null>(null);
   readonly selectedTypeId = signal<string | null>(null);
   readonly mediaUrl = resolveMediaUrl;
+
+  selectedTicketType() {
+    const ev = this.event();
+    const id = this.selectedTypeId();
+    if (!ev || !id) return null;
+    return ev.ticket_types.find((t) => t.id === id) ?? null;
+  }
 
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('id');
@@ -56,6 +64,7 @@ export class EventDetailComponent implements OnInit {
     if (!ev || !typeId) return;
 
     this.notify.confirm('Comprar boletas', '¿Confirmas la compra de 1 boleta? (pago manual/demo)', () => {
+      this.notify.loadingTheatrical('Taquilla', 'purchase');
       this.api
         .post<{ message?: string }>('/tickets/purchase', {
           event_id: ev.id,
@@ -66,10 +75,14 @@ export class EventDetailComponent implements OnInit {
         })
         .subscribe({
           next: () => {
+            this.notify.hide();
             this.notify.success('Compra', 'Boleta generada. Revisa tu perfil.');
             this.router.navigate(['/perfil']);
           },
-          error: () => this.notify.error('Compra', 'No se pudo completar la compra'),
+          error: () => {
+            this.notify.hide();
+            this.notify.error('Compra', 'No se pudo completar la compra');
+          },
         });
     });
   }

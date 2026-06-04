@@ -119,3 +119,14 @@
   letter-spacing: 0.12em;
   color: var(--tava-gold);
 }
+
+.ticket-preview-buy {
+  margin: 1rem 0;
+  padding-top: 0.75rem;
+  border-top: 1px dashed rgba(201, 162, 39, 0.3);
+
+  .muted {
+    margin: 0 0 0.5rem;
+    font-size: 0.8rem;
+  }
+}

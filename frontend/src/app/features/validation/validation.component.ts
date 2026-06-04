@@ -18,7 +18,7 @@ export class ValidationComponent {
 
   scan(): void {
     if (!this.qrToken.trim()) return;
-    this.notify.loading('Validando', 'Verificando boleta...');
+    this.notify.loadingTheatrical('Validando', 'validation');
     this.api.post<{ result: string; message: string }>('/validation/scan', { qr_token: this.qrToken }).subscribe({
       next: (res) => {
         this.notify.hide();

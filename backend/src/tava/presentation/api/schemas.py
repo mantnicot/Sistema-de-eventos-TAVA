@@ -72,8 +72,7 @@ class TheatricalDetailsSchema(BaseModel):
 class RegisterResponse(BaseModel):
     message: str
     user: UserResponse
-    email_sent: bool = False
-    verification_url: str | None = None
+    email_sent: bool = True
 
 
 class EventCreateRequest(BaseModel):
@@ -157,6 +156,19 @@ class TicketTypeCreateRequest(BaseModel):
     price: Decimal
     quantity_available: int
     benefits: str | None = None
+
+
+class TicketTypeUpsertItem(BaseModel):
+    id: UUID | None = None
+    name: str = Field(min_length=1, max_length=150)
+    kind: TicketKind = TicketKind.INDIVIDUAL
+    price: Decimal = Field(ge=0)
+    quantity_available: int = Field(ge=0)
+    benefits: str | None = None
+
+
+class TicketTypesSyncRequest(BaseModel):
+    ticket_types: list[TicketTypeUpsertItem] = Field(default_factory=list)
 
 
 class ValidateQrRequest(BaseModel):

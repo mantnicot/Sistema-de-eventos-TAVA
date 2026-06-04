@@ -72,9 +72,33 @@
         @if (ev.ticket_types.length) {
           @for (tt of ev.ticket_types; track tt.id) {
             <label class="ticket-opt">
-              <input type="radio" name="tt" [value]="tt.id" [(ngModel)]="selectedTypeId" />
+              <input
+                type="radio"
+                name="tt"
+                [value]="tt.id"
+                [checked]="selectedTypeId() === tt.id"
+                (change)="selectedTypeId.set(tt.id)"
+              />
               {{ tt.name }} — ${{ tt.price | number }} ({{ tt.quantity_available }} disp.)
             </label>
+          }
+          @if (selectedTicketType(); as st) {
+            <div class="ticket-preview-buy">
+              <p class="muted">Vista previa</p>
+              <tava-ticket-preview
+                [eventName]="ev.name"
+                [eventDate]="ev.event_date"
+                [eventTime]="ev.event_time"
+                [city]="ev.city"
+                [address]="ev.address"
+                [typeName]="st.name"
+                [kind]="st.kind"
+                [price]="st.price"
+                [benefits]="st.benefits"
+                [imageUrl]="mediaUrl(ev.main_image_url)"
+                [holderName]="auth.user()?.full_name ?? 'Tu nombre'"
+              />
+            </div>
           }
           <button type="button" class="tava-btn-primary" (click)="comprar()" [disabled]="!selectedTypeId()">
             Comprar boletas

@@ -24,7 +24,8 @@
   }
 
   @if (tab() === 'events') {
-    <div class="admin-grid">
+    <div class="admin-events-layout">
+      <div class="admin-grid">
       <form class="tava-card admin-form" (ngSubmit)="saveEvent()">
         <h2>{{ editingId() ? 'Editar evento' : 'Nuevo evento' }}</h2>
         <label>Nombre <input [(ngModel)]="eventForm.name" name="name" required /></label>
@@ -89,11 +90,91 @@
           <label>Duración (min) <input type="number" [(ngModel)]="theatrical.duration_minutes" name="dur" /></label>
           <label>Clasificación <input [(ngModel)]="theatrical.age_rating" name="age" /></label>
         </div>
+
+        <section class="ticketing-block">
+          <h3>Boletería</h3>
+          <p class="muted">
+            Aforo: <strong>{{ eventForm.capacity }}</strong> ·
+            Cupos asignados: <strong [class.warn-text]="capacityExceeded()">{{ ticketsAllocated() }}</strong> ·
+            Disponible: <strong>{{ ticketsRemaining() }}</strong>
+          </p>
+          @if (capacityExceeded()) {
+            <p class="warn-box">La suma de cupos supera el aforo. Ajusta cantidades antes de guardar.</p>
+          }
+          <div class="ticketing-actions">
+            <button type="button" class="nav__btn-outline" (click)="addTicketType()">+ Tipo de boleta</button>
+            <button type="button" class="link-btn" (click)="addSuggestedTicketTypes()">Plantilla VIP + General</button>
+          </div>
+          @for (tt of ticketTypesDraft; track $index; let i = $index) {
+            <div class="ticket-type-row tava-card">
+              <div class="row">
+                <label>Nombre
+                  <input [(ngModel)]="tt.name" [name]="'ttn' + i" required (ngModelChange)="onTicketDraftChange()" />
+                </label>
+                <label>Tipo
+                  <select [(ngModel)]="tt.kind" [name]="'ttk' + i" (ngModelChange)="onTicketDraftChange()">
+                    @for (k of ticketKinds; track k.value) {
+                      <option [value]="k.value">{{ k.label }}</option>
+                    }
+                  </select>
+                </label>
+              </div>
+              <div class="row">
+                <label>Precio (COP)
+                  <input type="number" min="0" [(ngModel)]="tt.price" [name]="'ttp' + i" (ngModelChange)="onTicketDraftChange()" />
+                </label>
+                <label>Cupos
+                  <input type="number" min="0" [(ngModel)]="tt.quantity_available" [name]="'ttq' + i" (ngModelChange)="onTicketDraftChange()" />
+                </label>
+              </div>
+              <label>Beneficios
+                <input [(ngModel)]="tt.benefits" [name]="'ttb' + i" placeholder="Ej. Palco, bebida, meet & greet" (ngModelChange)="onTicketDraftChange()" />
+              </label>
+              <div class="ticket-type-row__actions">
+                <button type="button" class="link-btn" (click)="previewTypeIndex = i">Vista previa</button>
+                <button type="button" class="btn-danger" (click)="removeTicketType(i)">Quitar</button>
+              </div>
+            </div>
+          } @empty {
+            <p class="muted">Añade al menos un tipo (VIP, General, grupal…) según el aforo.</p>
+          }
+        </section>
+
         <button type="submit" class="tava-btn-primary">{{ editingId() ? 'Guardar cambios' : 'Crear evento' }}</button>
         @if (editingId()) {
           <button type="button" class="link-btn" (click)="resetEventForm()">Cancelar edición</button>
         }
       </form>
+
+      <aside class="ticket-preview-panel tava-card">
+        <h2>Vista previa de boleta</h2>
+        <p class="muted">Así verá el público la entrada al comprar.</p>
+        @if (previewType(); as pt) {
+          <label class="preview-pick">
+            Tipo a previsualizar
+            <select [(ngModel)]="previewTypeIndex" name="previewPick">
+              @for (tt of ticketTypesDraft; track $index; let i = $index) {
+                <option [ngValue]="i">{{ tt.name }} — ${{ tt.price | number }}</option>
+              }
+            </select>
+          </label>
+          <tava-ticket-preview
+            [eventName]="eventForm.name"
+            [eventDate]="eventForm.event_date"
+            [eventTime]="eventForm.event_time"
+            [city]="eventForm.city"
+            [address]="eventForm.address"
+            [typeName]="pt.name"
+            [kind]="pt.kind"
+            [price]="pt.price"
+            [benefits]="pt.benefits"
+            [imageUrl]="eventForm.main_image_url || undefined"
+          />
+        } @else {
+          <p class="muted">Configura tipos de boleta para ver la vista previa.</p>
+        }
+      </aside>
+      </div>
 
       <div class="admin-list">
         <h2>Eventos registrados</h2>
@@ -146,7 +227,11 @@
               <option value="validator">validator</option>
               <option value="admin">admin</option>
             </select>
-            <button type="button" class="btn-danger" (click)="deleteUser(u)">Eliminar</button>
+            @if (!isCurrentUser(u)) {
+              <button type="button" class="btn-danger" (click)="deleteUser(u)">Eliminar</button>
+            } @else {
+              <span class="muted muted-inline" title="No puedes eliminar tu propia cuenta">Tú (sin eliminar)</span>
+            }
           </div>
         </article>
       }

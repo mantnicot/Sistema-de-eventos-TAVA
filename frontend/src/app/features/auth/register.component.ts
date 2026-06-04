@@ -4,6 +4,7 @@ import { RouterLink } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { parseHttpError } from '../../core/utils/http-error.util';
+import { randomTheatricalMessage } from '../../core/utils/theatrical-messages.util';
 
 @Component({
   selector: 'app-register',
@@ -20,37 +21,36 @@ export class RegisterComponent {
   password = '';
   full_name = '';
   pendingVerify = false;
-  pendingMessage = '';
-  verificationUrl: string | null = null;
+  theatricalLine = '';
 
   submit(): void {
-    this.notify.loading('Registro', 'Creando tu cuenta...');
+    this.notify.loadingTheatrical('Registro', 'register');
     this.auth
       .register({ email: this.email, password: this.password, full_name: this.full_name, captcha_token: 'dev-captcha' })
       .subscribe({
-        next: (res) => {
+        next: () => {
           this.notify.hide();
           this.pendingVerify = true;
-          this.pendingMessage = res.message;
-          this.verificationUrl = res.verification_url ?? null;
-          if (res.email_sent) {
-            this.notify.success('Revisa tu correo', res.message);
-          } else if (this.verificationUrl) {
-            this.notify.warning('Verificación', 'Usa el enlace mostrado en pantalla');
-          }
+          this.theatricalLine = randomTheatricalMessage('resend');
+          this.notify.success(
+            'Correo enviado',
+            'Revisa tu bandeja: ahí está el enlace para activar tu cuenta.'
+          );
         },
         error: (err) => {
           this.notify.hide();
           const parsed = parseHttpError(err, 'register');
+          const emailFailed =
+            parsed.code === 'REGISTER_FAILED' &&
+            (parsed.message.toLowerCase().includes('correo') ||
+              parsed.message.toLowerCase().includes('smtp'));
+          if (emailFailed) {
+            parsed.message =
+              'Falló el envío del correo. Vamos revisando cómo solucionarlo; inténtalo de nuevo en un rato.';
+            parsed.title = 'Correo no enviado';
+          }
           this.notify.showHttpError(parsed);
         },
       });
-  }
-
-  copyLink(): void {
-    if (!this.verificationUrl) return;
-    navigator.clipboard.writeText(this.verificationUrl).then(() => {
-      this.notify.success('Copiado', 'Enlace copiado al portapapeles');
-    });
   }
 }

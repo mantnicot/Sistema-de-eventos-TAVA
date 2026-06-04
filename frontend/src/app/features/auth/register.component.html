@@ -20,19 +20,17 @@
     </form>
   } @else {
     <div class="auth-form tava-form tava-card verify-pending">
-      <h1 class="tava-glow-text">Activa tu cuenta</h1>
-      <p>{{ pendingMessage }}</p>
-      @if (verificationUrl) {
-        <p class="warn-box">
-          No llegó correo desde el servidor. Usa este enlace único para verificar:
-        </p>
-        <a [href]="verificationUrl" class="tava-btn-primary verify-link">Verificar mi correo</a>
-        <button type="button" class="nav__btn-outline" (click)="copyLink()">Copiar enlace</button>
-        <p class="hint mono">{{ verificationUrl }}</p>
-      } @else {
-        <p class="hint">Revisa tu bandeja de entrada y spam.</p>
+      <h1 class="tava-glow-text">Revisa tu correo</h1>
+      <p class="ok-msg">
+        Enviamos el enlace de activación a <strong>{{ email }}</strong>.
+      </p>
+      <p class="hint">
+        Abre tu correo y haz clic en el enlace para activar la cuenta. Si no aparece, revisa spam o espera unos minutos.
+      </p>
+      @if (theatricalLine) {
+        <p class="theatrical-line">{{ theatricalLine }}</p>
       }
-      <a routerLink="/ingresar" class="hint">Ir a ingresar</a>
+      <a routerLink="/ingresar" class="tava-btn-primary">Ir a ingresar</a>
     </div>
   }
 </div>
