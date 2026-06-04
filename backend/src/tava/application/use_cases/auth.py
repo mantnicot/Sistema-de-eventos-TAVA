@@ -54,10 +54,7 @@ class AuthUseCase:
     async def _issue_tokens(self, user_id: UUID, email: str, role: UserRole) -> dict:
         access = create_access_token(user_id, email, role)
         refresh_value = create_refresh_token_value()
-        from passlib.context import CryptContext
-
-        ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
-        token_hash = ctx.hash(refresh_value)
+        token_hash = hash_password(refresh_value)
         expires = datetime.now(UTC) + timedelta(days=settings.refresh_token_expire_days)
         self._session.add(
             RefreshTokenModel(user_id=user_id, token_hash=token_hash, expires_at=expires)
@@ -66,9 +63,6 @@ class AuthUseCase:
         return {"access_token": access, "refresh_token": refresh_value, "token_type": "bearer"}
 
     async def refresh(self, refresh_token: str) -> dict:
-        from passlib.context import CryptContext
-
-        ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
         result = await self._session.execute(
             select(RefreshTokenModel).where(
                 RefreshTokenModel.revoked.is_(False),
@@ -76,7 +70,7 @@ class AuthUseCase:
             )
         )
         for row in result.scalars().all():
-            if ctx.verify(refresh_token, row.token_hash):
+            if verify_password(refresh_token, row.token_hash):
                 user_result = await self._session.execute(
                     select(UserModel).where(UserModel.id == row.user_id)
                 )
