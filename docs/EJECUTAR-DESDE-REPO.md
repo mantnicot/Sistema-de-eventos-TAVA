@@ -17,8 +17,8 @@ La más simple: un solo comando levanta base de datos, API y web.
 
 ```bash
 # 1. Clonar
-git clone https://github.com/TU_USUARIO/TU_REPO.git
-cd TU_REPO
+git clone https://github.com/mantnicot/Sistema-de-eventos-TAVA.git
+cd Sistema-de-eventos-TAVA
 
 # 2. Variables de entorno
 cp .env.example .env
@@ -69,8 +69,8 @@ docker compose down -v
 ### Pasos
 
 ```bash
-git clone https://github.com/TU_USUARIO/TU_REPO.git
-cd TU_REPO
+git clone https://github.com/mantnicot/Sistema-de-eventos-TAVA.git
+cd Sistema-de-eventos-TAVA
 cp .env.example .env
 ```
 
@@ -115,8 +115,8 @@ Mismo flujo que Docker en un Linux (DigitalOcean, AWS EC2, Azure VM, etc.):
 ```bash
 ssh usuario@tu-servidor
 sudo apt update && sudo apt install -y git docker.io docker-compose-plugin
-git clone https://github.com/TU_USUARIO/TU_REPO.git
-cd TU_REPO
+git clone https://github.com/mantnicot/Sistema-de-eventos-TAVA.git
+cd Sistema-de-eventos-TAVA
 cp .env.example .env
 nano .env   # contraseñas y JWT_SECRET_KEY seguros
 sudo docker compose up -d --build
@@ -169,7 +169,7 @@ git init
 git add .
 git commit -m "Initial commit: plataforma TAVA"
 git branch -M main
-git remote add origin https://github.com/TU_USUARIO/TAVA.git
+git remote add origin https://github.com/mantnicot/Sistema-de-eventos-TAVA.git
 git push -u origin main
 ```
 

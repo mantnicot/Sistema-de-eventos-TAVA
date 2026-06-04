@@ -35,7 +35,7 @@ Paleta inspirada en teatro contemporáneo y la presencia de @tavateatro:
 ### Con Docker (cualquier máquina con el repo clonado)
 
 ```bash
-git clone https://github.com/TU_USUARIO/TAVA.git
+git clone https://github.com/mantnicot/Sistema-de-eventos-TAVA.git
 cd TAVA
 cp .env.example .env    # Windows: copy .env.example .env
 docker compose up -d --build
