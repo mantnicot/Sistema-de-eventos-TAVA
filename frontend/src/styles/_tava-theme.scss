@@ -1,0 +1,44 @@
+// Identidad TAVA Teatro (@tavateatro)
+// Paleta teatral: terciopelo, spotlight dorado, escenario oscuro
+$tava-burgundy: #7b1e3a;
+$tava-curtain: #a62639;
+$tava-gold: #c9a227;
+$tava-gold-glow: #e8c547;
+$tava-velvet: #4a1942;
+$tava-stage-dark: #0d0a0b;
+$tava-stage-mid: #1a0f14;
+$tava-cream: #fff8f0;
+$tava-cream-muted: #f5ede8;
+$tava-spotlight: rgba(232, 197, 71, 0.35);
+
+:root {
+  --tava-burgundy: #{$tava-burgundy};
+  --tava-curtain: #{$tava-curtain};
+  --tava-gold: #{$tava-gold};
+  --tava-gold-glow: #{$tava-gold-glow};
+  --tava-velvet: #{$tava-velvet};
+  --tava-stage-dark: #{$tava-stage-dark};
+  --tava-stage-mid: #{$tava-stage-mid};
+  --tava-cream: #{$tava-cream};
+  --tava-cream-muted: #{$tava-cream-muted};
+  --tava-font-display: 'Playfair Display', Georgia, serif;
+  --tava-font-body: 'DM Sans', system-ui, sans-serif;
+  --tava-radius: 12px;
+  --tava-shadow-glow: 0 0 40px var(--tava-spotlight);
+  --tava-transition: 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes tava-spotlight-pulse {
+  0%, 100% { opacity: 0.6; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.02); }
+}
+
+@keyframes tava-curtain-reveal {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes tava-shimmer {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}

@@ -1,0 +1,53 @@
+.auth-page {
+  display: flex;
+  justify-content: center;
+  padding: 3rem 1rem;
+  min-height: 60vh;
+}
+
+.auth-form {
+  width: 100%;
+  max-width: 420px;
+  padding: 2.5rem;
+
+  h1 {
+    font-family: var(--tava-font-display);
+    text-align: center;
+    margin: 0 0 0.5rem;
+  }
+
+  > p {
+    text-align: center;
+    color: var(--tava-cream-muted);
+    margin-bottom: 1.5rem;
+  }
+
+  label {
+    display: block;
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+    color: var(--tava-cream-muted);
+
+    input {
+      display: block;
+      width: 100%;
+      margin-top: 0.35rem;
+      padding: 0.7rem 1rem;
+      border-radius: var(--tava-radius);
+      border: 1px solid rgba(201, 162, 39, 0.35);
+      background: var(--tava-stage-dark);
+      color: var(--tava-cream);
+    }
+  }
+
+  .tava-btn-primary {
+    width: 100%;
+    margin-top: 0.5rem;
+  }
+
+  .hint {
+    text-align: center;
+    margin-top: 1.25rem;
+    font-size: 0.9rem;
+  }
+}

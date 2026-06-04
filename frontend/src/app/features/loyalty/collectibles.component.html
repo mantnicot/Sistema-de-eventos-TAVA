@@ -1,0 +1,27 @@
+<section class="collection">
+  <h1 class="tava-glow-text">Coleccionables TAVA</h1>
+  <p>Cada función te regala una lámina digital. ¡5 láminas = 1 entrada gratis!</p>
+
+  @if (collection(); as c) {
+    <div class="progress tava-card">
+      <div class="progress__bar" [style.width.%]="(c.progress_to_free_ticket / c.events_required) * 100"></div>
+      <span>{{ c.progress_to_free_ticket }} / {{ c.events_required }} eventos</span>
+      @if (c.free_ticket_available) {
+        <p class="reward">🎟 ¡Tienes una entrada gratuita disponible!</p>
+      }
+    </div>
+
+    <div class="laminas">
+      @for (lamina of c.laminas; track lamina.event_id) {
+        <div class="lamina tava-card" [style.backgroundImage]="'url(' + lamina.lamina_url + ')'">
+          <span class="lamina__shine"></span>
+        </div>
+      }
+      @for (i of [1,2,3,4,5].slice(0, lockedCount()); track i) {
+        <div class="lamina lamina--locked tava-card">
+          <span>?</span>
+        </div>
+      }
+    </div>
+  }
+</section>

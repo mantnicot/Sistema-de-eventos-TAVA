@@ -1,0 +1,20 @@
+@if (event(); as ev) {
+  <article class="detail">
+    <div class="detail__hero tava-card" [style.backgroundImage]="'linear-gradient(to top, var(--tava-stage-dark), transparent), url(' + (ev.main_image_url || '') + ')'">
+      <div class="detail__hero-content">
+        <span class="badge">{{ ev.category }}</span>
+        <h1 class="tava-glow-text">{{ ev.name }}</h1>
+        <p>{{ ev.city }} · {{ ev.event_date }} · {{ ev.event_time }}</p>
+      </div>
+    </div>
+    <div class="detail__body">
+      <p class="description">{{ ev.description }}</p>
+      <div class="cta-box tava-card">
+        <h3>¿Listo para la función?</h3>
+        <p>Selecciona tu boleta, elige silla si aplica y asegura tu lugar.</p>
+        <button type="button" class="tava-btn-primary" (click)="comprar()">Comprar boletas</button>
+      </div>
+      <a routerLink="/eventos" class="back">← Volver a cartelera</a>
+    </div>
+  </article>
+}

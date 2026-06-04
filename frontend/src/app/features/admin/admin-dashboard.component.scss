@@ -1,0 +1,24 @@
+.admin {
+  padding: 2rem;
+  max-width: 1000px;
+  margin: 0 auto;
+
+  h1 { font-family: var(--tava-font-display); }
+}
+
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 1rem;
+  margin: 2rem 0;
+}
+
+.kpi {
+  padding: 1.5rem;
+  text-align: center;
+
+  span { display: block; font-size: 0.8rem; color: var(--tava-cream-muted); margin-bottom: 0.5rem; }
+  strong { font-size: 1.75rem; color: var(--tava-gold-glow); }
+}
+
+.note { color: var(--tava-cream-muted); font-size: 0.9rem; }

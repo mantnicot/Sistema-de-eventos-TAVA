@@ -1,0 +1,60 @@
+.collection {
+  padding: 2rem;
+  max-width: 900px;
+  margin: 0 auto;
+  text-align: center;
+
+  h1 { font-family: var(--tava-font-display); }
+  > p { color: var(--tava-cream-muted); margin-bottom: 2rem; }
+}
+
+.progress {
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+  position: relative;
+  overflow: hidden;
+
+  &__bar {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    background: linear-gradient(90deg, var(--tava-curtain), var(--tava-gold));
+    opacity: 0.25;
+    transition: width 0.6s ease;
+  }
+
+  span, .reward { position: relative; }
+  .reward { color: var(--tava-gold-glow); font-weight: 600; margin-top: 0.75rem; }
+}
+
+.laminas {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 1rem;
+}
+
+.lamina {
+  aspect-ratio: 3/4;
+  background: var(--tava-velvet) center/cover;
+  border-radius: var(--tava-radius);
+  position: relative;
+  overflow: hidden;
+  animation: tava-curtain-reveal 0.5s ease backwards;
+
+  &__shine {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, transparent 40%, rgba(255,255,255,0.15) 50%, transparent 60%);
+    animation: tava-shimmer 3s infinite;
+    background-size: 200% 100%;
+  }
+
+  &--locked {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--tava-stage-mid);
+    span { font-size: 2rem; color: var(--tava-gold); opacity: 0.4; }
+  }
+}

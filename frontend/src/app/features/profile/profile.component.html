@@ -1,0 +1,23 @@
+@if (auth.user(); as u) {
+  <section class="profile">
+    <header class="profile__header tava-card">
+      <h1 class="tava-glow-text">{{ u.full_name }}</h1>
+      <p>{{ u.email }} · Rol: {{ u.role }}</p>
+    </header>
+
+    <section class="section">
+      <h2>Mis boletas</h2>
+      @for (t of tickets(); track t.id) {
+        <div class="ticket tava-card">
+          <span>Evento {{ t.event_id }}</span>
+          <code class="qr-hint">{{ t.qr_token | slice:0:24 }}…</code>
+          <span class="status" [class.used]="t.is_used">{{ t.is_used ? 'Utilizada' : 'Válida' }}</span>
+        </div>
+      } @empty {
+        <p class="muted">Aún no tienes boletas. <a routerLink="/eventos">Explorar eventos</a></p>
+      }
+    </section>
+  </section>
+} @else {
+  <p class="muted center">Inicia sesión para ver tu perfil.</p>
+}

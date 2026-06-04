@@ -1,0 +1,35 @@
+.profile {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 2rem;
+
+  &__header {
+    padding: 2rem;
+    text-align: center;
+    margin-bottom: 2rem;
+    h1 { font-family: var(--tava-font-display); margin: 0; }
+    p { color: var(--tava-cream-muted); }
+  }
+}
+
+.section h2 {
+  font-family: var(--tava-font-display);
+  color: var(--tava-gold-glow);
+}
+
+.ticket {
+  padding: 1rem 1.25rem;
+  margin-bottom: 0.75rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  justify-content: space-between;
+
+  .qr-hint { font-size: 0.75rem; color: var(--tava-gold); }
+  .status { font-size: 0.85rem; color: #81c784; }
+  .status.used { color: #e57373; }
+}
+
+.muted { color: var(--tava-cream-muted); }
+.center { text-align: center; padding: 3rem; }

@@ -1,0 +1,28 @@
+# Dependencies
+node_modules/
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
+
+# Build
+dist/
+.angular/
+*.egg-info/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# Uploads & logs
+backend/uploads/
+*.log
+.DS_Store
+
+# Docker volumes (local)
+postgres_data/

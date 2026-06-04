@@ -1,0 +1,20 @@
+<div class="auth-page">
+  <form class="auth-form tava-card" (ngSubmit)="submit()">
+    <h1 class="tava-glow-text">Crear cuenta</h1>
+    <p>Únete al público TAVA y colecciona láminas</p>
+    <label>
+      Nombre completo
+      <input type="text" [(ngModel)]="full_name" name="full_name" required />
+    </label>
+    <label>
+      Correo
+      <input type="email" [(ngModel)]="email" name="email" required />
+    </label>
+    <label>
+      Contraseña (mín. 8 caracteres)
+      <input type="password" [(ngModel)]="password" name="password" required minlength="8" />
+    </label>
+    <button type="submit" class="tava-btn-primary">Registrarme</button>
+    <p class="hint">¿Ya tienes cuenta? <a routerLink="/ingresar">Ingresar</a></p>
+  </form>
+</div>

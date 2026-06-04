@@ -1,0 +1,32 @@
+<header class="header">
+  <a routerLink="/" class="brand">
+    <span class="brand__mark">TAVA</span>
+    <span class="brand__sub">Teatro · Boletería</span>
+  </a>
+  <nav class="nav">
+    <a routerLink="/eventos" routerLinkActive="active">Eventos</a>
+    <a routerLink="/coleccion" routerLinkActive="active">Colección</a>
+    @if (auth.isValidator()) {
+      <a routerLink="/validar" routerLinkActive="active">Validar</a>
+    }
+    @if (auth.isAdmin()) {
+      <a routerLink="/admin" routerLinkActive="active">Admin</a>
+    }
+    @if (auth.isLoggedIn()) {
+      <a routerLink="/perfil" routerLinkActive="active">Perfil</a>
+      <button type="button" class="link-btn" (click)="auth.logout()">Salir</button>
+    } @else {
+      <a routerLink="/ingresar" routerLinkActive="active" class="cta-nav">Ingresar</a>
+    }
+  </nav>
+</header>
+
+<main class="main">
+  <router-outlet />
+</main>
+
+<footer class="footer">
+  <p>© TAVA Teatro — <a href="https://www.instagram.com/tavateatro/" target="_blank" rel="noopener">&#64;tavateatro</a></p>
+</footer>
+
+<tava-popup />

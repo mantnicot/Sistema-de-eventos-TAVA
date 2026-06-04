@@ -1,0 +1,27 @@
+<section class="page-header">
+  <h1 class="tava-glow-text">Cartelera TAVA</h1>
+  <p>Encuentra tu próxima experiencia teatral</p>
+</section>
+
+<div class="filters">
+  <input type="search" placeholder="Buscar obra..." [(ngModel)]="search" (keyup.enter)="load()" />
+  <input type="text" placeholder="Categoría" [(ngModel)]="category" (keyup.enter)="load()" />
+  <button type="button" class="tava-btn-primary" (click)="load()">Buscar</button>
+</div>
+
+<div class="grid">
+  @for (ev of events(); track ev.id) {
+    <article class="tava-card card">
+      <a [routerLink]="['/eventos', ev.id]">
+        <div class="card__img" [style.backgroundImage]="'url(' + (ev.main_image_url || '') + ')'"></div>
+        <div class="card__content">
+          <span class="badge">{{ ev.category }}</span>
+          <h2>{{ ev.name }}</h2>
+          <p>{{ ev.city }} · {{ ev.event_date }}</p>
+        </div>
+      </a>
+    </article>
+  } @empty {
+    <p class="empty">No hay eventos publicados aún. Vuelve pronto.</p>
+  }
+</div>

@@ -1,0 +1,19 @@
+@if (notify.state(); as s) {
+  <div class="overlay" role="dialog" aria-modal="true">
+    <div class="popup tava-card" [class]="'popup--' + s.type">
+      @if (s.type === 'loading') {
+        <div class="spinner" aria-hidden="true"></div>
+      }
+      <h3 class="tava-glow-text">{{ s.title }}</h3>
+      <p>{{ s.message }}</p>
+      @if (s.type === 'confirm') {
+        <div class="actions">
+          <button type="button" class="ghost" (click)="cancel()">Cancelar</button>
+          <button type="button" class="tava-btn-primary" (click)="confirm()">{{ s.confirmLabel }}</button>
+        </div>
+      } @else if (s.type !== 'loading') {
+        <button type="button" class="tava-btn-primary" (click)="cancel()">Entendido</button>
+      }
+    </div>
+  </div>
+}

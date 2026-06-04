@@ -1,0 +1,15 @@
+<section class="admin">
+  <h1 class="tava-glow-text">Dashboard TAVA</h1>
+  @if (kpis(); as k) {
+    <div class="kpi-grid">
+      <div class="kpi tava-card"><span>Eventos activos</span><strong>{{ k.eventos_activos }}</strong></div>
+      <div class="kpi tava-card"><span>Boletas vendidas</span><strong>{{ k.boletas_vendidas }}</strong></div>
+      <div class="kpi tava-card"><span>Ingresos</span><strong>${{ k.ingresos | number }}</strong></div>
+      <div class="kpi tava-card"><span>Asistentes</span><strong>{{ k.asistentes }}</strong></div>
+      <div class="kpi tava-card"><span>Conversión</span><strong>{{ k.conversion_porcentaje }}%</strong></div>
+    </div>
+  } @else {
+    <p>Cargando métricas...</p>
+  }
+  <p class="note">Reportes Excel/PDF y gestión completa — extensión vía API `/dashboard` y módulos admin.</p>
+</section>
