@@ -9,11 +9,13 @@
         <h1 class="tava-glow-text">{{ ev.name }}</h1>
         <p>{{ ev.city }} · {{ ev.address }}</p>
         <p><time>{{ ev.event_date }}</time> · {{ ev.event_time }}</p>
-        @if (ev.theatrical_details?.duration_minutes) {
-          <p class="meta">Duración: {{ ev.theatrical_details.duration_minutes }} min</p>
-        }
-        @if (ev.theatrical_details?.age_rating) {
-          <p class="meta">{{ ev.theatrical_details.age_rating }}</p>
+        @if (ev.theatrical_details; as td) {
+          @if (td.duration_minutes) {
+            <p class="meta">Duración: {{ td.duration_minutes }} min</p>
+          }
+          @if (td.age_rating) {
+            <p class="meta">{{ td.age_rating }}</p>
+          }
         }
       </div>
     </div>
@@ -24,25 +26,27 @@
         <p>{{ ev.theatrical_details?.synopsis || ev.description }}</p>
       </section>
 
-      @if (ev.theatrical_details?.director || (ev.theatrical_details?.cast?.length ?? 0) > 0) {
-        <section class="tava-card block">
-          <h2>Ficha artística</h2>
-          @if (ev.theatrical_details?.director) {
-            <p><strong>Dirección:</strong> {{ ev.theatrical_details.director }}</p>
-          }
-          @if (ev.theatrical_details?.cast?.length) {
-            <p><strong>Elenco:</strong> {{ ev.theatrical_details.cast.join(', ') }}</p>
-          }
-          @if (ev.theatrical_details?.language) {
-            <p><strong>Idioma:</strong> {{ ev.theatrical_details.language }}</p>
-          }
-          @if (ev.theatrical_details?.warnings) {
-            <p class="warn"><strong>Avisos:</strong> {{ ev.theatrical_details.warnings }}</p>
-          }
-          @if (ev.theatrical_details?.credits) {
-            <p class="muted">{{ ev.theatrical_details.credits }}</p>
-          }
-        </section>
+      @if (ev.theatrical_details; as td) {
+        @if (td.director || (td.cast && td.cast.length > 0)) {
+          <section class="tava-card block">
+            <h2>Ficha artística</h2>
+            @if (td.director) {
+              <p><strong>Dirección:</strong> {{ td.director }}</p>
+            }
+            @if (td.cast && td.cast.length) {
+              <p><strong>Elenco:</strong> {{ td.cast.join(', ') }}</p>
+            }
+            @if (td.language) {
+              <p><strong>Idioma:</strong> {{ td.language }}</p>
+            }
+            @if (td.warnings) {
+              <p class="warn"><strong>Avisos:</strong> {{ td.warnings }}</p>
+            }
+            @if (td.credits) {
+              <p class="muted">{{ td.credits }}</p>
+            }
+          </section>
+        }
       }
 
       @if (ev.trailer_url) {
@@ -52,7 +56,7 @@
         </section>
       }
 
-      @if (ev.gallery?.length) {
+      @if (ev.gallery.length) {
         <section class="gallery block">
           <h2>Galería</h2>
           <div class="gallery__grid">
@@ -65,7 +69,7 @@
 
       <section class="cta-box tava-card">
         <h3>Boletas</h3>
-        @if (ev.ticket_types?.length) {
+        @if (ev.ticket_types.length) {
           @for (tt of ev.ticket_types; track tt.id) {
             <label class="ticket-opt">
               <input type="radio" name="tt" [value]="tt.id" [(ngModel)]="selectedTypeId" />

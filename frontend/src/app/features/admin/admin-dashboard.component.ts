@@ -5,7 +5,7 @@ import { Router } from '@angular/router';
 import { ApiService } from '../../core/services/api.service';
 import { AuthService } from '../../core/services/auth.service';
 import { NotificationService } from '../../core/services/notification.service';
-import { SiteSettingsService } from '../../core/services/site-settings.service';
+import { SiteAppearance, SiteSettingsService } from '../../core/services/site-settings.service';
 import { TavaEvent, TheatricalDetails } from '../../core/models/event.model';
 
 interface Kpis {
@@ -185,7 +185,7 @@ export class AdminDashboardComponent implements OnInit {
 
   saveAppearance(): void {
     this.site.updateAppearance(this.appearanceForm).subscribe({
-      next: (a) => {
+      next: (a: SiteAppearance) => {
         this.site.appearance.set(a);
         this.notify.success('Apariencia', 'Video de fondo actualizado');
       },

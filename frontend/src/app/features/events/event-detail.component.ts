@@ -28,9 +28,14 @@ export class EventDetailComponent implements OnInit {
     if (id) {
       this.api.get<TavaEventDetail>(`/events/${id}`).subscribe({
         next: (e) => {
-          this.event.set(e);
-          if (e.ticket_types?.length) {
-            this.selectedTypeId.set(e.ticket_types[0].id);
+          const detail: TavaEventDetail = {
+            ...e,
+            gallery: e.gallery ?? [],
+            ticket_types: e.ticket_types ?? [],
+          };
+          this.event.set(detail);
+          if (detail.ticket_types.length) {
+            this.selectedTypeId.set(detail.ticket_types[0].id);
           }
         },
         error: () => this.notify.error('Evento', 'No se pudo cargar el evento'),
