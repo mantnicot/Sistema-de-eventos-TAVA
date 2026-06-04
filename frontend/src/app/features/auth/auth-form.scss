@@ -9,11 +9,13 @@
   width: 100%;
   max-width: 420px;
   padding: 2.5rem;
+  background: linear-gradient(160deg, #ffffff, var(--tava-velvet));
 
   h1 {
     font-family: var(--tava-font-display);
     text-align: center;
     margin: 0 0 0.5rem;
+    color: var(--tava-gold-glow);
   }
 
   > p {
@@ -34,8 +36,8 @@
       margin-top: 0.35rem;
       padding: 0.7rem 1rem;
       border-radius: var(--tava-radius);
-      border: 1px solid rgba(201, 162, 39, 0.35);
-      background: var(--tava-stage-dark);
+      border: 1px solid rgba(201, 162, 39, 0.4);
+      background: #fff;
       color: var(--tava-cream);
     }
   }

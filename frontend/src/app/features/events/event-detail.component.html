@@ -1,6 +1,6 @@
 @if (event(); as ev) {
   <article class="detail">
-    <div class="detail__hero tava-card" [style.backgroundImage]="'linear-gradient(to top, var(--tava-stage-dark), transparent), url(' + (ev.main_image_url || '') + ')'">
+    <div class="detail__hero tava-card" [style.backgroundImage]="'linear-gradient(to top, var(--tava-hero-overlay), transparent), url(' + (ev.main_image_url || '') + ')'">
       <div class="detail__hero-content">
         <span class="badge">{{ ev.category }}</span>
         <h1 class="tava-glow-text">{{ ev.name }}</h1>

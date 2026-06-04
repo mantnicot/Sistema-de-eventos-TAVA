@@ -2,8 +2,8 @@
   "name": "TAVA Teatro — Boletería",
   "short_name": "TAVA",
   "description": "Gestión de eventos y boletería @tavateatro",
-  "theme_color": "#7b1e3a",
-  "background_color": "#0d0a0b",
+  "theme_color": "#c9a227",
+  "background_color": "#faf8f4",
   "display": "standalone",
   "start_url": "/",
   "icons": []

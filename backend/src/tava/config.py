@@ -20,7 +20,14 @@ class Settings(BaseSettings):
 
     @property
     def cors_origin_list(self) -> list[str]:
-        return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+        """Acepta orígenes separados por coma o punto y coma (sin barra final)."""
+        raw = self.cors_origins.replace(";", ",")
+        origins: list[str] = []
+        for part in raw.split(","):
+            origin = part.strip().rstrip("/")
+            if origin and origin not in origins:
+                origins.append(origin)
+        return origins
 
 
 @lru_cache

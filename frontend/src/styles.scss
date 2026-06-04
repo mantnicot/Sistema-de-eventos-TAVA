@@ -14,25 +14,26 @@ a {
   color: var(--tava-gold-glow);
   text-decoration: none;
   transition: color var(--tava-transition);
-  &:hover { color: var(--tava-cream); }
+  &:hover { color: var(--tava-burgundy); }
 }
 
 .tava-glow-text {
-  text-shadow: 0 0 20px var(--tava-spotlight), 0 0 40px rgba(201, 162, 39, 0.3);
+  color: var(--tava-gold-glow);
+  text-shadow: 0 1px 2px rgba(184, 134, 11, 0.15);
 }
 
 .tava-card {
-  background: linear-gradient(145deg, var(--tava-stage-mid), var(--tava-velvet));
-  border: 1px solid rgba(201, 162, 39, 0.25);
+  background: var(--tava-stage-mid);
+  border: 1px solid rgba(201, 162, 39, 0.28);
   border-radius: var(--tava-radius);
-  box-shadow: var(--tava-shadow-glow);
-  animation: tava-curtain-reveal 0.6s ease-out;
+  box-shadow: var(--tava-shadow-card);
+  animation: tava-curtain-reveal 0.5s ease-out;
 }
 
 .tava-btn-primary {
-  background: linear-gradient(135deg, var(--tava-curtain), var(--tava-burgundy));
-  color: var(--tava-cream);
-  border: 1px solid var(--tava-gold);
+  background: linear-gradient(135deg, var(--tava-gold-light), var(--tava-gold));
+  color: #3d2a14;
+  border: 1px solid rgba(184, 134, 11, 0.45);
   border-radius: 999px;
   padding: 0.75rem 1.75rem;
   font-weight: 600;
@@ -40,6 +41,6 @@ a {
   transition: transform var(--tava-transition), box-shadow var(--tava-transition);
   &:hover {
     transform: translateY(-2px);
-    box-shadow: 0 8px 32px var(--tava-spotlight);
+    box-shadow: var(--tava-shadow-glow);
   }
 }

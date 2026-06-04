@@ -3,12 +3,13 @@
   align-items: center;
   justify-content: space-between;
   padding: 1rem 2rem;
-  background: linear-gradient(180deg, var(--tava-stage-mid), transparent);
-  border-bottom: 1px solid rgba(201, 162, 39, 0.15);
+  background: rgba(255, 255, 255, 0.92);
+  border-bottom: 1px solid rgba(201, 162, 39, 0.22);
   position: sticky;
   top: 0;
   z-index: 100;
   backdrop-filter: blur(12px);
+  box-shadow: 0 2px 16px rgba(58, 47, 42, 0.04);
 }
 
 .brand {
@@ -22,7 +23,6 @@
     font-weight: 700;
     color: var(--tava-gold-glow);
     letter-spacing: 0.2em;
-    text-shadow: 0 0 24px var(--tava-spotlight);
   }
 
   &__sub {
@@ -57,6 +57,7 @@
     border: 1px solid var(--tava-gold);
     border-radius: 999px;
     color: var(--tava-gold-glow) !important;
+    background: rgba(232, 212, 155, 0.25);
   }
 }
 
@@ -69,7 +70,8 @@
   padding: 2rem;
   color: var(--tava-cream-muted);
   font-size: 0.85rem;
-  border-top: 1px solid rgba(201, 162, 39, 0.1);
+  border-top: 1px solid rgba(201, 162, 39, 0.15);
+  background: var(--tava-velvet);
 }
 
 @media (max-width: 640px) {

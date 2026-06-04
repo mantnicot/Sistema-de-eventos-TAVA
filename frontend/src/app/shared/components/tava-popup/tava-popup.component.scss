@@ -2,7 +2,7 @@
   position: fixed;
   inset: 0;
   z-index: 10000;
-  background: rgba(13, 10, 11, 0.85);
+  background: rgba(250, 248, 244, 0.75);
   backdrop-filter: blur(8px);
   display: flex;
   align-items: center;
@@ -16,6 +16,7 @@
   width: 100%;
   padding: 2rem;
   text-align: center;
+  background: #fff;
 
   h3 {
     font-family: var(--tava-font-display);
@@ -29,9 +30,9 @@
     line-height: 1.5;
   }
 
-  &--success { border-color: rgba(76, 175, 80, 0.5); }
-  &--error { border-color: rgba(244, 67, 54, 0.5); }
-  &--warning { border-color: rgba(255, 193, 7, 0.5); }
+  &--success { border-color: rgba(76, 175, 80, 0.45); }
+  &--error { border-color: rgba(198, 74, 74, 0.45); }
+  &--warning { border-color: rgba(201, 162, 39, 0.55); }
 }
 
 .actions {
@@ -42,7 +43,7 @@
 }
 
 .ghost {
-  background: transparent;
+  background: #fff;
   border: 1px solid var(--tava-gold);
   color: var(--tava-cream);
   border-radius: 999px;

@@ -9,9 +9,9 @@
     top: 20%;
     left: 50%;
     transform: translateX(-50%);
-    width: 400px;
-    height: 400px;
-    background: radial-gradient(circle, var(--tava-spotlight), transparent 70%);
+    width: 420px;
+    height: 420px;
+    background: radial-gradient(circle, rgba(232, 212, 155, 0.45), transparent 70%);
     animation: tava-spotlight-pulse 4s ease-in-out infinite;
     pointer-events: none;
   }

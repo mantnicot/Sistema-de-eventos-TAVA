@@ -6,9 +6,9 @@ settings = get_settings()
 
 
 async def verify_captcha(token: str | None) -> bool:
-    """Valida captcha; en desarrollo sin clave configurada permite continuar."""
+    """Valida captcha. Si no hay clave configurada, se omite (desarrollo y MVP producción)."""
     if not settings.captcha_secret_key:
-        return settings.app_env == "development"
+        return True
     if not token:
         return False
     async with httpx.AsyncClient() as client:
