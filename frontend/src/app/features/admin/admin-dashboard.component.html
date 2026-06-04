@@ -104,7 +104,10 @@
               <span class="badge">{{ ev.status }}</span>
               <p class="muted">{{ ev.event_date }} · {{ ev.city }}</p>
             </div>
-            <button type="button" (click)="editEvent(ev)">Editar</button>
+            <div class="admin-list__actions">
+              <button type="button" (click)="editEvent(ev)">Editar</button>
+              <button type="button" class="btn-danger" (click)="deleteEvent(ev)">Eliminar</button>
+            </div>
           </article>
         } @empty {
           <p class="muted">No hay eventos. Crea el primero.</p>
@@ -136,12 +139,15 @@
               @if (!u.email_verified) { · <em>sin verificar</em> }
             </p>
           </div>
-          <select [value]="u.role" (change)="changeRole(u.id, $event)">
-            <option value="general">general</option>
-            <option value="seller">seller</option>
-            <option value="validator">validator</option>
-            <option value="admin">admin</option>
-          </select>
+          <div class="admin-list__actions">
+            <select [value]="u.role" (change)="changeRole(u.id, $event)">
+              <option value="general">general</option>
+              <option value="seller">seller</option>
+              <option value="validator">validator</option>
+              <option value="admin">admin</option>
+            </select>
+            <button type="button" class="btn-danger" (click)="deleteUser(u)">Eliminar</button>
+          </div>
         </article>
       }
     </div>

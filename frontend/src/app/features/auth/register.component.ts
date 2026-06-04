@@ -1,6 +1,6 @@
 import { Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { RouterLink } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { parseHttpError } from '../../core/utils/http-error.util';
@@ -14,12 +14,14 @@ import { parseHttpError } from '../../core/utils/http-error.util';
 })
 export class RegisterComponent {
   private readonly auth = inject(AuthService);
-  private readonly router = inject(Router);
   private readonly notify = inject(NotificationService);
 
   email = '';
   password = '';
   full_name = '';
+  pendingVerify = false;
+  pendingMessage = '';
+  verificationUrl: string | null = null;
 
   submit(): void {
     this.notify.loading('Registro', 'Creando tu cuenta...');
@@ -28,18 +30,27 @@ export class RegisterComponent {
       .subscribe({
         next: (res) => {
           this.notify.hide();
-          const extra = res.dev_verification_url
-            ? ` (dev: ${res.dev_verification_url})`
-            : '';
-          this.notify.success('Revisa tu correo', res.message + extra);
-          this.router.navigate(['/ingresar']);
+          this.pendingVerify = true;
+          this.pendingMessage = res.message;
+          this.verificationUrl = res.verification_url ?? null;
+          if (res.email_sent) {
+            this.notify.success('Revisa tu correo', res.message);
+          } else if (this.verificationUrl) {
+            this.notify.warning('Verificación', 'Usa el enlace mostrado en pantalla');
+          }
         },
         error: (err) => {
           this.notify.hide();
           const parsed = parseHttpError(err, 'register');
-          console[parsed.kind === 'user' ? 'warn' : 'error'](parsed.logLine);
           this.notify.showHttpError(parsed);
         },
       });
+  }
+
+  copyLink(): void {
+    if (!this.verificationUrl) return;
+    navigator.clipboard.writeText(this.verificationUrl).then(() => {
+      this.notify.success('Copiado', 'Enlace copiado al portapapeles');
+    });
   }
 }

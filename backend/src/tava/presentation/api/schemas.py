@@ -72,7 +72,8 @@ class TheatricalDetailsSchema(BaseModel):
 class RegisterResponse(BaseModel):
     message: str
     user: UserResponse
-    dev_verification_url: str | None = None
+    email_sent: bool = False
+    verification_url: str | None = None
 
 
 class EventCreateRequest(BaseModel):

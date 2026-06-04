@@ -47,8 +47,8 @@ class AuthUseCase:
         )
         raw_token = await self._create_verification_token(user.id)
         verify_url = f"{settings.frontend_url.rstrip('/')}/verificar-email?token={raw_token}"
-        await send_verification_email(user.email, user.full_name, verify_url)
-        return user, raw_token if settings.app_env == "development" else None
+        email_sent = await send_verification_email(user.email, user.full_name, verify_url)
+        return user, verify_url, email_sent
 
     async def _create_verification_token(self, user_id: UUID) -> str:
         raw = generate_verification_token()
@@ -86,7 +86,7 @@ class AuthUseCase:
         matched.used_at = datetime.now(UTC)
         await self._session.flush()
 
-    async def resend_verification(self, email: str) -> None:
+    async def resend_verification(self, email: str) -> tuple[str, bool]:
         model = await self._users.get_model_by_email(email)
         if not model:
             raise ValueError("Si el correo existe, recibirás un nuevo enlace")
@@ -94,7 +94,8 @@ class AuthUseCase:
             raise ValueError("Este correo ya está verificado")
         raw_token = await self._create_verification_token(model.id)
         verify_url = f"{settings.frontend_url.rstrip('/')}/verificar-email?token={raw_token}"
-        await send_verification_email(model.email, model.full_name, verify_url)
+        email_sent = await send_verification_email(model.email, model.full_name, verify_url)
+        return verify_url, email_sent
 
     async def login(self, email: str, password: str):
         model = await self._users.get_model_by_email(email)

@@ -1,10 +1,17 @@
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
+from sqlalchemy import delete, select
 from pydantic import BaseModel
 
 from tava.domain.enums import UserRole
 from tava.infrastructure.persistence.database import get_db
+from tava.infrastructure.persistence.models import (
+    EmailVerificationTokenModel,
+    RefreshTokenModel,
+    TicketModel,
+    UserModel,
+)
 from tava.infrastructure.persistence.repositories.sqlalchemy_user_repository import SQLAlchemyUserRepository
 from tava.presentation.api.dependencies import require_roles
 from tava.presentation.api.http_errors import raise_user_error
@@ -93,3 +100,31 @@ async def set_user_status(
         email_verified=updated.email_verified,
         is_active=updated.is_active,
     )
+
+
+@router.delete("/{user_id}")
+async def delete_user(
+    user_id: UUID,
+    admin=Depends(require_roles(UserRole.ADMIN)),
+    db=Depends(get_db),
+):
+    if admin.id == user_id:
+        raise_user_error(400, "CANNOT_DELETE_SELF", "No puedes eliminar tu propia cuenta admin")
+    result = await db.execute(select(UserModel).where(UserModel.id == user_id))
+    target = result.scalar_one_or_none()
+    if not target:
+        raise_user_error(404, "USER_NOT_FOUND", "Usuario no encontrado")
+    if target.role == UserRole.ADMIN:
+        raise_user_error(400, "CANNOT_DELETE_ADMIN", "No se puede eliminar un administrador")
+    tickets = await db.execute(select(TicketModel.id).where(TicketModel.owner_id == user_id).limit(1))
+    if tickets.scalar_one_or_none():
+        raise_user_error(
+            400,
+            "USER_HAS_TICKETS",
+            "Este usuario tiene boletas. Desactívalo en lugar de borrarlo.",
+        )
+    await db.execute(delete(EmailVerificationTokenModel).where(EmailVerificationTokenModel.user_id == user_id))
+    await db.execute(delete(RefreshTokenModel).where(RefreshTokenModel.user_id == user_id))
+    await db.delete(target)
+    await db.flush()
+    return {"message": "Usuario eliminado", "success": True}

@@ -193,6 +193,31 @@ export class AdminDashboardComponent implements OnInit {
       });
   }
 
+  deleteEvent(ev: TavaEvent): void {
+    this.notify.confirm('Eliminar evento', `¿Eliminar "${ev.name}"? Esta acción no se puede deshacer.`, () => {
+      this.api.delete(`/events/${ev.id}`).subscribe({
+        next: () => {
+          this.notify.success('Eventos', 'Evento eliminado');
+          if (this.editingId() === ev.id) this.resetEventForm();
+          this.loadAdminEvents();
+        },
+        error: () => this.notify.error('Eventos', 'No se pudo eliminar (puede tener boletas)'),
+      });
+    });
+  }
+
+  deleteUser(u: AdminUser): void {
+    this.notify.confirm('Eliminar usuario', `¿Eliminar a ${u.full_name}?`, () => {
+      this.api.delete(`/users/${u.id}`).subscribe({
+        next: () => {
+          this.notify.success('Usuarios', 'Usuario eliminado');
+          this.loadUsers();
+        },
+        error: () => this.notify.error('Usuarios', 'No se pudo eliminar el usuario'),
+      });
+    });
+  }
+
   saveAppearance(): void {
     this.site.updateAppearance(this.appearanceForm).subscribe({
       next: (a: SiteAppearance) => {

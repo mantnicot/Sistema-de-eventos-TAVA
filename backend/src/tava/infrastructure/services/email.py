@@ -10,11 +10,12 @@ logger = logging.getLogger("tava.email")
 settings = get_settings()
 
 
-def _smtp_configured() -> bool:
+def smtp_configured() -> bool:
     return bool(settings.smtp_host and settings.smtp_user and settings.smtp_password)
 
 
-async def send_verification_email(to_email: str, full_name: str, verify_url: str) -> None:
+async def send_verification_email(to_email: str, full_name: str, verify_url: str) -> bool:
+    """Devuelve True si el correo se envió por SMTP."""
     subject = "Confirma tu correo — TAVA Teatro"
     html = f"""
     <div style="font-family: Georgia, serif; max-width: 520px; margin: 0 auto; color: #3d2a14;">
@@ -27,13 +28,13 @@ async def send_verification_email(to_email: str, full_name: str, verify_url: str
     """
     text = f"Hola {full_name},\n\nVerifica tu cuenta TAVA:\n{verify_url}\n"
 
-    if not _smtp_configured():
-        logger.info(
-            "Correo de verificación (SMTP no configurado) → %s | URL: %s",
+    if not smtp_configured():
+        logger.warning(
+            "SMTP no configurado — correo NO enviado a %s. Enlace: %s",
             to_email,
             verify_url,
         )
-        return
+        return False
 
     msg = MIMEMultipart("alternative")
     msg["Subject"] = subject
@@ -48,6 +49,7 @@ async def send_verification_email(to_email: str, full_name: str, verify_url: str
             server.login(settings.smtp_user, settings.smtp_password)
             server.sendmail(settings.email_from, [to_email], msg.as_string())
         logger.info("Correo de verificación enviado a %s", to_email)
+        return True
     except Exception:
         logger.exception("No se pudo enviar correo a %s", to_email)
         raise

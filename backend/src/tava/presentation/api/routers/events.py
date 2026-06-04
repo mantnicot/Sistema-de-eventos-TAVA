@@ -1,7 +1,7 @@
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -188,3 +188,28 @@ async def add_event_media(
     return EventMediaResponse(
         id=media.id, media_type=media.media_type, url=media.url, sort_order=media.sort_order
     )
+
+
+@router.delete("/{event_id}")
+async def delete_event(
+    event_id: UUID,
+    _user=Depends(require_roles(UserRole.ADMIN)),
+    db: AsyncSession = Depends(get_db),
+):
+    from tava.infrastructure.persistence.models import TicketModel
+
+    result = await db.execute(select(EventModel).where(EventModel.id == event_id))
+    event = result.scalar_one_or_none()
+    if not event:
+        raise HTTPException(status_code=404, detail="Evento no encontrado")
+    sold = await db.execute(select(TicketModel.id).where(TicketModel.event_id == event_id).limit(1))
+    if sold.scalar_one_or_none():
+        raise HTTPException(
+            status_code=400,
+            detail="No se puede eliminar: el evento tiene boletas asociadas",
+        )
+    await db.execute(delete(EventMediaModel).where(EventMediaModel.event_id == event_id))
+    await db.execute(delete(TicketTypeModel).where(TicketTypeModel.event_id == event_id))
+    await db.delete(event)
+    await db.flush()
+    return {"message": "Evento eliminado", "success": True}

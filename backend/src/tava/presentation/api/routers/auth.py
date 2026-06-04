@@ -67,8 +67,17 @@ async def verify_email(token: str, db: AsyncSession = Depends(get_db)):
 async def resend_verification(email: str = Query(...), db: AsyncSession = Depends(get_db)):
     try:
         uc = AuthUseCase(db)
-        await uc.resend_verification(email)
-        return {"message": "Si el correo está registrado, recibirás un nuevo enlace.", "success": True}
+        verify_url, email_sent = await uc.resend_verification(email)
+        if email_sent:
+            msg = "Te enviamos un nuevo enlace de verificación a tu correo."
+        else:
+            msg = "No hay correo configurado en el servidor. Usa el enlace de verificación mostrado abajo."
+        return {
+            "message": msg,
+            "success": True,
+            "email_sent": email_sent,
+            "verification_url": verify_url if not email_sent else None,
+        }
     except ValueError as e:
         raise_user_error(400, "RESEND_FAILED", str(e))
     except Exception:
@@ -86,23 +95,26 @@ async def register(body: RegisterRequest, db: AsyncSession = Depends(get_db)):
         raise_user_error(400, "PASSWORD_DECRYPT_FAILED", str(e))
     try:
         uc = AuthUseCase(db)
-        user, dev_url = await uc.register(
+        user, verify_url, email_sent = await uc.register(
             email=body.email,
             password=plain_password,
             full_name=body.full_name,
             phone=body.phone,
             document_id=body.document_id,
         )
-        logger.info("Registro pendiente de verificación: %s", user.email)
-        dev_link = (
-            f"{get_settings().frontend_url.rstrip('/')}/verificar-email?token={dev_url}"
-            if dev_url
-            else None
-        )
+        logger.info("Registro pendiente de verificación: %s (email_sent=%s)", user.email, email_sent)
+        if email_sent:
+            msg = "Revisa tu correo y haz clic en el enlace para activar tu cuenta."
+        else:
+            msg = (
+                "Cuenta creada. El servidor aún no envía correos: usa el enlace de verificación "
+                "que aparece abajo para activar tu cuenta."
+            )
         return RegisterResponse(
-            message="Revisa tu correo y haz clic en el enlace de verificación para activar tu cuenta.",
+            message=msg,
             user=_user_response(user),
-            dev_verification_url=dev_link,
+            email_sent=email_sent,
+            verification_url=verify_url if not email_sent else None,
         )
     except ValueError as e:
         logger.info("Registro rechazado (usuario): %s", e)

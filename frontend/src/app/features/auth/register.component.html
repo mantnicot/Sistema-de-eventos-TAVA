@@ -1,20 +1,38 @@
 <div class="auth-page">
-  <form class="auth-form tava-form tava-card" (ngSubmit)="submit()">
-    <h1 class="tava-glow-text">Crear cuenta</h1>
-    <p>Únete al público TAVA y colecciona láminas</p>
-    <label>
-      Nombre completo
-      <input type="text" [(ngModel)]="full_name" name="full_name" required />
-    </label>
-    <label>
-      Correo
-      <input type="email" [(ngModel)]="email" name="email" required />
-    </label>
-    <label>
-      Contraseña (mín. 8 caracteres)
-      <input type="password" [(ngModel)]="password" name="password" required minlength="8" />
-    </label>
-    <button type="submit" class="tava-btn-primary">Registrarme</button>
-    <p class="hint">¿Ya tienes cuenta? <a routerLink="/ingresar">Ingresar</a></p>
-  </form>
+  @if (!pendingVerify) {
+    <form class="auth-form tava-form tava-card" (ngSubmit)="submit()">
+      <h1 class="tava-glow-text">Crear cuenta</h1>
+      <p>Únete a la comunidad TAVA</p>
+      <label>
+        Nombre completo
+        <input [(ngModel)]="full_name" name="full_name" required />
+      </label>
+      <label>
+        Correo
+        <input type="email" [(ngModel)]="email" name="email" required autocomplete="email" />
+      </label>
+      <label>
+        Contraseña
+        <input type="password" [(ngModel)]="password" name="password" required minlength="8" />
+      </label>
+      <button type="submit" class="tava-btn-primary">Registrarse</button>
+      <p class="hint">¿Ya tienes cuenta? <a routerLink="/ingresar">Ingresar</a></p>
+    </form>
+  } @else {
+    <div class="auth-form tava-form tava-card verify-pending">
+      <h1 class="tava-glow-text">Activa tu cuenta</h1>
+      <p>{{ pendingMessage }}</p>
+      @if (verificationUrl) {
+        <p class="warn-box">
+          No llegó correo desde el servidor. Usa este enlace único para verificar:
+        </p>
+        <a [href]="verificationUrl" class="tava-btn-primary verify-link">Verificar mi correo</a>
+        <button type="button" class="nav__btn-outline" (click)="copyLink()">Copiar enlace</button>
+        <p class="hint mono">{{ verificationUrl }}</p>
+      } @else {
+        <p class="hint">Revisa tu bandeja de entrada y spam.</p>
+      }
+      <a routerLink="/ingresar" class="hint">Ir a ingresar</a>
+    </div>
+  }
 </div>

@@ -108,6 +108,27 @@
     align-items: center;
     gap: 1rem;
   }
+
+  &__actions {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+}
+
+.btn-danger {
+  background: #9e3a3a;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 0.4rem 0.75rem;
+  cursor: pointer;
+  font-size: 0.82rem;
+
+  &:hover {
+    background: #7b2d2d;
+  }
 }
 
 .badge {

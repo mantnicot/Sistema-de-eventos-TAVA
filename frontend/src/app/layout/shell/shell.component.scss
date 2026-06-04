@@ -7,7 +7,7 @@
   border-bottom: 1px solid rgba(201, 162, 39, 0.2);
   position: sticky;
   top: 0;
-  z-index: 100;
+  z-index: 10;
   backdrop-filter: blur(16px);
   box-shadow: 0 4px 24px rgba(58, 47, 42, 0.06);
 }
@@ -22,6 +22,8 @@
 
   &__logo {
     object-fit: contain;
+    background: transparent;
+    mix-blend-mode: multiply;
     filter: drop-shadow(0 2px 6px rgba(58, 47, 42, 0.12));
     transition: transform var(--tava-transition);
 
@@ -166,7 +168,7 @@
 .main {
   min-height: calc(100vh - 160px);
   position: relative;
-  z-index: 1;
+  z-index: 2;
 }
 
 .footer {

@@ -21,6 +21,7 @@ export class LoginComponent {
   password = '';
   submitting = false;
   needsVerification = false;
+  resendLink: string | null = null;
 
   submit(): void {
     if (this.submitting) return;
@@ -50,7 +51,10 @@ export class LoginComponent {
       return;
     }
     this.auth.resendVerification(this.email).subscribe({
-      next: (r) => this.notify.success('Correo', r.message),
+      next: (r) => {
+        this.resendLink = r.verification_url ?? null;
+        this.notify.success('Verificación', r.message);
+      },
       error: () => this.notify.error('Correo', 'No se pudo reenviar el enlace'),
     });
   }

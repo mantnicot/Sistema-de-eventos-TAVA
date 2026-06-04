@@ -53,7 +53,8 @@ export class AuthService {
             this.api.post<{
               message: string;
               user: TavaUser;
-              dev_verification_url?: string;
+              email_sent: boolean;
+              verification_url?: string | null;
             }>('/auth/register', {
               email: data.email,
               full_name: data.full_name,
@@ -67,7 +68,11 @@ export class AuthService {
   }
 
   resendVerification(email: string) {
-    return this.api.post<{ message: string }>(`/auth/resend-verification?email=${encodeURIComponent(email)}`, {});
+    return this.api.post<{
+      message: string;
+      email_sent: boolean;
+      verification_url?: string | null;
+    }>(`/auth/resend-verification?email=${encodeURIComponent(email)}`, {});
   }
 
   verifyEmail(token: string) {
