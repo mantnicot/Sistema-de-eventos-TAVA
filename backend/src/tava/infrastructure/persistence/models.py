@@ -50,7 +50,10 @@ class UserModel(Base):
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
 
-    tickets: Mapped[list["TicketModel"]] = relationship(back_populates="owner")
+    tickets: Mapped[list["TicketModel"]] = relationship(
+        back_populates="owner",
+        foreign_keys="TicketModel.owner_id",
+    )
     favorites: Mapped[list["FavoriteModel"]] = relationship(back_populates="user")
     collectibles: Mapped[list["CollectibleModel"]] = relationship(back_populates="user")
     reviews: Mapped[list["ReviewModel"]] = relationship(back_populates="user")
@@ -197,7 +200,13 @@ class TicketModel(Base):
     validated_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
 
     order: Mapped["OrderModel"] = relationship(back_populates="tickets")
-    owner: Mapped["UserModel"] = relationship(back_populates="tickets", foreign_keys=[owner_id])
+    owner: Mapped["UserModel"] = relationship(
+        back_populates="tickets",
+        foreign_keys=[owner_id],
+    )
+    validator: Mapped["UserModel | None"] = relationship(
+        foreign_keys=[validated_by],
+    )
 
 
 class CheckInModel(Base):
