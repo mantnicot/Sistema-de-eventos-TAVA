@@ -26,6 +26,7 @@ export class AuthService {
   readonly isLoggedIn = computed(() => !!this._user());
   readonly isAdmin = computed(() => this._user()?.role === 'admin');
   readonly isValidator = computed(() => ['validator', 'admin'].includes(this._user()?.role ?? ''));
+  readonly isSeller = computed(() => ['seller', 'admin'].includes(this._user()?.role ?? ''));
 
   login(email: string, password: string, captchaToken?: string) {
     return this.api.get<{ public_key_pem: string }>('/auth/public-key').pipe(
@@ -49,7 +50,11 @@ export class AuthService {
       switchMap(({ public_key_pem }) =>
         from(encryptPasswordForTransport(public_key_pem, data.password)).pipe(
           switchMap((password_encrypted) =>
-            this.api.post<AuthResponse>('/auth/register', {
+            this.api.post<{
+              message: string;
+              user: TavaUser;
+              dev_verification_url?: string;
+            }>('/auth/register', {
               email: data.email,
               full_name: data.full_name,
               password_encrypted,
@@ -57,9 +62,16 @@ export class AuthService {
             })
           )
         )
-      ),
-      tap((res) => this.persist(res))
+      )
     );
+  }
+
+  resendVerification(email: string) {
+    return this.api.post<{ message: string }>(`/auth/resend-verification?email=${encodeURIComponent(email)}`, {});
+  }
+
+  verifyEmail(token: string) {
+    return this.api.get<{ message: string; success: boolean }>(`/auth/verify-email?token=${encodeURIComponent(token)}`);
   }
 
   logout(): void {

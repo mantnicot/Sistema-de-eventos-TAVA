@@ -15,6 +15,7 @@ def _to_entity(m: UserModel) -> User:
         email=m.email,
         full_name=m.full_name,
         role=m.role,
+        email_verified=m.email_verified,
         is_active=m.is_active,
         created_at=m.created_at,
         phone=m.phone,
@@ -48,6 +49,7 @@ class SQLAlchemyUserRepository(UserRepository):
         role: UserRole,
         phone: str | None = None,
         document_id: str | None = None,
+        email_verified: bool = False,
     ) -> User:
         model = UserModel(
             email=email.lower(),
@@ -56,6 +58,7 @@ class SQLAlchemyUserRepository(UserRepository):
             role=role,
             phone=phone,
             document_id=document_id,
+            email_verified=email_verified,
         )
         self._session.add(model)
         await self._session.flush()
@@ -68,3 +71,25 @@ class SQLAlchemyUserRepository(UserRepository):
             q = q.where(UserModel.role == role)
         result = await self._session.execute(q)
         return [_to_entity(m) for m in result.scalars().all()]
+
+    async def update_user(
+        self,
+        user_id: UUID,
+        *,
+        role: UserRole | None = None,
+        is_active: bool | None = None,
+        email_verified: bool | None = None,
+    ) -> User | None:
+        result = await self._session.execute(select(UserModel).where(UserModel.id == user_id))
+        model = result.scalar_one_or_none()
+        if not model:
+            return None
+        if role is not None:
+            model.role = role
+        if is_active is not None:
+            model.is_active = is_active
+        if email_verified is not None:
+            model.email_verified = email_verified
+        await self._session.flush()
+        await self._session.refresh(model)
+        return _to_entity(model)

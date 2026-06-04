@@ -22,3 +22,5 @@ class Event:
     created_at: datetime
     main_image_url: str | None = None
     trailer_url: str | None = None
+    theatrical_details: dict | None = None
+    theatrical_details: dict | None = None

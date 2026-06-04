@@ -1,15 +1,130 @@
 <section class="admin">
-  <h1 class="tava-glow-text">Dashboard TAVA</h1>
-  @if (kpis(); as k) {
-    <div class="kpi-grid">
-      <div class="kpi tava-card"><span>Eventos activos</span><strong>{{ k.eventos_activos }}</strong></div>
-      <div class="kpi tava-card"><span>Boletas vendidas</span><strong>{{ k.boletas_vendidas }}</strong></div>
-      <div class="kpi tava-card"><span>Ingresos</span><strong>${{ k.ingresos | number }}</strong></div>
-      <div class="kpi tava-card"><span>Asistentes</span><strong>{{ k.asistentes }}</strong></div>
-      <div class="kpi tava-card"><span>Conversión</span><strong>{{ k.conversion_porcentaje }}%</strong></div>
-    </div>
-  } @else {
-    <p>Cargando métricas...</p>
+  <header class="admin__head">
+    <h1 class="tava-glow-text">Panel administrativo TAVA</h1>
+    <nav class="admin__tabs">
+      <button type="button" [class.active]="tab() === 'kpis'" (click)="tab.set('kpis')">Métricas</button>
+      <button type="button" [class.active]="tab() === 'events'" (click)="tab.set('events')">Eventos</button>
+      <button type="button" [class.active]="tab() === 'users'" (click)="tab.set('users')">Usuarios</button>
+      <button type="button" [class.active]="tab() === 'appearance'" (click)="tab.set('appearance')">Apariencia</button>
+    </nav>
+  </header>
+
+  @if (tab() === 'kpis') {
+    @if (kpis(); as k) {
+      <div class="kpi-grid">
+        <div class="kpi tava-card"><span>Eventos activos</span><strong>{{ k.eventos_activos }}</strong></div>
+        <div class="kpi tava-card"><span>Boletas vendidas</span><strong>{{ k.boletas_vendidas }}</strong></div>
+        <div class="kpi tava-card"><span>Ingresos</span><strong>${{ k.ingresos | number }}</strong></div>
+        <div class="kpi tava-card"><span>Asistentes</span><strong>{{ k.asistentes }}</strong></div>
+        <div class="kpi tava-card"><span>Conversión</span><strong>{{ k.conversion_porcentaje }}%</strong></div>
+      </div>
+    } @else {
+      <p>Cargando métricas…</p>
+    }
   }
-  <p class="note">Reportes Excel/PDF y gestión completa — extensión vía API `/dashboard` y módulos admin.</p>
+
+  @if (tab() === 'events') {
+    <div class="admin-grid">
+      <form class="tava-card admin-form" (ngSubmit)="saveEvent()">
+        <h2>{{ editingId() ? 'Editar evento' : 'Nuevo evento' }}</h2>
+        <label>Nombre <input [(ngModel)]="eventForm.name" name="name" required /></label>
+        <label>Descripción <textarea [(ngModel)]="eventForm.description" name="desc" rows="3" required></textarea></label>
+        <label>Categoría <input [(ngModel)]="eventForm.category" name="cat" /></label>
+        <div class="row">
+          <label>Fecha <input type="date" [(ngModel)]="eventForm.event_date" name="date" required /></label>
+          <label>Hora <input type="time" [(ngModel)]="eventForm.event_time" name="time" required /></label>
+        </div>
+        <div class="row">
+          <label>Ciudad <input [(ngModel)]="eventForm.city" name="city" /></label>
+          <label>Dirección <input [(ngModel)]="eventForm.address" name="addr" /></label>
+        </div>
+        <label>Capacidad <input type="number" [(ngModel)]="eventForm.capacity" name="cap" /></label>
+        <label>Estado
+          <select [(ngModel)]="eventForm.status" name="status">
+            <option value="borrador">Borrador</option>
+            <option value="publicado">Publicado</option>
+            <option value="programado">Programado</option>
+            <option value="agotado">Agotado</option>
+          </select>
+        </label>
+        <label>Imagen (URL) <input [(ngModel)]="eventForm.main_image_url" name="img" /></label>
+        <label>Trailer (URL YouTube/Vimeo) <input [(ngModel)]="eventForm.trailer_url" name="trailer" /></label>
+        <h3>Ficha teatral</h3>
+        <label>Sinopsis <textarea [(ngModel)]="theatrical.synopsis" name="syn" rows="2"></textarea></label>
+        <label>Director <input [(ngModel)]="theatrical.director" name="dir" /></label>
+        <label>Elenco (separado por comas) <input [(ngModel)]="castInput" name="cast" /></label>
+        <div class="row">
+          <label>Duración (min) <input type="number" [(ngModel)]="theatrical.duration_minutes" name="dur" /></label>
+          <label>Clasificación <input [(ngModel)]="theatrical.age_rating" name="age" /></label>
+        </div>
+        <button type="submit" class="tava-btn-primary">{{ editingId() ? 'Guardar cambios' : 'Crear evento' }}</button>
+        @if (editingId()) {
+          <button type="button" class="link-btn" (click)="resetEventForm()">Cancelar edición</button>
+        }
+      </form>
+
+      <div class="admin-list">
+        <h2>Eventos registrados</h2>
+        @for (ev of adminEvents(); track ev.id) {
+          <article class="tava-card admin-list__item">
+            <div>
+              <strong>{{ ev.name }}</strong>
+              <span class="badge">{{ ev.status }}</span>
+              <p class="muted">{{ ev.event_date }} · {{ ev.city }}</p>
+            </div>
+            <button type="button" (click)="editEvent(ev)">Editar</button>
+          </article>
+        } @empty {
+          <p class="muted">No hay eventos. Crea el primero.</p>
+        }
+      </div>
+    </div>
+  }
+
+  @if (tab() === 'users') {
+    <div class="tava-card admin-form">
+      <h2>Asignar rol por correo</h2>
+      <label>Correo del usuario <input [(ngModel)]="roleEmail" name="roleEmail" type="email" /></label>
+      <label>Rol
+        <select [(ngModel)]="rolePick" name="rolePick">
+          <option value="general">General</option>
+          <option value="seller">Vendedor</option>
+          <option value="validator">Validador</option>
+          <option value="admin">Administrador</option>
+        </select>
+      </label>
+      <button type="button" class="tava-btn-primary" (click)="assignRole()">Guardar rol</button>
+    </div>
+    <div class="admin-list">
+      @for (u of users(); track u.id) {
+        <article class="tava-card admin-list__item">
+          <div>
+            <strong>{{ u.full_name }}</strong>
+            <p class="muted">{{ u.email }} · {{ u.role }}
+              @if (!u.email_verified) { · <em>sin verificar</em> }
+            </p>
+          </div>
+          <select [value]="u.role" (change)="changeRole(u.id, $event)">
+            <option value="general">general</option>
+            <option value="seller">seller</option>
+            <option value="validator">validator</option>
+            <option value="admin">admin</option>
+          </select>
+        </article>
+      }
+    </div>
+  }
+
+  @if (tab() === 'appearance') {
+    <form class="tava-card admin-form" (ngSubmit)="saveAppearance()">
+      <h2>Video de fondo (difuminado)</h2>
+      <p class="muted">URL directa a un archivo .mp4 (por ejemplo Pexels). Se muestra muy difuminado detrás del sitio.</p>
+      <label>
+        <input type="checkbox" [(ngModel)]="appearanceForm.hero_video_enabled" name="enabled" />
+        Activar video de fondo
+      </label>
+      <label>URL del video <input [(ngModel)]="appearanceForm.hero_video_url" name="vurl" class="wide" /></label>
+      <button type="submit" class="tava-btn-primary">Guardar apariencia</button>
+    </form>
+  }
 </section>

@@ -29,6 +29,7 @@ async def seed():
                 password_hash=hash_password("AdminTava2026!"),
                 full_name="Administrador TAVA",
                 role=UserRole.ADMIN,
+                email_verified=True,
             )
             session.add(admin)
             await session.flush()

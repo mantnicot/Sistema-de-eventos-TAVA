@@ -11,7 +11,18 @@ from tava.config import get_settings
 from tava.infrastructure.bootstrap import bootstrap_application
 from tava.infrastructure.persistence.database import engine, init_db
 from tava.presentation.api.error_handlers import register_exception_handlers
-from tava.presentation.api.routers import auth, dashboard, events, loyalty, marketing, tickets, validation, venues
+from tava.presentation.api.routers import (
+    auth,
+    dashboard,
+    events,
+    loyalty,
+    marketing,
+    settings,
+    tickets,
+    users,
+    validation,
+    venues,
+)
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 logger = logging.getLogger("tava")
@@ -74,6 +85,8 @@ app.include_router(validation.router, prefix="/api/v1")
 app.include_router(loyalty.router, prefix="/api/v1")
 app.include_router(dashboard.router, prefix="/api/v1")
 app.include_router(marketing.router, prefix="/api/v1")
+app.include_router(settings.router, prefix="/api/v1")
+app.include_router(users.router, prefix="/api/v1")
 
 
 @app.get("/health")

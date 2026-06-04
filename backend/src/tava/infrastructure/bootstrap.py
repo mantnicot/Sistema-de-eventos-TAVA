@@ -7,6 +7,7 @@ from sqlalchemy import select
 from tava.domain.enums import EventStatus, UserRole
 from tava.infrastructure.persistence.database import AsyncSessionLocal, init_db
 from tava.infrastructure.persistence.models import BannerModel, EventModel, UserModel
+from tava.infrastructure.services.site_settings import ensure_default_settings
 from tava.infrastructure.security.password import hash_password, verify_password
 
 ADMIN_SEED_PASSWORD = "AdminTava2026!"
@@ -27,13 +28,18 @@ async def bootstrap_application() -> None:
                     password_hash=hash_password(ADMIN_SEED_PASSWORD),
                     full_name="Administrador TAVA",
                     role=UserRole.ADMIN,
+                    email_verified=True,
                 )
                 session.add(admin)
                 await session.flush()
                 logger.info("Usuario admin creado: %s", admin_email)
-            elif not verify_password(ADMIN_SEED_PASSWORD, admin.password_hash):
-                admin.password_hash = hash_password(ADMIN_SEED_PASSWORD)
-                logger.info("Contraseña admin sincronizada con seed de bootstrap")
+            else:
+                admin.email_verified = True
+                if not verify_password(ADMIN_SEED_PASSWORD, admin.password_hash):
+                    admin.password_hash = hash_password(ADMIN_SEED_PASSWORD)
+                    logger.info("Contraseña admin sincronizada con seed de bootstrap")
+
+            await ensure_default_settings(session)
 
             if not admin:
                 result = await session.execute(select(UserModel).where(UserModel.email == admin_email))
@@ -48,6 +54,14 @@ async def bootstrap_application() -> None:
                     EventModel(
                         name="Noche de Estreno TAVA",
                         description="Experiencia teatral del grupo TAVA.",
+                        theatrical_details={
+                            "synopsis": "Una noche de estreno que celebra el arte en vivo.",
+                            "cast": ["Elenco TAVA"],
+                            "director": "Dirección TAVA",
+                            "duration_minutes": 90,
+                            "age_rating": "Todo público",
+                            "language": "Español",
+                        },
                         event_date=date(2026, 7, 15),
                         event_time=time(19, 30),
                         city="Bogotá",

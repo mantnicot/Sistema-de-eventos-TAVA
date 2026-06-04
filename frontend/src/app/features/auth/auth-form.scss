@@ -51,5 +51,17 @@
     text-align: center;
     margin-top: 1.25rem;
     font-size: 0.9rem;
+
+    &.warn {
+      color: var(--tava-burgundy);
+    }
+  }
+
+  .verify .ok {
+    color: #2d6a4f;
+  }
+
+  .verify .err {
+    color: var(--tava-burgundy);
   }
 }

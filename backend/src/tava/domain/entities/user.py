@@ -11,6 +11,7 @@ class User:
     email: str
     full_name: str
     role: UserRole
+    email_verified: bool
     is_active: bool
     created_at: datetime
     phone: str | None = None

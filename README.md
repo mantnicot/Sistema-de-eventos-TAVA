@@ -13,6 +13,10 @@ Plataforma oficial para el grupo de teatro **TAVA** ([@tavateatro](https://www.i
 | API Docs | Swagger en `/docs` |
 | Contenedores | Docker Compose |
 
+## Módulos y documentación en español
+
+Guía completa de funcionalidades (registro con verificación de correo, panel admin, ficha teatral, video de fondo): **[docs/MODULOS-TAVA.md](docs/MODULOS-TAVA.md)**
+
 ## Identidad visual
 
 Paleta inspirada en teatro contemporáneo y la presencia de @tavateatro:

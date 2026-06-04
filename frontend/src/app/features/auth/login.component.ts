@@ -20,6 +20,7 @@ export class LoginComponent {
   email = '';
   password = '';
   submitting = false;
+  needsVerification = false;
 
   submit(): void {
     if (this.submitting) return;
@@ -36,9 +37,21 @@ export class LoginComponent {
         this.submitting = false;
         this.notify.hide();
         const parsed = parseHttpError(err, 'login');
+        this.needsVerification = parsed.code === 'EMAIL_NOT_VERIFIED';
         console[parsed.kind === 'user' ? 'warn' : 'error'](parsed.logLine);
         this.notify.showHttpError(parsed);
       },
+    });
+  }
+
+  resendVerification(): void {
+    if (!this.email) {
+      this.notify.warning('Correo', 'Escribe tu correo en el formulario');
+      return;
+    }
+    this.auth.resendVerification(this.email).subscribe({
+      next: (r) => this.notify.success('Correo', r.message),
+      error: () => this.notify.error('Correo', 'No se pudo reenviar el enlace'),
     });
   }
 }

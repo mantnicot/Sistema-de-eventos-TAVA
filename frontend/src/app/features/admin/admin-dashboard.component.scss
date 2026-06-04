@@ -1,24 +1,138 @@
 .admin {
-  padding: 2rem;
-  max-width: 1000px;
+  max-width: 1100px;
   margin: 0 auto;
+  padding: 1.5rem;
+}
 
-  h1 { font-family: var(--tava-font-display); }
+.admin__head {
+  margin-bottom: 1.5rem;
+}
+
+.admin__tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1rem;
+
+  button {
+    border: 1px solid rgba(201, 162, 39, 0.35);
+    background: rgba(255, 255, 255, 0.7);
+    border-radius: 999px;
+    padding: 0.4rem 1rem;
+    cursor: pointer;
+    font-family: inherit;
+
+    &.active {
+      background: var(--tava-gold-light);
+      color: #3d2a14;
+      font-weight: 600;
+    }
+  }
 }
 
 .kpi-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
   gap: 1rem;
-  margin: 2rem 0;
 }
 
 .kpi {
-  padding: 1.5rem;
-  text-align: center;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
 
-  span { display: block; font-size: 0.8rem; color: var(--tava-cream-muted); margin-bottom: 0.5rem; }
-  strong { font-size: 1.75rem; color: var(--tava-gold-glow); }
+  span {
+    font-size: 0.8rem;
+    color: var(--tava-cream-muted);
+  }
+  strong {
+    font-size: 1.4rem;
+    color: var(--tava-gold-glow);
+  }
 }
 
-.note { color: var(--tava-cream-muted); font-size: 0.9rem; }
+.admin-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+  align-items: start;
+}
+
+.admin-form {
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+
+  h2, h3 {
+    margin: 0.5rem 0 0;
+    font-family: var(--tava-font-display);
+    color: var(--tava-gold-glow);
+  }
+
+  label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    font-size: 0.85rem;
+  }
+
+  input, textarea, select {
+    padding: 0.5rem 0.65rem;
+    border-radius: 8px;
+    border: 1px solid rgba(201, 162, 39, 0.35);
+    font-family: inherit;
+  }
+
+  .wide {
+    width: 100%;
+  }
+
+  .row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+  }
+}
+
+.admin-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+
+  &__item {
+    padding: 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+  }
+}
+
+.badge {
+  margin-left: 0.5rem;
+  font-size: 0.75rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  background: rgba(201, 162, 39, 0.2);
+}
+
+.muted {
+  color: var(--tava-cream-muted);
+  font-size: 0.85rem;
+}
+
+.link-btn {
+  background: none;
+  border: none;
+  color: var(--tava-burgundy);
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+@media (max-width: 800px) {
+  .admin-grid {
+    grid-template-columns: 1fr;
+  }
+}

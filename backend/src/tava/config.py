@@ -17,6 +17,13 @@ class Settings(BaseSettings):
     captcha_secret_key: str = ""
     frontend_url: str = "http://localhost:4200"
     uploads_dir: str = "uploads"
+    # Correo (opcional: sin SMTP solo se registra en logs en desarrollo)
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_password: str = ""
+    email_from: str = "TAVA Teatro <no-reply@tavateatro.com>"
+    email_verification_expire_hours: int = 48
 
     @property
     def cors_origin_list(self) -> list[str]:

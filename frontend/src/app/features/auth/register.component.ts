@@ -26,10 +26,13 @@ export class RegisterComponent {
     this.auth
       .register({ email: this.email, password: this.password, full_name: this.full_name, captcha_token: 'dev-captcha' })
       .subscribe({
-        next: () => {
+        next: (res) => {
           this.notify.hide();
-          this.notify.success('¡Bienvenido a TAVA!', 'Tu cuenta fue creada');
-          this.router.navigate(['/perfil']);
+          const extra = res.dev_verification_url
+            ? ` (dev: ${res.dev_verification_url})`
+            : '';
+          this.notify.success('Revisa tu correo', res.message + extra);
+          this.router.navigate(['/ingresar']);
         },
         error: (err) => {
           this.notify.hide();

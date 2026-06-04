@@ -25,6 +25,7 @@ def _to_entity(m: EventModel) -> Event:
         created_at=m.created_at,
         main_image_url=m.main_image_url,
         trailer_url=m.trailer_url,
+        theatrical_details=m.theatrical_details,
     )
 
 

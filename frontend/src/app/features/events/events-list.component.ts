@@ -2,18 +2,7 @@ import { Component, inject, OnInit, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../core/services/api.service';
-
-export interface TavaEvent {
-  id: string;
-  name: string;
-  description: string;
-  event_date: string;
-  event_time: string;
-  city: string;
-  category: string;
-  status: string;
-  main_image_url?: string;
-}
+import { TavaEvent } from '../../core/models/event.model';
 
 @Component({
   selector: 'app-events-list',

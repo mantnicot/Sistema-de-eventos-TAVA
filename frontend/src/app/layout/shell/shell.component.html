@@ -1,23 +1,52 @@
+<tava-hero-video />
+
 <header class="header">
   <a routerLink="/" class="brand">
     <span class="brand__mark">TAVA</span>
     <span class="brand__sub">Teatro · Boletería</span>
   </a>
-  <nav class="nav">
-    <a routerLink="/eventos" routerLinkActive="active">Eventos</a>
-    <a routerLink="/coleccion" routerLinkActive="active">Colección</a>
-    @if (auth.isValidator()) {
-      <a routerLink="/validar" routerLinkActive="active">Validar</a>
-    }
-    @if (auth.isAdmin()) {
-      <a routerLink="/admin" routerLinkActive="active">Admin</a>
-    }
+
+  <button type="button" class="nav-toggle" (click)="menuOpen = !menuOpen" aria-label="Menú">
+    ☰
+  </button>
+
+  <nav class="nav" [class.nav--open]="menuOpen">
+    <div class="nav__group">
+      <span class="nav__label">Cartelera</span>
+      <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">Inicio</a>
+      <a routerLink="/eventos" routerLinkActive="active">Eventos</a>
+    </div>
+
     @if (auth.isLoggedIn()) {
-      <a routerLink="/perfil" routerLinkActive="active">Perfil</a>
-      <button type="button" class="link-btn" (click)="auth.logout()">Salir</button>
-    } @else {
-      <a routerLink="/ingresar" routerLinkActive="active" class="cta-nav">Ingresar</a>
+      <div class="nav__group">
+        <span class="nav__label">Mi cuenta</span>
+        <a routerLink="/perfil" routerLinkActive="active">Perfil y boletas</a>
+        <a routerLink="/coleccion" routerLinkActive="active">Colección</a>
+      </div>
     }
+
+    @if (auth.isValidator()) {
+      <div class="nav__group">
+        <span class="nav__label">Personal</span>
+        <a routerLink="/validar" routerLinkActive="active">Validar QR</a>
+      </div>
+    }
+
+    @if (auth.isAdmin()) {
+      <div class="nav__group">
+        <span class="nav__label">Administración</span>
+        <a routerLink="/admin" routerLinkActive="active">Panel admin</a>
+      </div>
+    }
+
+    <div class="nav__group nav__group--actions">
+      @if (auth.isLoggedIn()) {
+        <button type="button" class="link-btn" (click)="auth.logout()">Salir</button>
+      } @else {
+        <a routerLink="/registro" routerLinkActive="active">Registrarse</a>
+        <a routerLink="/ingresar" routerLinkActive="active" class="cta-nav">Ingresar</a>
+      }
+    </div>
   </nav>
 </header>
 

@@ -1,19 +1,85 @@
 @if (event(); as ev) {
   <article class="detail">
-    <div class="detail__hero tava-card" [style.backgroundImage]="'linear-gradient(to top, var(--tava-hero-overlay), transparent), url(' + (ev.main_image_url || '') + ')'">
+    <div
+      class="detail__hero tava-card"
+      [style.backgroundImage]="'linear-gradient(to top, var(--tava-hero-overlay), transparent), url(' + (ev.main_image_url || '') + ')'"
+    >
       <div class="detail__hero-content">
         <span class="badge">{{ ev.category }}</span>
         <h1 class="tava-glow-text">{{ ev.name }}</h1>
-        <p>{{ ev.city }} · {{ ev.event_date }} · {{ ev.event_time }}</p>
+        <p>{{ ev.city }} · {{ ev.address }}</p>
+        <p><time>{{ ev.event_date }}</time> · {{ ev.event_time }}</p>
+        @if (ev.theatrical_details?.duration_minutes) {
+          <p class="meta">Duración: {{ ev.theatrical_details.duration_minutes }} min</p>
+        }
+        @if (ev.theatrical_details?.age_rating) {
+          <p class="meta">{{ ev.theatrical_details.age_rating }}</p>
+        }
       </div>
     </div>
+
     <div class="detail__body">
-      <p class="description">{{ ev.description }}</p>
-      <div class="cta-box tava-card">
-        <h3>¿Listo para la función?</h3>
-        <p>Selecciona tu boleta, elige silla si aplica y asegura tu lugar.</p>
-        <button type="button" class="tava-btn-primary" (click)="comprar()">Comprar boletas</button>
-      </div>
+      <section class="tava-card block">
+        <h2>Sinopsis</h2>
+        <p>{{ ev.theatrical_details?.synopsis || ev.description }}</p>
+      </section>
+
+      @if (ev.theatrical_details?.director || (ev.theatrical_details?.cast?.length ?? 0) > 0) {
+        <section class="tava-card block">
+          <h2>Ficha artística</h2>
+          @if (ev.theatrical_details?.director) {
+            <p><strong>Dirección:</strong> {{ ev.theatrical_details.director }}</p>
+          }
+          @if (ev.theatrical_details?.cast?.length) {
+            <p><strong>Elenco:</strong> {{ ev.theatrical_details.cast.join(', ') }}</p>
+          }
+          @if (ev.theatrical_details?.language) {
+            <p><strong>Idioma:</strong> {{ ev.theatrical_details.language }}</p>
+          }
+          @if (ev.theatrical_details?.warnings) {
+            <p class="warn"><strong>Avisos:</strong> {{ ev.theatrical_details.warnings }}</p>
+          }
+          @if (ev.theatrical_details?.credits) {
+            <p class="muted">{{ ev.theatrical_details.credits }}</p>
+          }
+        </section>
+      }
+
+      @if (ev.trailer_url) {
+        <section class="tava-card block">
+          <h2>Trailer</h2>
+          <a [href]="ev.trailer_url" target="_blank" rel="noopener" class="tava-btn-primary">Ver trailer</a>
+        </section>
+      }
+
+      @if (ev.gallery?.length) {
+        <section class="gallery block">
+          <h2>Galería</h2>
+          <div class="gallery__grid">
+            @for (m of ev.gallery; track m.id) {
+              <img [src]="m.url" [alt]="ev.name" loading="lazy" />
+            }
+          </div>
+        </section>
+      }
+
+      <section class="cta-box tava-card">
+        <h3>Boletas</h3>
+        @if (ev.ticket_types?.length) {
+          @for (tt of ev.ticket_types; track tt.id) {
+            <label class="ticket-opt">
+              <input type="radio" name="tt" [value]="tt.id" [(ngModel)]="selectedTypeId" />
+              {{ tt.name }} — ${{ tt.price | number }} ({{ tt.quantity_available }} disp.)
+            </label>
+          }
+          <button type="button" class="tava-btn-primary" (click)="comprar()" [disabled]="!selectedTypeId()">
+            Comprar boletas
+          </button>
+        } @else {
+          <p class="muted">Próximamente tipos de boleta para este evento.</p>
+        }
+      </section>
+
       <a routerLink="/eventos" class="back">← Volver a cartelera</a>
     </div>
   </article>

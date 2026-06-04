@@ -48,9 +48,31 @@ class UserResponse(BaseModel):
     full_name: str
     role: UserRole
     phone: str | None = None
+    email_verified: bool = False
 
     class Config:
         from_attributes = True
+
+
+class UserAdminResponse(UserResponse):
+    is_active: bool = True
+
+
+class TheatricalDetailsSchema(BaseModel):
+    synopsis: str | None = None
+    cast: list[str] = Field(default_factory=list)
+    director: str | None = None
+    duration_minutes: int | None = None
+    age_rating: str | None = None
+    language: str | None = None
+    warnings: str | None = None
+    credits: str | None = None
+
+
+class RegisterResponse(BaseModel):
+    message: str
+    user: UserResponse
+    dev_verification_url: str | None = None
 
 
 class EventCreateRequest(BaseModel):
@@ -66,6 +88,23 @@ class EventCreateRequest(BaseModel):
     main_image_url: str | None = None
     trailer_url: str | None = None
     venue_id: UUID | None = None
+    theatrical_details: TheatricalDetailsSchema | None = None
+
+
+class EventMediaResponse(BaseModel):
+    id: UUID
+    media_type: str
+    url: str
+    sort_order: int
+
+
+class TicketTypePublicResponse(BaseModel):
+    id: UUID
+    name: str
+    kind: TicketKind
+    price: Decimal
+    quantity_available: int
+    benefits: str | None = None
 
 
 class EventResponse(BaseModel):
@@ -81,6 +120,12 @@ class EventResponse(BaseModel):
     capacity: int
     main_image_url: str | None = None
     trailer_url: str | None = None
+    theatrical_details: TheatricalDetailsSchema | None = None
+
+
+class EventDetailResponse(EventResponse):
+    gallery: list[EventMediaResponse] = Field(default_factory=list)
+    ticket_types: list[TicketTypePublicResponse] = Field(default_factory=list)
 
 
 class VenueCreateRequest(BaseModel):
