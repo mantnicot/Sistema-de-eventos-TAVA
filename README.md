@@ -55,6 +55,16 @@ Doble clic en **`TAVA-Iniciar.bat`** o **`iniciar-local.bat`** (raíz del proyec
 
 Para detener solo la base de datos: **`detener-local.bat`**.
 
+### Entornos del frontend
+
+| Entorno | Archivo | API |
+|---------|---------|-----|
+| Local | `environment.local.ts` | `http://localhost:8000/api/v1` |
+| Producción | `environment.prod.ts` | `https://tava-api-1.onrender.com/api/v1` |
+| Pruebas (rama `pruebas`) | `environment.pruebas.ts` | Render (frontend local) |
+
+Ver [docs/DESARROLLO-LOCAL.md](docs/DESARROLLO-LOCAL.md).
+
 ### Desarrollo local (manual)
 
 **Backend:**
