@@ -17,7 +17,7 @@ from tava.presentation.api.routers import (
     events,
     loyalty,
     marketing,
-    settings,
+    settings as site_settings_router,
     tickets,
     users,
     validation,
@@ -27,7 +27,7 @@ from tava.presentation.api.routers import (
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 logger = logging.getLogger("tava")
 
-settings = get_settings()
+app_settings = get_settings()
 
 
 def _rate_limit_key(request: Request) -> str:
@@ -50,7 +50,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title=settings.app_name,
+    title=app_settings.app_name,
     version="1.0.0",
     description=(
         "API oficial del ecosistema TAVA (@tavateatro) — gestión de eventos, boletería, "
@@ -69,7 +69,7 @@ app.state.limiter = limiter
 # CORS primero (último en add_middleware = más externo)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origin_list,
+    allow_origins=app_settings.cors_origin_list,
     allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
@@ -85,7 +85,7 @@ app.include_router(validation.router, prefix="/api/v1")
 app.include_router(loyalty.router, prefix="/api/v1")
 app.include_router(dashboard.router, prefix="/api/v1")
 app.include_router(marketing.router, prefix="/api/v1")
-app.include_router(settings.router, prefix="/api/v1")
+app.include_router(site_settings_router.router, prefix="/api/v1")
 app.include_router(users.router, prefix="/api/v1")
 
 
