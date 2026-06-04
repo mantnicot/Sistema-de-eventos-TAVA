@@ -1,27 +1,31 @@
-<section class="page-header">
-  <h1 class="tava-glow-text">Cartelera TAVA</h1>
-  <p>Encuentra tu próxima experiencia teatral</p>
+<section class="page-header page-header--broadway">
+  <img src="/logo-tava.png" alt="" class="page-header__logo" width="48" height="48" />
+  <div>
+    <h1 class="tava-glow-text">Cartelera de eventos</h1>
+    <p>Selecciona tu función y asegura tu lugar — estilo gran teatro.</p>
+  </div>
 </section>
 
-<div class="filters">
-  <input type="search" placeholder="Buscar obra..." [(ngModel)]="search" (keyup.enter)="load()" />
-  <input type="text" placeholder="Categoría" [(ngModel)]="category" (keyup.enter)="load()" />
+<div class="filters tava-card">
+  <input type="search" placeholder="Buscar obra, artista o ciudad…" [(ngModel)]="search" (keyup.enter)="load()" />
+  <input type="text" placeholder="Categoría (ej. Teatro)" [(ngModel)]="category" (keyup.enter)="load()" />
   <button type="button" class="tava-btn-primary" (click)="load()">Buscar</button>
 </div>
 
-<div class="grid">
+<div class="show-grid">
   @for (ev of events(); track ev.id) {
-    <article class="tava-card card">
-      <a [routerLink]="['/eventos', ev.id]">
-        <div class="card__img" [style.backgroundImage]="'url(' + (ev.main_image_url || '') + ')'"></div>
-        <div class="card__content">
-          <span class="badge">{{ ev.category }}</span>
+    <article class="show-card tava-card">
+      <a [routerLink]="['/eventos', ev.id]" class="show-card__link">
+        <div class="show-card__img" [style.backgroundImage]="'url(' + mediaUrl(ev.main_image_url) + ')'"></div>
+        <div class="show-card__body">
+          <span class="show-card__cat">{{ ev.category }}</span>
           <h2>{{ ev.name }}</h2>
-          <p>{{ ev.city }} · {{ ev.event_date }}</p>
+          <p class="show-card__meta">{{ ev.city }} · {{ ev.event_date }}</p>
+          <span class="show-card__cta tava-btn-primary">Ver boletas</span>
         </div>
       </a>
     </article>
   } @empty {
-    <p class="empty">No hay eventos publicados aún. Vuelve pronto.</p>
+    <p class="empty">No hay funciones publicadas. Vuelve pronto.</p>
   }
 </div>

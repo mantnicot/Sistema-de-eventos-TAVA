@@ -1,0 +1,42 @@
+/* Formularios TAVA — claros, dinámicos, estilo cartelera */
+.tava-form,
+.auth-form,
+.admin-form {
+  label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    font-size: 0.88rem;
+    font-weight: 500;
+    color: var(--tava-cream-muted);
+    margin-bottom: 0.85rem;
+  }
+
+  input,
+  textarea,
+  select {
+    padding: 0.72rem 1rem;
+    border-radius: 10px;
+    border: 1px solid rgba(201, 162, 39, 0.35);
+    background: #fff;
+    color: var(--tava-cream);
+    font-family: inherit;
+    font-size: 0.95rem;
+    transition:
+      border-color var(--tava-transition),
+      box-shadow var(--tava-transition),
+      transform 0.2s ease;
+
+    &:focus {
+      outline: none;
+      border-color: var(--tava-gold);
+      box-shadow: 0 0 0 3px var(--tava-spotlight);
+      transform: translateY(-1px);
+    }
+  }
+
+  textarea {
+    resize: vertical;
+    min-height: 88px;
+  }
+}

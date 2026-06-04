@@ -1,26 +1,40 @@
-<section class="hero">
+<section class="hero hero--broadway">
   <div class="hero__glow"></div>
-  <h1 class="hero__title tava-glow-text">Vive el teatro. Vive TAVA.</h1>
-  <p class="hero__subtitle">
-    El ecosistema oficial de &#64;tavateatro — eventos, boletas, coleccionables y experiencias inolvidables.
-  </p>
-  <div class="hero__actions">
-    <a routerLink="/eventos" class="tava-btn-primary">Explorar eventos</a>
-    <a routerLink="/registro" class="hero__secondary">Crear cuenta</a>
+  <div class="hero__inner">
+    <img src="/logo-tava.png" alt="" class="hero__logo" width="72" height="72" />
+    <h1 class="hero__title tava-glow-text">Las mejores obras, un solo escenario</h1>
+    <p class="hero__subtitle">
+      Inspirado en la experiencia de las grandes carteleras — con el sello &#64;tavateatro.
+    </p>
+    <form class="hero__search tava-card" (submit)="goSearch($event)">
+      <input type="search" placeholder="Buscar obra, ciudad o categoría…" [(ngModel)]="searchQuery" name="q" />
+      <button type="submit" class="tava-btn-primary">Buscar eventos</button>
+    </form>
+    <div class="hero__actions">
+      <a routerLink="/eventos" class="tava-btn-primary">Ver cartelera completa</a>
+      <a routerLink="/registro" class="hero__secondary">Crear cuenta gratis</a>
+    </div>
   </div>
 </section>
 
 @if (featured().length) {
-  <section class="section">
-    <h2 class="section__title">Próximos estrenos</h2>
-    <div class="carousel">
+  <section class="section section--shows">
+    <div class="section__head">
+      <h2 class="section__title tava-glow-text">Estrenos y funciones</h2>
+      <a routerLink="/eventos" class="section__link">Ver todos →</a>
+    </div>
+    <div class="show-grid">
       @for (ev of featured(); track ev.id) {
-        <a [routerLink]="['/eventos', ev.id]" class="event-card tava-card">
-          <div class="event-card__visual" [style.backgroundImage]="'url(' + (ev.main_image_url || '/assets/placeholder-event.jpg') + ')'"></div>
-          <div class="event-card__body">
-            <span class="event-card__cat">{{ ev.category }}</span>
+        <a [routerLink]="['/eventos', ev.id]" class="show-card tava-card">
+          <div
+            class="show-card__img"
+            [style.backgroundImage]="'url(' + mediaUrl(ev.main_image_url) + ')'"
+          ></div>
+          <div class="show-card__body">
+            <span class="show-card__cat">{{ ev.category }}</span>
             <h3>{{ ev.name }}</h3>
             <time>{{ ev.event_date }}</time>
+            <span class="show-card__cta">Ver boletas</span>
           </div>
         </a>
       }
@@ -28,8 +42,14 @@
   </section>
 }
 
+<section class="trust-strip">
+  <div class="trust-strip__item tava-card">🎭 Obras en vivo</div>
+  <div class="trust-strip__item tava-card">🎫 Boletas digitales</div>
+  <div class="trust-strip__item tava-card">✨ Colección TAVA</div>
+</section>
+
 <section class="promo tava-card">
-  <h2>Compra masiva con beneficios</h2>
-  <p>Grupos, colegios y empresas — contáctanos para tarifas especiales y reservas anticipadas.</p>
-  <a routerLink="/eventos" class="tava-btn-primary">Ver promociones</a>
+  <h2>Grupos y colegios</h2>
+  <p>Compra anticipada con tarifas especiales — como en las grandes producciones.</p>
+  <a routerLink="/eventos" class="tava-btn-primary">Consultar eventos</a>
 </section>

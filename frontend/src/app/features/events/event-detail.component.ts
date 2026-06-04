@@ -6,6 +6,7 @@ import { ApiService } from '../../core/services/api.service';
 import { AuthService } from '../../core/services/auth.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { TavaEventDetail } from '../../core/models/event.model';
+import { resolveMediaUrl } from '../../core/utils/media-url.util';
 
 @Component({
   selector: 'app-event-detail',
@@ -22,6 +23,7 @@ export class EventDetailComponent implements OnInit {
   private readonly notify = inject(NotificationService);
   readonly event = signal<TavaEventDetail | null>(null);
   readonly selectedTypeId = signal<string | null>(null);
+  readonly mediaUrl = resolveMediaUrl;
 
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('id');

@@ -98,6 +98,12 @@ class EventMediaResponse(BaseModel):
     sort_order: int
 
 
+class EventMediaCreateRequest(BaseModel):
+    media_type: str = Field(pattern="^(image|video|youtube|vimeo)$")
+    url: str = Field(max_length=500)
+    sort_order: int = 0
+
+
 class TicketTypePublicResponse(BaseModel):
     id: UUID
     name: str

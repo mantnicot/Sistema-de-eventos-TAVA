@@ -123,6 +123,22 @@
   font-size: 0.85rem;
 }
 
+.muted-inline {
+  font-size: 0.85rem;
+}
+
+.check-row {
+  flex-direction: row !important;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.gallery-upload {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px dashed rgba(201, 162, 39, 0.3);
+}
+
 .link-btn {
   background: none;
   border: none;

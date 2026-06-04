@@ -6,6 +6,7 @@ import { ApiService } from '../../core/services/api.service';
 import { AuthService } from '../../core/services/auth.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { SiteAppearance, SiteSettingsService } from '../../core/services/site-settings.service';
+import { TavaFileUploadComponent } from '../../shared/components/tava-file-upload/tava-file-upload.component';
 import { TavaEvent, TheatricalDetails } from '../../core/models/event.model';
 
 interface Kpis {
@@ -28,7 +29,7 @@ interface AdminUser {
 @Component({
   selector: 'app-admin-dashboard',
   standalone: true,
-  imports: [DecimalPipe, FormsModule],
+  imports: [DecimalPipe, FormsModule, TavaFileUploadComponent],
   templateUrl: './admin-dashboard.component.html',
   styleUrl: './admin-dashboard.component.scss',
 })
@@ -181,6 +182,15 @@ export class AdminDashboardComponent implements OnInit {
       },
       error: () => this.notify.error('Usuarios', 'No se pudo cambiar el rol'),
     });
+  }
+
+  addGalleryMedia(eventId: string, url: string, mediaType: string): void {
+    this.api
+      .post(`/events/${eventId}/media`, { media_type: mediaType, url, sort_order: 0 })
+      .subscribe({
+        next: () => this.notify.success('Galería', 'Archivo añadido al evento'),
+        error: () => this.notify.error('Galería', 'No se pudo añadir el archivo'),
+      });
   }
 
   saveAppearance(): void {

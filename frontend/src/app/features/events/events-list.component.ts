@@ -1,8 +1,9 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../core/services/api.service';
 import { TavaEvent } from '../../core/models/event.model';
+import { resolveMediaUrl } from '../../core/utils/media-url.util';
 
 @Component({
   selector: 'app-events-list',
@@ -13,12 +14,17 @@ import { TavaEvent } from '../../core/models/event.model';
 })
 export class EventsListComponent implements OnInit {
   private readonly api = inject(ApiService);
+  private readonly route = inject(ActivatedRoute);
   readonly events = signal<TavaEvent[]>([]);
   search = '';
   category = '';
+  readonly mediaUrl = resolveMediaUrl;
 
   ngOnInit(): void {
-    this.load();
+    this.route.queryParamMap.subscribe((q) => {
+      this.search = q.get('search') ?? '';
+      this.load();
+    });
   }
 
   load(): void {

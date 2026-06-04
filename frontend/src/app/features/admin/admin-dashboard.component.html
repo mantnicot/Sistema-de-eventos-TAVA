@@ -47,8 +47,40 @@
             <option value="agotado">Agotado</option>
           </select>
         </label>
-        <label>Imagen (URL) <input [(ngModel)]="eventForm.main_image_url" name="img" /></label>
-        <label>Trailer (URL YouTube/Vimeo) <input [(ngModel)]="eventForm.trailer_url" name="trailer" /></label>
+        <tava-file-upload
+          label="Imagen principal del evento"
+          kind="image"
+          accept="image/jpeg,image/png,image/webp,image/gif"
+          (uploaded)="eventForm.main_image_url = $event"
+        />
+        @if (eventForm.main_image_url) {
+          <p class="muted">Imagen: {{ eventForm.main_image_url }}</p>
+        }
+        <tava-file-upload
+          label="Video trailer (archivo MP4)"
+          kind="video"
+          accept="video/mp4,video/webm,video/quicktime"
+          (uploaded)="eventForm.trailer_url = $event"
+        />
+        <label class="muted-inline">O enlace externo (YouTube/Vimeo)
+          <input [(ngModel)]="eventForm.trailer_url" name="trailer" placeholder="https://..." />
+        </label>
+        @if (editingId(); as eid) {
+          <div class="gallery-upload">
+            <h3>Galería del evento</h3>
+            <tava-file-upload
+              label="Añadir foto o video a la galería"
+              kind="image"
+              (uploaded)="addGalleryMedia(eid, $event, 'image')"
+            />
+            <tava-file-upload
+              label="Añadir video a la galería"
+              kind="video"
+              accept="video/mp4,video/webm"
+              (uploaded)="addGalleryMedia(eid, $event, 'video')"
+            />
+          </div>
+        }
         <h3>Ficha teatral</h3>
         <label>Sinopsis <textarea [(ngModel)]="theatrical.synopsis" name="syn" rows="2"></textarea></label>
         <label>Director <input [(ngModel)]="theatrical.director" name="dir" /></label>
@@ -118,12 +150,20 @@
   @if (tab() === 'appearance') {
     <form class="tava-card admin-form" (ngSubmit)="saveAppearance()">
       <h2>Video de fondo (difuminado)</h2>
-      <p class="muted">URL directa a un archivo .mp4 (por ejemplo Pexels). Se muestra muy difuminado detrás del sitio.</p>
-      <label>
+      <p class="muted">Sube un MP4 de una obra o escena. Se verá muy difuminado detrás de todo el sitio.</p>
+      <label class="check-row">
         <input type="checkbox" [(ngModel)]="appearanceForm.hero_video_enabled" name="enabled" />
         Activar video de fondo
       </label>
-      <label>URL del video <input [(ngModel)]="appearanceForm.hero_video_url" name="vurl" class="wide" /></label>
+      <tava-file-upload
+        label="Subir video de fondo"
+        kind="video"
+        accept="video/mp4,video/webm"
+        (uploaded)="appearanceForm.hero_video_url = $event"
+      />
+      @if (appearanceForm.hero_video_url) {
+        <p class="muted">Video activo: {{ appearanceForm.hero_video_url }}</p>
+      }
       <button type="submit" class="tava-btn-primary">Guardar apariencia</button>
     </form>
   }

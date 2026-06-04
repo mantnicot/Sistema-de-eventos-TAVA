@@ -1,63 +1,110 @@
-.page-header {
-  text-align: center;
-  padding: 2rem;
-  h1 { font-family: var(--tava-font-display); font-size: 2.5rem; margin: 0; }
-  p { color: var(--tava-cream-muted); }
+.page-header--broadway {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 2rem 1.5rem 1rem;
+  text-align: left;
+
+  h1 {
+    font-family: var(--tava-font-display);
+    font-size: 2.25rem;
+    margin: 0;
+  }
+
+  p {
+    color: var(--tava-cream-muted);
+    margin: 0.25rem 0 0;
+  }
 }
 
 .filters {
   display: flex;
   gap: 0.75rem;
-  max-width: 720px;
+  max-width: 800px;
   margin: 0 auto 2rem;
-  padding: 0 1rem;
+  padding: 1rem 1.25rem;
   flex-wrap: wrap;
 
   input {
     flex: 1;
     min-width: 140px;
-    padding: 0.65rem 1rem;
-    border-radius: var(--tava-radius);
-    border: 1px solid rgba(201, 162, 39, 0.3);
-    background: var(--tava-stage-mid);
+    border: none;
+    background: transparent;
     color: var(--tava-cream);
+    font-size: 0.95rem;
+
+    &:focus {
+      outline: none;
+    }
   }
 }
 
-.grid {
+.show-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 1.5rem;
-  padding: 0 2rem 3rem;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1.35rem;
+  padding: 0 1.75rem 3rem;
   max-width: 1200px;
   margin: 0 auto;
 }
 
-.card {
+.show-card {
   overflow: hidden;
-  a { text-decoration: none; color: inherit; display: block; }
+  padding: 0;
+
+  &__link {
+    text-decoration: none;
+    color: inherit;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
 
   &__img {
-    height: 180px;
-    background: var(--tava-velvet) center/cover;
+    height: 220px;
+    background-size: cover;
+    background-position: center;
+    background-color: var(--tava-velvet);
   }
 
-  &__content {
-    padding: 1.25rem;
-    h2 { font-family: var(--tava-font-display); margin: 0.5rem 0; font-size: 1.25rem; }
-    p { margin: 0; font-size: 0.9rem; color: var(--tava-cream-muted); }
-  }
-}
+  &__body {
+    padding: 1.15rem 1.25rem 1.35rem;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
 
-.badge {
-  font-size: 0.7rem;
-  text-transform: uppercase;
-  color: var(--tava-gold);
-  letter-spacing: 0.08em;
+    h2 {
+      font-family: var(--tava-font-display);
+      margin: 0.35rem 0;
+      font-size: 1.2rem;
+    }
+  }
+
+  &__cat {
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--tava-burgundy);
+    font-weight: 700;
+  }
+
+  &__meta {
+    font-size: 0.88rem;
+    color: var(--tava-cream-muted);
+    margin: 0 0 1rem;
+  }
+
+  &__cta {
+    align-self: flex-start;
+    font-size: 0.85rem !important;
+    padding: 0.55rem 1.25rem !important;
+  }
 }
 
 .empty {
   grid-column: 1 / -1;
   text-align: center;
   color: var(--tava-cream-muted);
+  padding: 2rem;
 }

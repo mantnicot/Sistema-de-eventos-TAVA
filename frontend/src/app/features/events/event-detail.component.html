@@ -2,7 +2,7 @@
   <article class="detail">
     <div
       class="detail__hero tava-card"
-      [style.backgroundImage]="'linear-gradient(to top, var(--tava-hero-overlay), transparent), url(' + (ev.main_image_url || '') + ')'"
+      [style.backgroundImage]="'linear-gradient(to top, var(--tava-hero-overlay), transparent), url(' + mediaUrl(ev.main_image_url) + ')'"
     >
       <div class="detail__hero-content">
         <span class="badge">{{ ev.category }}</span>
@@ -61,7 +61,7 @@
           <h2>Galería</h2>
           <div class="gallery__grid">
             @for (m of ev.gallery; track m.id) {
-              <img [src]="m.url" [alt]="ev.name" loading="lazy" />
+              <img [src]="mediaUrl(m.url)" [alt]="ev.name" loading="lazy" />
             }
           </div>
         </section>

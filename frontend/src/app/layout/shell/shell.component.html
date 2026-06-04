@@ -1,50 +1,68 @@
 <tava-hero-video />
 
 <header class="header">
-  <a routerLink="/" class="brand">
-    <span class="brand__mark">TAVA</span>
-    <span class="brand__sub">Teatro · Boletería</span>
+  <a routerLink="/" class="brand" title="TAVA Teatro — Inicio">
+    <img src="/logo-tava.png" alt="TAVA Teatro" class="brand__logo" width="52" height="52" />
+    <span class="brand__text">
+      <span class="brand__mark">TAVA</span>
+      <span class="brand__sub">Teatro · Boletería</span>
+    </span>
   </a>
 
-  <button type="button" class="nav-toggle" (click)="menuOpen = !menuOpen" aria-label="Menú">
-    ☰
+  <button type="button" class="nav-toggle" (click)="menuOpen = !menuOpen" [attr.aria-expanded]="menuOpen">
+    <span class="nav-toggle__bar"></span>
+    <span class="nav-toggle__bar"></span>
+    <span class="nav-toggle__bar"></span>
   </button>
 
   <nav class="nav" [class.nav--open]="menuOpen">
-    <div class="nav__group">
-      <span class="nav__label">Cartelera</span>
-      <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">Inicio</a>
-      <a routerLink="/eventos" routerLinkActive="active">Eventos</a>
+    <div class="nav__cluster">
+      <span class="nav__heading">Cartelera</span>
+      <div class="nav__links">
+        <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">Inicio</a>
+        <a routerLink="/eventos" routerLinkActive="active">Todos los eventos</a>
+      </div>
     </div>
 
+    <div class="nav__divider" aria-hidden="true"></div>
+
     @if (auth.isLoggedIn()) {
-      <div class="nav__group">
-        <span class="nav__label">Mi cuenta</span>
-        <a routerLink="/perfil" routerLinkActive="active">Perfil y boletas</a>
-        <a routerLink="/coleccion" routerLinkActive="active">Colección</a>
+      <div class="nav__cluster">
+        <span class="nav__heading">Mi cuenta</span>
+        <div class="nav__links">
+          <a routerLink="/perfil" routerLinkActive="active">Mis boletas</a>
+          <a routerLink="/coleccion" routerLinkActive="active">Colección</a>
+        </div>
       </div>
+      <div class="nav__divider" aria-hidden="true"></div>
     }
 
     @if (auth.isValidator()) {
-      <div class="nav__group">
-        <span class="nav__label">Personal</span>
-        <a routerLink="/validar" routerLinkActive="active">Validar QR</a>
+      <div class="nav__cluster">
+        <span class="nav__heading">Personal</span>
+        <div class="nav__links">
+          <a routerLink="/validar" routerLinkActive="active">Validar entrada</a>
+        </div>
       </div>
+      <div class="nav__divider" aria-hidden="true"></div>
     }
 
     @if (auth.isAdmin()) {
-      <div class="nav__group">
-        <span class="nav__label">Administración</span>
-        <a routerLink="/admin" routerLinkActive="active">Panel admin</a>
+      <div class="nav__cluster">
+        <span class="nav__heading">Administración</span>
+        <div class="nav__links">
+          <a routerLink="/admin" routerLinkActive="active">Panel admin</a>
+        </div>
       </div>
+      <div class="nav__divider" aria-hidden="true"></div>
     }
 
-    <div class="nav__group nav__group--actions">
+    <div class="nav__cluster nav__cluster--cta">
       @if (auth.isLoggedIn()) {
-        <button type="button" class="link-btn" (click)="auth.logout()">Salir</button>
+        <button type="button" class="nav__btn-outline" (click)="auth.logout()">Salir</button>
       } @else {
-        <a routerLink="/registro" routerLinkActive="active">Registrarse</a>
-        <a routerLink="/ingresar" routerLinkActive="active" class="cta-nav">Ingresar</a>
+        <a routerLink="/registro" routerLinkActive="active" class="nav__btn-outline">Registrarse</a>
+        <a routerLink="/ingresar" routerLinkActive="active" class="nav__btn-primary">Ingresar</a>
       }
     </div>
   </nav>
@@ -55,7 +73,8 @@
 </main>
 
 <footer class="footer">
-  <p>© TAVA Teatro — <a href="https://www.instagram.com/tavateatro/" target="_blank" rel="noopener">&#64;tavateatro</a></p>
+  <img src="/logo-tava.png" alt="" class="footer__logo" width="40" height="40" />
+  <p>© TAVA Teatro — Experiencias en vivo · <a href="https://www.instagram.com/tavateatro/" target="_blank" rel="noopener">&#64;tavateatro</a></p>
 </footer>
 
 <tava-popup />

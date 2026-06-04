@@ -17,6 +17,8 @@ class Settings(BaseSettings):
     captcha_secret_key: str = ""
     frontend_url: str = "http://localhost:4200"
     uploads_dir: str = "uploads"
+    """URL pública del API sin /api/v1 (p. ej. https://tava-api-1.onrender.com)."""
+    api_public_base_url: str = ""
     # Correo (opcional: sin SMTP solo se registra en logs en desarrollo)
     smtp_host: str = ""
     smtp_port: int = 587

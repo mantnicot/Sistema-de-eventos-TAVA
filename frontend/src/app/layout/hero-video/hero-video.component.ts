@@ -1,5 +1,6 @@
-import { Component, inject, input } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { SiteSettingsService } from '../../core/services/site-settings.service';
+import { resolveMediaUrl } from '../../core/utils/media-url.util';
 
 @Component({
   selector: 'tava-hero-video',
@@ -10,7 +11,7 @@ import { SiteSettingsService } from '../../core/services/site-settings.service';
         <div class="hero-video" aria-hidden="true">
           <video
             class="hero-video__media"
-            [src]="app.hero_video_url"
+            [src]="videoSrc(app.hero_video_url)"
             autoplay
             muted
             loop
@@ -51,4 +52,5 @@ import { SiteSettingsService } from '../../core/services/site-settings.service';
 })
 export class HeroVideoComponent {
   readonly settings = inject(SiteSettingsService);
+  readonly videoSrc = resolveMediaUrl;
 }

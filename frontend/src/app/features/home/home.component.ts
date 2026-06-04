@@ -1,13 +1,8 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { FormsModule } from '@angular/forms';
+import { Router, RouterLink } from '@angular/router';
 import { ApiService } from '../../core/services/api.service';
-
-interface Banner {
-  id: string;
-  title: string;
-  image_url: string;
-  link_url?: string;
-}
+import { resolveMediaUrl } from '../../core/utils/media-url.util';
 
 interface FeaturedEvent {
   id: string;
@@ -20,23 +15,28 @@ interface FeaturedEvent {
 @Component({
   selector: 'app-home',
   standalone: true,
-  imports: [RouterLink],
+  imports: [RouterLink, FormsModule],
   templateUrl: './home.component.html',
   styleUrl: './home.component.scss',
 })
 export class HomeComponent implements OnInit {
   private readonly api = inject(ApiService);
-  readonly banners = signal<Banner[]>([]);
+  private readonly router = inject(Router);
   readonly featured = signal<FeaturedEvent[]>([]);
+  searchQuery = '';
+
+  readonly mediaUrl = resolveMediaUrl;
 
   ngOnInit(): void {
-    this.api.get<Banner[]>('/marketing/banners').subscribe({
-      next: (b) => this.banners.set(b),
-      error: () => this.banners.set([]),
-    });
     this.api.get<FeaturedEvent[]>('/marketing/carousel/destacados').subscribe({
       next: (e) => this.featured.set(e),
       error: () => this.featured.set([]),
     });
+  }
+
+  goSearch(ev: Event): void {
+    ev.preventDefault();
+    const q = this.searchQuery.trim();
+    this.router.navigate(['/eventos'], { queryParams: q ? { search: q } : {} });
   }
 }

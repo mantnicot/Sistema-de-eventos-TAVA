@@ -1,7 +1,9 @@
 import logging
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI, Request
+from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from slowapi import Limiter
@@ -17,6 +19,7 @@ from tava.presentation.api.routers import (
     events,
     loyalty,
     marketing,
+    media,
     settings as site_settings_router,
     tickets,
     users,
@@ -87,6 +90,11 @@ app.include_router(dashboard.router, prefix="/api/v1")
 app.include_router(marketing.router, prefix="/api/v1")
 app.include_router(site_settings_router.router, prefix="/api/v1")
 app.include_router(users.router, prefix="/api/v1")
+app.include_router(media.router, prefix="/api/v1")
+
+_uploads = Path(app_settings.uploads_dir)
+_uploads.mkdir(parents=True, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=str(_uploads)), name="uploads")
 
 
 @app.get("/health")

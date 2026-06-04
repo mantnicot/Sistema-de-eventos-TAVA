@@ -1,107 +1,195 @@
-.hero {
-  position: relative;
+.hero--broadway {
   text-align: center;
-  padding: 5rem 1.5rem 4rem;
+  padding: 3.5rem 1.5rem 3rem;
+  position: relative;
   overflow: hidden;
 
-  &__glow {
+  .hero__inner {
+    position: relative;
+    max-width: 720px;
+    margin: 0 auto;
+  }
+
+  .hero__logo {
+    margin-bottom: 1rem;
+    filter: drop-shadow(0 4px 12px rgba(58, 47, 42, 0.15));
+  }
+
+  .hero__glow {
     position: absolute;
-    top: 20%;
+    top: 10%;
     left: 50%;
     transform: translateX(-50%);
-    width: 420px;
-    height: 420px;
-    background: radial-gradient(circle, rgba(232, 212, 155, 0.45), transparent 70%);
+    width: 480px;
+    height: 480px;
+    background: radial-gradient(circle, rgba(232, 212, 155, 0.5), transparent 68%);
     animation: tava-spotlight-pulse 4s ease-in-out infinite;
     pointer-events: none;
   }
 
-  &__title {
+  .hero__title {
     font-family: var(--tava-font-display);
-    font-size: clamp(2.5rem, 6vw, 4rem);
-    margin: 0 0 1rem;
-    position: relative;
+    font-size: clamp(2rem, 5vw, 3.25rem);
+    margin: 0 0 0.75rem;
   }
 
-  &__subtitle {
-    max-width: 560px;
-    margin: 0 auto 2rem;
+  .hero__subtitle {
     color: var(--tava-cream-muted);
-    font-size: 1.1rem;
+    margin: 0 auto 1.5rem;
     line-height: 1.6;
-    position: relative;
   }
 
-  &__actions {
+  .hero__search {
+    display: flex;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    margin: 0 auto 1.25rem;
+    max-width: 560px;
+
+    input {
+      flex: 1;
+      border: none;
+      padding: 0.75rem 1rem;
+      font-size: 1rem;
+      background: transparent;
+      color: var(--tava-cream);
+
+      &:focus {
+        outline: none;
+      }
+    }
+  }
+
+  .hero__actions {
     display: flex;
     gap: 1rem;
     justify-content: center;
     flex-wrap: wrap;
-    position: relative;
   }
 
-  &__secondary {
-    color: var(--tava-gold);
-    padding: 0.75rem 1.5rem;
-    border: 1px solid transparent;
-    &:hover { border-color: var(--tava-gold); border-radius: 999px; }
+  .hero__secondary {
+    color: var(--tava-gold-glow);
+    padding: 0.75rem 1.25rem;
+    font-weight: 500;
+    border: 1px solid rgba(201, 162, 39, 0.4);
+    border-radius: 999px;
   }
 }
 
-.section {
-  padding: 3rem 2rem;
+.section--shows {
+  padding: 2rem 1.75rem 3rem;
   max-width: 1200px;
   margin: 0 auto;
 
-  &__title {
+  .section__head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 1.25rem;
+  }
+
+  .section__title {
     font-family: var(--tava-font-display);
+    margin: 0;
+  }
+
+  .section__link {
     color: var(--tava-gold-glow);
-    margin-bottom: 1.5rem;
+    font-weight: 600;
+    font-size: 0.9rem;
   }
 }
 
-.carousel {
+.show-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 1.5rem;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 1.25rem;
 }
 
-.event-card {
-  display: block;
+.show-card {
+  display: flex;
+  flex-direction: column;
   text-decoration: none;
   color: inherit;
   overflow: hidden;
-  transition: transform var(--tava-transition);
+  transition: transform var(--tava-transition), box-shadow var(--tava-transition);
 
-  &:hover { transform: translateY(-6px); }
+  &:hover {
+    transform: translateY(-8px);
+    box-shadow: var(--tava-shadow-glow);
+  }
 
-  &__visual {
-    height: 160px;
+  &__img {
+    height: 200px;
     background-size: cover;
     background-position: center;
     background-color: var(--tava-velvet);
   }
 
   &__body {
-    padding: 1.25rem;
-    h3 { margin: 0.25rem 0; font-family: var(--tava-font-display); }
-    time { font-size: 0.85rem; color: var(--tava-gold); }
+    padding: 1.1rem 1.25rem 1.25rem;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+
+    h3 {
+      font-family: var(--tava-font-display);
+      margin: 0.35rem 0;
+      font-size: 1.15rem;
+    }
+
+    time {
+      font-size: 0.85rem;
+      color: var(--tava-cream-muted);
+    }
   }
 
   &__cat {
-    font-size: 0.75rem;
+    font-size: 0.7rem;
     text-transform: uppercase;
-    letter-spacing: 0.1em;
-    color: var(--tava-curtain);
+    letter-spacing: 0.12em;
+    color: var(--tava-burgundy);
+    font-weight: 600;
+  }
+
+  &__cta {
+    margin-top: auto;
+    padding-top: 0.75rem;
+    font-weight: 700;
+    color: var(--tava-gold-glow);
+    font-size: 0.88rem;
+  }
+}
+
+.trust-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+  max-width: 900px;
+  margin: 0 auto 2rem;
+  padding: 0 1.5rem;
+
+  &__item {
+    text-align: center;
+    padding: 1rem;
+    font-weight: 600;
+    color: var(--tava-cream);
   }
 }
 
 .promo {
-  max-width: 720px;
-  margin: 2rem auto 4rem;
-  padding: 2.5rem;
+  max-width: 640px;
+  margin: 0 auto 3rem;
+  padding: 2rem;
   text-align: center;
 
-  h2 { font-family: var(--tava-font-display); color: var(--tava-gold-glow); }
-  p { color: var(--tava-cream-muted); margin-bottom: 1.5rem; }
+  h2 {
+    font-family: var(--tava-font-display);
+    color: var(--tava-gold-glow);
+  }
+
+  p {
+    color: var(--tava-cream-muted);
+    margin-bottom: 1.25rem;
+  }
 }

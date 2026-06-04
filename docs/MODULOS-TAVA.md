@@ -52,7 +52,23 @@ Ruta pública: `/eventos/:id` — compra demo vía `POST /api/v1/tickets/purchas
 
 ---
 
-## 4. Video de fondo difuminado
+## 4. Subida de archivos (imágenes y videos)
+
+| Uso | Dónde | API |
+|-----|--------|-----|
+| Imagen de evento | Admin → Eventos | `POST /api/v1/media/upload?kind=image` |
+| Trailer / galería | Admin → Eventos | `kind=video` + `POST /events/{id}/media` |
+| Video de fondo | Admin → Apariencia | `kind=video` |
+
+Solo administradores. Los archivos se guardan en `/uploads` del servidor y se sirven en `https://tu-api.onrender.com/uploads/...`.
+
+**Render:** define `API_PUBLIC_BASE_URL=https://tava-api-1.onrender.com` para que las URLs devueltas sean absolutas.
+
+> Nota: en el plan gratuito de Render el disco es efímero; tras un redeploy puede perderse archivos subidos. Para producción estable conviene S3/Cloudinary más adelante.
+
+---
+
+## 5. Video de fondo difuminado
 
 - Componente global `tava-hero-video` en el layout
 - Configuración: `GET/PUT /api/v1/settings/appearance`

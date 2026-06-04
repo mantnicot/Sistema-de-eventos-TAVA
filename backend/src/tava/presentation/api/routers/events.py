@@ -7,12 +7,13 @@ from sqlalchemy.orm import selectinload
 
 from tava.domain.enums import EventStatus, UserRole
 from tava.infrastructure.persistence.database import get_db
-from tava.infrastructure.persistence.models import EventModel, TicketTypeModel
+from tava.infrastructure.persistence.models import EventMediaModel, EventModel, TicketTypeModel
 from tava.infrastructure.persistence.repositories.sqlalchemy_event_repository import SQLAlchemyEventRepository
 from tava.presentation.api.dependencies import get_current_user, require_roles
 from tava.presentation.api.schemas import (
     EventCreateRequest,
     EventDetailResponse,
+    EventMediaCreateRequest,
     EventMediaResponse,
     EventResponse,
     TheatricalDetailsSchema,
@@ -163,3 +164,27 @@ async def update_event(
         raise HTTPException(status_code=404, detail="Evento no encontrado")
     result = await db.execute(select(EventModel).where(EventModel.id == event_id))
     return _event_response(result.scalar_one())
+
+
+@router.post("/{event_id}/media", response_model=EventMediaResponse)
+async def add_event_media(
+    event_id: UUID,
+    body: EventMediaCreateRequest,
+    _user=Depends(require_roles(UserRole.ADMIN)),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(select(EventModel).where(EventModel.id == event_id))
+    if not result.scalar_one_or_none():
+        raise HTTPException(status_code=404, detail="Evento no encontrado")
+    media = EventMediaModel(
+        event_id=event_id,
+        media_type=body.media_type,
+        url=body.url,
+        sort_order=body.sort_order,
+    )
+    db.add(media)
+    await db.flush()
+    await db.refresh(media)
+    return EventMediaResponse(
+        id=media.id, media_type=media.media_type, url=media.url, sort_order=media.sort_order
+    )
