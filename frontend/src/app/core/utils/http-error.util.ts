@@ -1,0 +1,120 @@
+import { HttpErrorResponse } from '@angular/common/http';
+
+export type TavaErrorKind = 'user' | 'system' | 'network';
+
+export interface ParsedHttpError {
+  kind: TavaErrorKind;
+  title: string;
+  message: string;
+  code?: string;
+  status?: number;
+  /** Para consola / soporte */
+  logLine: string;
+}
+
+interface ApiErrorBody {
+  error_type?: 'user' | 'system';
+  code?: string;
+  message?: string;
+  status?: number;
+  detail?: string | ApiErrorBody;
+}
+
+function extractBody(err: HttpErrorResponse): ApiErrorBody | null {
+  const body = err.error;
+  if (!body || typeof body !== 'object') return null;
+  return body as ApiErrorBody;
+}
+
+function messageFromBody(body: ApiErrorBody | null, fallback: string): string {
+  if (!body) return fallback;
+  if (typeof body.message === 'string') return body.message;
+  if (typeof body.detail === 'string') return body.detail;
+  if (body.detail && typeof body.detail === 'object' && typeof body.detail.message === 'string') {
+    return body.detail.message;
+  }
+  return fallback;
+}
+
+/** Clasifica errores HTTP: usuario vs sistema vs red/CORS */
+export function parseHttpError(err: unknown, context = 'operación'): ParsedHttpError {
+  if (!(err instanceof HttpErrorResponse)) {
+    return {
+      kind: 'system',
+      title: 'Error inesperado',
+      message: 'Ocurrió un problema al procesar la solicitud.',
+      logLine: `[TAVA] ${context}: error no HTTP`,
+    };
+  }
+
+  const status = err.status;
+  const body = extractBody(err);
+  const apiType = body?.error_type;
+  const code = body?.code;
+  const apiMessage = messageFromBody(body, '');
+
+  // Sin respuesta del servidor (CORS, red caída, API dormida)
+  if (status === 0) {
+    const corsHint = err.message?.toLowerCase().includes('failed') || err.statusText === 'Unknown Error';
+    return {
+      kind: 'network',
+      title: 'Sin conexión con el servidor',
+      message: corsHint
+        ? 'No se pudo contactar la API (CORS o servidor apagado). Revisa que Render esté activo y CORS en el backend.'
+        : 'Comprueba tu internet o que el servicio esté en línea.',
+      code: 'NETWORK_ERROR',
+      status: 0,
+      logLine: `[TAVA] ${context}: status=0 ${err.url}`,
+    };
+  }
+
+  if (apiType === 'user' || status === 401 || status === 403 || status === 404 || status === 422) {
+    const msg =
+      apiMessage ||
+      (status === 401 ? 'Correo o contraseña incorrectos.' : 'No se pudo completar la acción.');
+    return {
+      kind: 'user',
+      title: 'Revisa tus datos',
+      message: msg,
+      code: code ?? `HTTP_${status}`,
+      status,
+      logLine: `[TAVA] ${context}: usuario status=${status} code=${code} msg=${msg}`,
+    };
+  }
+
+  if (status === 503 || apiType === 'system' || status >= 500) {
+    const msg =
+      apiMessage ||
+      (status === 503
+        ? 'Base de datos o servicio no disponible. Espera un momento e intenta de nuevo.'
+        : 'Error interno del servidor.');
+    return {
+      kind: 'system',
+      title: 'Error del sistema',
+      message: msg,
+      code: code ?? `HTTP_${status}`,
+      status,
+      logLine: `[TAVA] ${context}: sistema status=${status} code=${code} msg=${msg}`,
+    };
+  }
+
+  if (status === 429) {
+    return {
+      kind: 'system',
+      title: 'Demasiados intentos',
+      message: 'Espera un minuto y vuelve a intentar.',
+      code: 'RATE_LIMIT',
+      status,
+      logLine: `[TAVA] ${context}: rate limit`,
+    };
+  }
+
+  return {
+    kind: 'user',
+    title: 'No se pudo completar',
+    message: apiMessage || err.message || 'Intenta de nuevo.',
+    code,
+    status,
+    logLine: `[TAVA] ${context}: status=${status}`,
+  };
+}

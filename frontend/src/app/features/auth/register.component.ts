@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
 import { NotificationService } from '../../core/services/notification.service';
+import { parseHttpError } from '../../core/utils/http-error.util';
 
 @Component({
   selector: 'app-register',
@@ -32,7 +33,9 @@ export class RegisterComponent {
         },
         error: (err) => {
           this.notify.hide();
-          this.notify.error('Registro', err?.error?.detail ?? 'No se pudo registrar');
+          const parsed = parseHttpError(err, 'register');
+          console[parsed.kind === 'user' ? 'warn' : 'error'](parsed.logLine);
+          this.notify.showHttpError(parsed);
         },
       });
   }

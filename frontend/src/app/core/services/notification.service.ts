@@ -1,4 +1,5 @@
 import { Injectable, signal } from '@angular/core';
+import { ParsedHttpError } from '../utils/http-error.util';
 
 export type NotifyType = 'success' | 'error' | 'confirm' | 'warning' | 'loading';
 
@@ -23,6 +24,13 @@ export class NotificationService {
   error(title: string, message: string): void {
     this.show({ visible: true, type: 'error', title, message });
     setTimeout(() => this.hide(), 5000);
+  }
+
+  /** Muestra popup según si el fallo es del usuario, del sistema o de red. */
+  showHttpError(parsed: ParsedHttpError): void {
+    const type = parsed.kind === 'user' ? 'warning' : 'error';
+    this.show({ visible: true, type, title: parsed.title, message: parsed.message });
+    setTimeout(() => this.hide(), parsed.kind === 'user' ? 4500 : 6000);
   }
 
   warning(title: string, message: string): void {

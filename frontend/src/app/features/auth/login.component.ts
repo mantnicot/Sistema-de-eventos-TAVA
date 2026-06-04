@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
 import { NotificationService } from '../../core/services/notification.service';
+import { parseHttpError } from '../../core/utils/http-error.util';
 
 @Component({
   selector: 'app-login',
@@ -29,7 +30,9 @@ export class LoginComponent {
       },
       error: (err) => {
         this.notify.hide();
-        this.notify.error('Error', err?.error?.detail ?? 'Credenciales inválidas');
+        const parsed = parseHttpError(err, 'login');
+        console[parsed.kind === 'user' ? 'warn' : 'error'](parsed.logLine);
+        this.notify.showHttpError(parsed);
       },
     });
   }
