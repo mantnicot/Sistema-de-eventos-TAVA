@@ -204,9 +204,6 @@ class TicketModel(Base):
         back_populates="tickets",
         foreign_keys=[owner_id],
     )
-    validator: Mapped["UserModel | None"] = relationship(
-        foreign_keys=[validated_by],
-    )
 
 
 class CheckInModel(Base):
