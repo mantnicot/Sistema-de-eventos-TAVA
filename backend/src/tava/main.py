@@ -8,7 +8,8 @@ from slowapi import Limiter
 from slowapi.util import get_remote_address
 
 from tava.config import get_settings
-from tava.infrastructure.persistence.database import init_db
+from tava.infrastructure.bootstrap import bootstrap_application
+from tava.infrastructure.persistence.database import engine, init_db
 from tava.presentation.api.error_handlers import register_exception_handlers
 from tava.presentation.api.routers import auth, dashboard, events, loyalty, marketing, tickets, validation, venues
 
@@ -30,10 +31,10 @@ limiter = Limiter(key_func=_rate_limit_key)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     try:
-        await init_db()
-        logger.info("Base de datos inicializada")
+        await bootstrap_application()
+        logger.info("Aplicación inicializada (tablas + datos demo)")
     except Exception:
-        logger.exception("init_db falló — la API arrancará pero operaciones de DB pueden fallar")
+        logger.exception("Bootstrap falló — revisar DATABASE_URL y Neon")
     yield
 
 
@@ -86,12 +87,17 @@ async def health():
 async def health_db():
     from sqlalchemy import text
 
-    from tava.infrastructure.persistence.database import engine
-
     try:
         async with engine.connect() as conn:
             await conn.execute(text("SELECT 1"))
-        return {"status": "ok", "database": "connected"}
+        users_ok = "unknown"
+        try:
+            async with engine.connect() as conn:
+                await conn.execute(text("SELECT COUNT(*) FROM users"))
+            users_ok = "ok"
+        except Exception:
+            users_ok = "missing"
+        return {"status": "ok", "database": "connected", "users_table": users_ok}
     except Exception as exc:
         logger.exception("health/db falló")
         return JSONResponse(
