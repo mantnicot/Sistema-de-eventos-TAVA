@@ -53,7 +53,13 @@ export class LoginComponent {
     this.auth.resendVerification(this.email).subscribe({
       next: (r) => {
         this.resendLink = r.verification_url ?? null;
-        this.notify.success('Verificación', r.message);
+        if (r.email_sent) {
+          this.notify.success('Verificación', r.message);
+        } else if (this.resendLink) {
+          this.notify.warning('Correo no enviado', 'Usa el enlace que aparece abajo');
+        } else {
+          this.notify.success('Verificación', r.message);
+        }
       },
       error: () => this.notify.error('Correo', 'No se pudo reenviar el enlace'),
     });

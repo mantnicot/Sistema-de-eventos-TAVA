@@ -1,5 +1,6 @@
 """Envío de correos transaccionales (SMTP opcional)."""
 import logging
+import re
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -14,8 +15,29 @@ def smtp_configured() -> bool:
     return bool(settings.smtp_host and settings.smtp_user and settings.smtp_password)
 
 
+def _from_header() -> str:
+    """Gmail exige que el remitente coincida con SMTP_USER."""
+    user = settings.smtp_user.strip()
+    raw = (settings.email_from or "").strip()
+    if user and user in raw:
+        return raw
+    if user:
+        return f"TAVA Teatro <{user}>"
+    return raw or "TAVA Teatro <no-reply@tavateatro.com>"
+
+
+def _envelope_sender() -> str:
+    user = settings.smtp_user.strip()
+    if user:
+        return user
+    match = re.search(r"<([^>]+)>", settings.email_from)
+    if match:
+        return match.group(1).strip()
+    return settings.email_from.strip()
+
+
 async def send_verification_email(to_email: str, full_name: str, verify_url: str) -> bool:
-    """Devuelve True si el correo se envió por SMTP."""
+    """Devuelve True si el correo se envió. Si falla SMTP, devuelve False (no lanza excepción)."""
     subject = "Confirma tu correo — TAVA Teatro"
     html = f"""
     <div style="font-family: Georgia, serif; max-width: 520px; margin: 0 auto; color: #3d2a14;">
@@ -36,20 +58,24 @@ async def send_verification_email(to_email: str, full_name: str, verify_url: str
         )
         return False
 
+    password = settings.smtp_password.replace(" ", "")
     msg = MIMEMultipart("alternative")
     msg["Subject"] = subject
-    msg["From"] = settings.email_from
+    msg["From"] = _from_header()
     msg["To"] = to_email
     msg.attach(MIMEText(text, "plain", "utf-8"))
     msg.attach(MIMEText(html, "html", "utf-8"))
+    sender = _envelope_sender()
 
     try:
-        with smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=15) as server:
+        with smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=20) as server:
+            server.ehlo()
             server.starttls()
-            server.login(settings.smtp_user, settings.smtp_password)
-            server.sendmail(settings.email_from, [to_email], msg.as_string())
+            server.ehlo()
+            server.login(settings.smtp_user.strip(), password)
+            server.sendmail(sender, [to_email], msg.as_string())
         logger.info("Correo de verificación enviado a %s", to_email)
         return True
-    except Exception:
-        logger.exception("No se pudo enviar correo a %s", to_email)
-        raise
+    except Exception as exc:
+        logger.exception("SMTP falló para %s (%s). Enlace manual: %s", to_email, exc, verify_url)
+        return False

@@ -70,19 +70,27 @@ async def resend_verification(email: str = Query(...), db: AsyncSession = Depend
         verify_url, email_sent = await uc.resend_verification(email)
         if email_sent:
             msg = "Te enviamos un nuevo enlace de verificación a tu correo."
+            link = None
         else:
-            msg = "No hay correo configurado en el servidor. Usa el enlace de verificación mostrado abajo."
+            msg = (
+                "No se pudo enviar el correo (revisa SMTP en Render). "
+                "Usa el enlace de verificación mostrado abajo."
+            )
+            link = verify_url
         return {
             "message": msg,
             "success": True,
             "email_sent": email_sent,
-            "verification_url": verify_url if not email_sent else None,
+            "verification_url": link,
         }
     except ValueError as e:
         raise_user_error(400, "RESEND_FAILED", str(e))
+    except SQLAlchemyError:
+        logger.exception("Reenvío de verificación falló (base de datos)")
+        raise_system_error(503, "DATABASE_ERROR", "Error de base de datos")
     except Exception:
-        logger.exception("Reenvío de verificación falló")
-        raise_system_error(500, "RESEND_ERROR", "No se pudo reenviar el correo")
+        logger.exception("Reenvío de verificación falló (sistema)")
+        raise_system_error(500, "RESEND_ERROR", "Error interno al reenviar")
 
 
 @router.post("/register", response_model=RegisterResponse)
