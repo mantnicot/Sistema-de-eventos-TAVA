@@ -19,16 +19,21 @@ export class LoginComponent {
 
   email = '';
   password = '';
+  submitting = false;
 
   submit(): void {
+    if (this.submitting) return;
+    this.submitting = true;
     this.notify.loading('Ingresando', 'Validando credenciales...');
     this.auth.login(this.email, this.password, 'dev-captcha').subscribe({
       next: () => {
+        this.submitting = false;
         this.notify.hide();
         this.notify.success('Bienvenido', 'Sesión iniciada correctamente');
         this.router.navigate(['/perfil']);
       },
       error: (err) => {
+        this.submitting = false;
         this.notify.hide();
         const parsed = parseHttpError(err, 'login');
         console[parsed.kind === 'user' ? 'warn' : 'error'](parsed.logLine);

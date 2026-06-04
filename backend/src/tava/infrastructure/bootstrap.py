@@ -7,7 +7,9 @@ from sqlalchemy import select
 from tava.domain.enums import EventStatus, UserRole
 from tava.infrastructure.persistence.database import AsyncSessionLocal, init_db
 from tava.infrastructure.persistence.models import BannerModel, EventModel, UserModel
-from tava.infrastructure.security.password import hash_password
+from tava.infrastructure.security.password import hash_password, verify_password
+
+ADMIN_SEED_PASSWORD = "AdminTava2026!"
 
 logger = logging.getLogger("tava.bootstrap")
 
@@ -22,13 +24,16 @@ async def bootstrap_application() -> None:
             if not admin:
                 admin = UserModel(
                     email=admin_email,
-                    password_hash=hash_password("AdminTava2026!"),
+                    password_hash=hash_password(ADMIN_SEED_PASSWORD),
                     full_name="Administrador TAVA",
                     role=UserRole.ADMIN,
                 )
                 session.add(admin)
                 await session.flush()
                 logger.info("Usuario admin creado: %s", admin_email)
+            elif not verify_password(ADMIN_SEED_PASSWORD, admin.password_hash):
+                admin.password_hash = hash_password(ADMIN_SEED_PASSWORD)
+                logger.info("Contraseña admin sincronizada con seed de bootstrap")
 
             if not admin:
                 result = await session.execute(select(UserModel).where(UserModel.email == admin_email))

@@ -9,11 +9,24 @@ from tava.infrastructure.persistence.database import get_db
 from tava.infrastructure.services.captcha import verify_captcha
 from tava.presentation.api.dependencies import get_current_user
 from tava.presentation.api.http_errors import raise_system_error, raise_user_error
+from tava.infrastructure.security.login_crypto import decrypt_password, get_public_key_pem
 from tava.presentation.api.schemas import LoginRequest, RegisterRequest, TokenResponse, UserResponse
 
 logger = logging.getLogger("tava.auth")
 
 router = APIRouter(prefix="/auth", tags=["Autenticación"])
+
+
+@router.get("/public-key")
+async def auth_public_key():
+    """Clave pública RSA para cifrar la contraseña en el navegador antes del login."""
+    return {"public_key_pem": get_public_key_pem()}
+
+
+def _resolve_password(body: LoginRequest | RegisterRequest) -> str:
+    if body.password_encrypted:
+        return decrypt_password(body.password_encrypted)
+    return body.password or ""
 
 
 def _user_response(user) -> UserResponse:
@@ -31,10 +44,14 @@ async def register(body: RegisterRequest, db: AsyncSession = Depends(get_db)):
     if not await verify_captcha(body.captcha_token):
         raise_user_error(400, "CAPTCHA_INVALID", "Verificación captcha inválida")
     try:
+        plain_password = _resolve_password(body)
+    except ValueError as e:
+        raise_user_error(400, "PASSWORD_DECRYPT_FAILED", str(e))
+    try:
         uc = AuthUseCase(db)
         user, tokens = await uc.register(
             email=body.email,
-            password=body.password,
+            password=plain_password,
             full_name=body.full_name,
             phone=body.phone,
             document_id=body.document_id,
@@ -57,8 +74,12 @@ async def login(body: LoginRequest, db: AsyncSession = Depends(get_db)):
     if not await verify_captcha(body.captcha_token):
         raise_user_error(400, "CAPTCHA_INVALID", "Verificación captcha inválida")
     try:
+        plain_password = _resolve_password(body)
+    except ValueError as e:
+        raise_user_error(400, "PASSWORD_DECRYPT_FAILED", str(e))
+    try:
         uc = AuthUseCase(db)
-        user, tokens = await uc.login(body.email, body.password)
+        user, tokens = await uc.login(body.email, plain_password)
         logger.info("Login exitoso: %s", user.email)
         return {"user": _user_response(user), "tokens": TokenResponse(**tokens)}
     except ValueError as e:

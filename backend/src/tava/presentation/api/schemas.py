@@ -2,24 +2,38 @@ from datetime import date, time
 from decimal import Decimal
 from uuid import UUID
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, model_validator
 
 from tava.domain.enums import EventStatus, TicketKind, UserRole, VenueType
 
 
 class RegisterRequest(BaseModel):
     email: EmailStr
-    password: str = Field(min_length=8, max_length=128)
+    password: str | None = Field(default=None, min_length=8, max_length=128)
+    password_encrypted: str | None = None
     full_name: str = Field(min_length=2, max_length=200)
     phone: str | None = None
     document_id: str | None = None
     captcha_token: str | None = None
 
+    @model_validator(mode="after")
+    def require_password(self):
+        if not self.password and not self.password_encrypted:
+            raise ValueError("Se requiere contraseña o password_encrypted")
+        return self
+
 
 class LoginRequest(BaseModel):
     email: EmailStr
-    password: str
+    password: str | None = None
+    password_encrypted: str | None = None
     captcha_token: str | None = None
+
+    @model_validator(mode="after")
+    def require_password(self):
+        if not self.password and not self.password_encrypted:
+            raise ValueError("Se requiere contraseña o password_encrypted")
+        return self
 
 
 class TokenResponse(BaseModel):

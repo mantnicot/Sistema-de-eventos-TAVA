@@ -1,7 +1,8 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { tap } from 'rxjs';
+import { from, switchMap, tap } from 'rxjs';
 import { ApiService } from './api.service';
+import { encryptPasswordForTransport } from '../utils/password-crypto.util';
 
 export interface TavaUser {
   id: string;
@@ -27,13 +28,38 @@ export class AuthService {
   readonly isValidator = computed(() => ['validator', 'admin'].includes(this._user()?.role ?? ''));
 
   login(email: string, password: string, captchaToken?: string) {
-    return this.api.post<AuthResponse>('/auth/login', { email, password, captcha_token: captchaToken }).pipe(
+    return this.api.get<{ public_key_pem: string }>('/auth/public-key').pipe(
+      switchMap(({ public_key_pem }) =>
+        from(encryptPasswordForTransport(public_key_pem, password)).pipe(
+          switchMap((password_encrypted) =>
+            this.api.post<AuthResponse>('/auth/login', {
+              email,
+              password_encrypted,
+              captcha_token: captchaToken,
+            })
+          )
+        )
+      ),
       tap((res) => this.persist(res))
     );
   }
 
   register(data: { email: string; password: string; full_name: string; captcha_token?: string }) {
-    return this.api.post<AuthResponse>('/auth/register', data).pipe(tap((res) => this.persist(res)));
+    return this.api.get<{ public_key_pem: string }>('/auth/public-key').pipe(
+      switchMap(({ public_key_pem }) =>
+        from(encryptPasswordForTransport(public_key_pem, data.password)).pipe(
+          switchMap((password_encrypted) =>
+            this.api.post<AuthResponse>('/auth/register', {
+              email: data.email,
+              full_name: data.full_name,
+              password_encrypted,
+              captcha_token: data.captcha_token,
+            })
+          )
+        )
+      ),
+      tap((res) => this.persist(res))
+    );
   }
 
   logout(): void {
