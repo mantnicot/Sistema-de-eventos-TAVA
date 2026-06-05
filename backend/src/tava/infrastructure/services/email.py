@@ -229,11 +229,9 @@ async def _send_resend(to_email: str, subject: str, html: str, text: str) -> boo
         return False
 
 
-async def send_verification_email(to_email: str, full_name: str, verify_url: str) -> bool:
-    """Devuelve True si el correo se envió."""
+async def _deliver_email(to_email: str, subject: str, html: str, text: str) -> bool:
     global _last_failure
     _last_failure = ""
-    subject, html, text = _verification_content(full_name, verify_url)
 
     if not email_transport_ready():
         _set_failure(
@@ -279,3 +277,28 @@ async def send_verification_email(to_email: str, full_name: str, verify_url: str
         )
 
     return False
+
+
+async def send_verification_email(to_email: str, full_name: str, verify_url: str) -> bool:
+    subject, html, text = _verification_content(full_name, verify_url)
+    return await _deliver_email(to_email, subject, html, text)
+
+
+def _password_reset_content(full_name: str, reset_url: str) -> tuple[str, str, str]:
+    subject = "Restablece tu contraseña — TAVA Teatro"
+    html = f"""
+    <div style="font-family: Georgia, serif; max-width: 520px; margin: 0 auto; color: #3d2a14;">
+      <h1 style="color: #b8860b;">TAVA Teatro</h1>
+      <p>Hola <strong>{full_name}</strong>,</p>
+      <p>Recibimos una solicitud para restablecer la contraseña de tu cuenta TAVA.</p>
+      <p><a href="{reset_url}" style="background:#c9a227;color:#3d2a14;padding:12px 24px;border-radius:999px;text-decoration:none;display:inline-block;">Nueva contraseña</a></p>
+      <p style="font-size:12px;color:#666;">El enlace expira en {settings.password_reset_expire_hours} horas. Si no solicitaste este cambio, ignora este mensaje.</p>
+    </div>
+    """
+    text = f"Hola {full_name},\n\nRestablece tu contraseña TAVA:\n{reset_url}\n"
+    return subject, html, text
+
+
+async def send_password_reset_email(to_email: str, full_name: str, reset_url: str) -> bool:
+    subject, html, text = _password_reset_content(full_name, reset_url)
+    return await _deliver_email(to_email, subject, html, text)

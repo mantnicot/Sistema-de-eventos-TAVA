@@ -11,6 +11,7 @@
       <input type="password" [(ngModel)]="password" name="password" required />
     </label>
     <button type="submit" class="tava-btn-primary" [disabled]="submitting">Entrar</button>
+    <p class="hint"><a routerLink="/olvide-contrasena">¿Olvidaste tu contraseña?</a></p>
     @if (needsVerification) {
       <p class="hint warn">Debes verificar tu correo antes de ingresar. Revisa tu bandeja y spam.</p>
       <button type="button" class="link-btn" [disabled]="resending" (click)="resendVerification()">

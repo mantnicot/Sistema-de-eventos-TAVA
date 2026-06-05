@@ -2,21 +2,86 @@
   position: fixed;
   inset: 0;
   z-index: 10000;
-  background: rgba(250, 248, 244, 0.75);
-  backdrop-filter: blur(8px);
+  background: rgba(20, 12, 8, 0.55);
+  backdrop-filter: blur(6px);
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 1rem;
   animation: fadeIn 0.3s ease;
+  overflow: hidden;
+}
+
+.stage {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+
+  &__curtain {
+    position: absolute;
+    top: 0;
+    width: 28%;
+    height: 55%;
+    background: linear-gradient(180deg, #6b1a2a 0%, #3d0f18 100%);
+    opacity: 0.75;
+    box-shadow: inset 0 -20px 40px rgba(0, 0, 0, 0.35);
+
+    &--left {
+      left: 0;
+      border-bottom-right-radius: 80% 20%;
+      animation: curtainLeft 1.2s ease-out;
+    }
+
+    &--right {
+      right: 0;
+      border-bottom-left-radius: 80% 20%;
+      animation: curtainRight 1.2s ease-out;
+    }
+  }
+
+  &__floor {
+    position: absolute;
+    left: 10%;
+    right: 10%;
+    bottom: 18%;
+    height: 8px;
+    background: linear-gradient(90deg, transparent, #c9a227, transparent);
+    border-radius: 50%;
+    opacity: 0.5;
+    box-shadow: 0 0 30px rgba(201, 162, 39, 0.45);
+  }
+}
+
+.rose {
+  position: absolute;
+  bottom: -10%;
+  font-size: 1.35rem;
+  opacity: 0;
+  animation: roseToStage 2.8s ease-in infinite;
+  animation-delay: var(--delay, 0s);
+  left: calc(10% + (var(--lane, 0) * 11%));
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
 }
 
 .popup {
-  max-width: 420px;
+  position: relative;
+  z-index: 2;
+  max-width: 440px;
   width: 100%;
-  padding: 2rem;
+  padding: 2rem 1.75rem;
   text-align: center;
-  background: #fff;
+  background: linear-gradient(165deg, #fffefb 0%, #f8f0e4 100%);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+
+  &__rotating {
+    margin: 0 0 0.75rem;
+    font-size: 0.82rem;
+    font-style: italic;
+    color: var(--tava-gold-glow);
+    min-height: 1.25rem;
+    animation: phraseFade 0.5s ease;
+  }
 
   h3 {
     font-family: var(--tava-font-display);
@@ -24,15 +89,16 @@
     color: var(--tava-gold-glow);
   }
 
-  p {
+  &__message {
     margin: 0 0 1.5rem;
     color: var(--tava-cream-muted);
     line-height: 1.5;
   }
 
-  &--success { border-color: rgba(76, 175, 80, 0.45); }
-  &--error { border-color: rgba(198, 74, 74, 0.45); }
-  &--warning { border-color: rgba(201, 162, 39, 0.55); }
+  &--success { border: 2px solid rgba(76, 175, 80, 0.45); }
+  &--error { border: 2px solid rgba(198, 74, 74, 0.45); }
+  &--warning { border: 2px solid rgba(201, 162, 39, 0.55); }
+  &--loading { border: 2px solid rgba(201, 162, 39, 0.35); }
 }
 
 .actions {
@@ -63,3 +129,32 @@
 
 @keyframes spin { to { transform: rotate(360deg); } }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes phraseFade {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes curtainLeft {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
+}
+@keyframes curtainRight {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+@keyframes roseToStage {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0) rotate(0deg) scale(0.6);
+  }
+  15% {
+    opacity: 1;
+  }
+  70% {
+    opacity: 1;
+    transform: translate(calc(40vw - 50% - var(--lane) * 2vw), -55vh) rotate(280deg) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(calc(42vw - 50%), -58vh) rotate(320deg) scale(0.4);
+  }
+}

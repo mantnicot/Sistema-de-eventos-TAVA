@@ -1,6 +1,6 @@
 <div class="auth-page">
   @if (!pendingVerify) {
-    <form class="auth-form tava-form tava-card" (ngSubmit)="submit()">
+    <form class="auth-form tava-form tava-card auth-form--wide" (ngSubmit)="submit()">
       <h1 class="tava-glow-text">Crear cuenta</h1>
       <p>Únete a la comunidad TAVA</p>
       <label>
@@ -8,14 +8,55 @@
         <input [(ngModel)]="full_name" name="full_name" required />
       </label>
       <label>
-        Correo
+        Correo electrónico
         <input type="email" [(ngModel)]="email" name="email" required autocomplete="email" />
+      </label>
+      <label>
+        Teléfono / WhatsApp
+        <input
+          type="tel"
+          [(ngModel)]="phone"
+          name="phone"
+          required
+          placeholder="Ej. +57 300 123 4567"
+          pattern="[\d\s+\-()]{7,30}"
+        />
       </label>
       <label>
         Contraseña
         <input type="password" [(ngModel)]="password" name="password" required minlength="8" />
       </label>
-      <button type="submit" class="tava-btn-primary">Registrarse</button>
+
+      <section class="legal-block">
+        <button type="button" class="link-btn legal-toggle" (click)="showLegal = !showLegal">
+          {{ showLegal ? 'Ocultar' : 'Leer' }} política de datos personales (Ley 1581/2012)
+        </button>
+        @if (showLegal) {
+          <div class="legal-text">
+            <p>{{ privacySummary }}</p>
+            @for (c of privacyClauses; track c.title) {
+              <h4>{{ c.title }}</h4>
+              <p>{{ c.text }}</p>
+            }
+          </div>
+        }
+        <label class="check-legal">
+          <input type="checkbox" [(ngModel)]="acceptPrivacy" name="acceptPrivacy" required />
+          <span>
+            Acepto el tratamiento de mis datos personales, los términos de uso de TAVA y declaro haber sido
+            informado(a) de mis derechos ARCO y de revocatoria del consentimiento (autorización habeas data).
+          </span>
+        </label>
+        <label class="check-legal optional">
+          <input type="checkbox" [(ngModel)]="acceptMarketing" name="acceptMarketing" />
+          <span>
+            Autorizo de forma expresa y opcional recibir publicidad, cartelera, promociones y novedades de TAVA Teatro
+            por correo o mensajería al número indicado. Puedo revocar este consentimiento en cualquier momento.
+          </span>
+        </label>
+      </section>
+
+      <button type="submit" class="tava-btn-primary" [disabled]="!acceptPrivacy">Registrarse</button>
       <p class="hint">¿Ya tienes cuenta? <a routerLink="/ingresar">Ingresar</a></p>
     </form>
   } @else {

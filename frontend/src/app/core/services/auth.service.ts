@@ -45,7 +45,15 @@ export class AuthService {
     );
   }
 
-  register(data: { email: string; password: string; full_name: string; captcha_token?: string }) {
+  register(data: {
+    email: string;
+    password: string;
+    full_name: string;
+    phone: string;
+    accept_privacy_policy: boolean;
+    accept_marketing?: boolean;
+    captcha_token?: string;
+  }) {
     return this.api.get<{ public_key_pem: string }>('/auth/public-key').pipe(
       switchMap(({ public_key_pem }) =>
         from(encryptPasswordForTransport(public_key_pem, data.password)).pipe(
@@ -57,6 +65,9 @@ export class AuthService {
             }>('/auth/register', {
               email: data.email,
               full_name: data.full_name,
+              phone: data.phone,
+              accept_privacy_policy: data.accept_privacy_policy,
+              accept_marketing: data.accept_marketing ?? false,
               password_encrypted,
               captcha_token: data.captcha_token,
             })
@@ -75,6 +86,29 @@ export class AuthService {
 
   verifyEmail(token: string) {
     return this.api.get<{ message: string; success: boolean }>(`/auth/verify-email?token=${encodeURIComponent(token)}`);
+  }
+
+  forgotPassword(email: string) {
+    return this.api.post<{ message: string; success: boolean }>('/auth/forgot-password', {
+      email,
+      captcha_token: 'dev-captcha',
+    });
+  }
+
+  resetPassword(token: string, password: string) {
+    return this.api.get<{ public_key_pem: string }>('/auth/public-key').pipe(
+      switchMap(({ public_key_pem }) =>
+        from(encryptPasswordForTransport(public_key_pem, password)).pipe(
+          switchMap((password_encrypted) =>
+            this.api.post<{ message: string; success: boolean }>('/auth/reset-password', {
+              token,
+              password_encrypted,
+              captcha_token: 'dev-captcha',
+            })
+          )
+        )
+      )
+    );
   }
 
   logout(): void {

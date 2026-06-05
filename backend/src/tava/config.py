@@ -26,6 +26,8 @@ class Settings(BaseSettings):
     smtp_password: str = ""
     email_from: str = "TAVA Teatro <no-reply@tavateatro.com>"
     email_verification_expire_hours: int = 48
+    password_reset_expire_hours: int = 2
+    privacy_policy_version: str = "1.0-2026"
     resend_api_key: str = ""  # https://resend.com (API HTTPS, funciona en Render)
     brevo_api_key: str = ""  # https://www.brevo.com — recomendado en Render (gratis ~300/día)
     email_enable_smtp: bool = False  # True solo en local; Render bloquea puertos 25/465/587

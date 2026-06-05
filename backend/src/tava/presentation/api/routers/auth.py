@@ -14,9 +14,11 @@ from tava.presentation.api.dependencies import get_current_user, require_roles
 from tava.presentation.api.http_errors import raise_system_error, raise_user_error
 from tava.infrastructure.security.login_crypto import decrypt_password, get_public_key_pem
 from tava.presentation.api.schemas import (
+    ForgotPasswordRequest,
     LoginRequest,
     RegisterRequest,
     RegisterResponse,
+    ResetPasswordRequest,
     TokenResponse,
     UserResponse,
 )
@@ -48,7 +50,7 @@ async def auth_public_key():
     return {"public_key_pem": get_public_key_pem()}
 
 
-def _resolve_password(body: LoginRequest | RegisterRequest) -> str:
+def _resolve_password(body: LoginRequest | RegisterRequest | ResetPasswordRequest) -> str:
     if body.password_encrypted:
         return decrypt_password(body.password_encrypted)
     return body.password or ""
@@ -133,6 +135,52 @@ async def register(body: RegisterRequest, db: AsyncSession = Depends(get_db)):
     except Exception:
         logger.exception("Registro falló (sistema)")
         raise_system_error(500, "REGISTER_ERROR", "Error interno al registrar la cuenta")
+
+
+@router.post("/forgot-password")
+async def forgot_password(body: ForgotPasswordRequest, db: AsyncSession = Depends(get_db)):
+    if not await verify_captcha(body.captcha_token):
+        raise_user_error(400, "CAPTCHA_INVALID", "Verificación captcha inválida")
+    try:
+        uc = AuthUseCase(db)
+        await uc.request_password_reset(body.email)
+        return {
+            "message": "Si el correo está registrado, recibirás un enlace para restablecer tu contraseña.",
+            "success": True,
+        }
+    except ValueError as e:
+        raise_user_error(400, "RESET_REQUEST_FAILED", str(e))
+    except SQLAlchemyError:
+        logger.exception("Recuperación de contraseña falló (base de datos)")
+        raise_system_error(503, "DATABASE_ERROR", "Error de base de datos")
+    except Exception:
+        logger.exception("Recuperación de contraseña falló (sistema)")
+        raise_system_error(500, "RESET_REQUEST_ERROR", "Error interno")
+
+
+@router.post("/reset-password")
+async def reset_password(body: ResetPasswordRequest, db: AsyncSession = Depends(get_db)):
+    if not await verify_captcha(body.captcha_token):
+        raise_user_error(400, "CAPTCHA_INVALID", "Verificación captcha inválida")
+    try:
+        plain_password = _resolve_password(body)
+    except ValueError as e:
+        raise_user_error(400, "PASSWORD_DECRYPT_FAILED", str(e))
+    try:
+        uc = AuthUseCase(db)
+        await uc.reset_password(body.token, plain_password)
+        return {
+            "message": "Contraseña actualizada. Ya puedes iniciar sesión.",
+            "success": True,
+        }
+    except ValueError as e:
+        raise_user_error(400, "RESET_FAILED", str(e))
+    except SQLAlchemyError:
+        logger.exception("Restablecer contraseña falló (base de datos)")
+        raise_system_error(503, "DATABASE_ERROR", "Error de base de datos")
+    except Exception:
+        logger.exception("Restablecer contraseña falló (sistema)")
+        raise_system_error(500, "RESET_ERROR", "Error interno")
 
 
 @router.post("/login", response_model=dict)

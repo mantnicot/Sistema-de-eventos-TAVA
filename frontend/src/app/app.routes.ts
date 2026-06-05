@@ -28,6 +28,16 @@ export const routes: Routes = [
         loadComponent: () => import('./features/auth/verify-email.component').then((m) => m.VerifyEmailComponent),
       },
       {
+        path: 'olvide-contrasena',
+        loadComponent: () =>
+          import('./features/auth/forgot-password.component').then((m) => m.ForgotPasswordComponent),
+      },
+      {
+        path: 'restablecer-contrasena',
+        loadComponent: () =>
+          import('./features/auth/reset-password.component').then((m) => m.ResetPasswordComponent),
+      },
+      {
         path: 'perfil',
         loadComponent: () => import('./features/profile/profile.component').then((m) => m.ProfileComponent),
       },

@@ -6,7 +6,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from tava.config import get_settings
 from tava.domain.enums import UserRole
-from tava.infrastructure.persistence.models import EmailVerificationTokenModel, RefreshTokenModel, UserModel
+from tava.infrastructure.persistence.models import (
+    EmailVerificationTokenModel,
+    PasswordResetTokenModel,
+    RefreshTokenModel,
+    UserModel,
+)
 from tava.infrastructure.persistence.repositories.sqlalchemy_user_repository import SQLAlchemyUserRepository
 from tava.infrastructure.security.jwt import create_access_token, create_refresh_token_value
 from tava.infrastructure.security.password import hash_password, verify_password
@@ -15,7 +20,11 @@ from tava.infrastructure.security.verification_tokens import (
     hash_verification_token,
     verify_verification_token,
 )
-from tava.infrastructure.services.email import last_email_failure, send_verification_email
+from tava.infrastructure.services.email import (
+    last_email_failure,
+    send_password_reset_email,
+    send_verification_email,
+)
 
 settings = get_settings()
 
@@ -33,9 +42,12 @@ class AuthUseCase:
         phone: str | None = None,
         document_id: str | None = None,
         role: UserRole = UserRole.GENERAL,
+        *,
+        accept_marketing: bool = False,
     ):
         if await self._users.get_by_email(email):
             raise ValueError("El correo ya está registrado")
+        now = datetime.now(UTC)
         user = await self._users.create(
             email=email,
             password_hash=hash_password(password),
@@ -44,6 +56,10 @@ class AuthUseCase:
             phone=phone,
             document_id=document_id,
             email_verified=False,
+            privacy_accepted_at=now,
+            privacy_policy_version=settings.privacy_policy_version,
+            marketing_opt_in=accept_marketing,
+            marketing_opt_in_at=now if accept_marketing else None,
         )
         raw_token = await self._create_verification_token(user.id)
         verify_url = f"{settings.frontend_url.rstrip('/')}/verificar-email?token={raw_token}"
@@ -111,6 +127,52 @@ class AuthUseCase:
             )
             raise ValueError(detail)
         return email_sent
+
+    async def _create_password_reset_token(self, user_id: UUID) -> str:
+        raw = generate_verification_token()
+        expires = datetime.now(UTC) + timedelta(hours=settings.password_reset_expire_hours)
+        self._session.add(
+            PasswordResetTokenModel(
+                user_id=user_id,
+                token_hash=hash_verification_token(raw),
+                expires_at=expires,
+            )
+        )
+        await self._session.flush()
+        return raw
+
+    async def request_password_reset(self, email: str) -> None:
+        """Siempre responde igual al cliente; solo envía correo si el usuario existe."""
+        model = await self._users.get_model_by_email(email)
+        if not model or not model.is_active:
+            return
+        raw_token = await self._create_password_reset_token(model.id)
+        reset_url = f"{settings.frontend_url.rstrip('/')}/restablecer-contrasena?token={raw_token}"
+        email_sent = await send_password_reset_email(model.email, model.full_name, reset_url)
+        if not email_sent:
+            detail = last_email_failure() or "No se pudo enviar el correo de recuperación"
+            raise ValueError(detail)
+
+    async def reset_password(self, token: str, new_password: str) -> None:
+        if not token or len(token) < 20:
+            raise ValueError("Enlace de recuperación inválido")
+        result = await self._session.execute(
+            select(PasswordResetTokenModel).where(PasswordResetTokenModel.used_at.is_(None))
+        )
+        matched = None
+        for row in result.scalars().all():
+            if verify_verification_token(token, row.token_hash):
+                matched = row
+                break
+        if not matched:
+            raise ValueError("Enlace de recuperación inválido o ya utilizado")
+        if matched.expires_at < datetime.now(UTC):
+            raise ValueError("El enlace de recuperación ha expirado")
+        ok = await self._users.update_password(matched.user_id, hash_password(new_password))
+        if not ok:
+            raise ValueError("Usuario no encontrado")
+        matched.used_at = datetime.now(UTC)
+        await self._session.flush()
 
     async def login(self, email: str, password: str):
         model = await self._users.get_model_by_email(email)

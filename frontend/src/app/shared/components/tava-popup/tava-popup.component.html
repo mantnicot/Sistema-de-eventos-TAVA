@@ -1,11 +1,21 @@
 @if (notify.state(); as s) {
   <div class="overlay" role="dialog" aria-modal="true">
+    <div class="stage" aria-hidden="true">
+      <div class="stage__curtain stage__curtain--left"></div>
+      <div class="stage__curtain stage__curtain--right"></div>
+      <div class="stage__floor"></div>
+      @for (i of roseSlots; track i) {
+        <span class="rose" [style.--delay]="i * 0.35 + 's'" [style.--lane]="i">🌹</span>
+      }
+    </div>
+
     <div class="popup tava-card" [class]="'popup--' + s.type">
       @if (s.type === 'loading') {
         <div class="spinner" aria-hidden="true"></div>
       }
+      <p class="popup__rotating">{{ rotatingPhrase() }}</p>
       <h3 class="tava-glow-text">{{ s.title }}</h3>
-      <p>{{ s.message }}</p>
+      <p class="popup__message">{{ s.message }}</p>
       @if (s.type === 'confirm') {
         <div class="actions">
           <button type="button" class="ghost" (click)="cancel()">Cancelar</button>

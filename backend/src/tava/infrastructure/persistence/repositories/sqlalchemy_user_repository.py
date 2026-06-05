@@ -50,6 +50,11 @@ class SQLAlchemyUserRepository(UserRepository):
         phone: str | None = None,
         document_id: str | None = None,
         email_verified: bool = False,
+        *,
+        privacy_accepted_at=None,
+        privacy_policy_version: str | None = None,
+        marketing_opt_in: bool = False,
+        marketing_opt_in_at=None,
     ) -> User:
         model = UserModel(
             email=email.lower(),
@@ -59,11 +64,24 @@ class SQLAlchemyUserRepository(UserRepository):
             phone=phone,
             document_id=document_id,
             email_verified=email_verified,
+            privacy_accepted_at=privacy_accepted_at,
+            privacy_policy_version=privacy_policy_version,
+            marketing_opt_in=marketing_opt_in,
+            marketing_opt_in_at=marketing_opt_in_at,
         )
         self._session.add(model)
         await self._session.flush()
         await self._session.refresh(model)
         return _to_entity(model)
+
+    async def update_password(self, user_id: UUID, password_hash: str) -> bool:
+        result = await self._session.execute(select(UserModel).where(UserModel.id == user_id))
+        model = result.scalar_one_or_none()
+        if not model:
+            return False
+        model.password_hash = password_hash
+        await self._session.flush()
+        return True
 
     async def list_by_role(self, role: UserRole | None = None, limit: int = 50, offset: int = 0) -> list[User]:
         q = select(UserModel).order_by(UserModel.created_at.desc()).limit(limit).offset(offset)

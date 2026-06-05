@@ -48,6 +48,11 @@ const MESSAGES: Record<string, string[]> = {
     'El proyector calienta motores…',
     'Guardando escena en el archivador…',
   ],
+  forgot: [
+    'El tramoyista busca tu contraseña perdida…',
+    'Enviando paloma con enlace de rescate…',
+    'La taquilla reimprime tu pase de memoria…',
+  ],
   delete: [
     'Retirando del reparto con drama…',
     'Último curtain call para este registro…',
@@ -55,7 +60,24 @@ const MESSAGES: Record<string, string[]> = {
   ],
 };
 
+const POPUP_PHRASES = [
+  '¡Bravo! El público aplaude tu paciencia…',
+  'Un tramoyista tropezó, pero el show continúa.',
+  'Las rosas vuelan hacia el escenario…',
+  'El director susurra: “casi, casi…”',
+  'Intervalo express: respira como estrella.',
+  'La orquesta afina un acorde cómico.',
+  'Curtain call en camino…',
+  'El prompter hace malabares con los datos.',
+  '¡Otro aplauso del público imaginario!',
+  'Los reflectores buscan tu butaca en la nube.',
+];
+
 export function randomTheatricalMessage(context = 'general'): string {
   const list = MESSAGES[context] ?? MESSAGES['general'];
   return list[Math.floor(Math.random() * list.length)];
+}
+
+export function randomPopupPhrase(): string {
+  return POPUP_PHRASES[Math.floor(Math.random() * POPUP_PHRASES.length)];
 }

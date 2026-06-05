@@ -12,8 +12,32 @@ class RegisterRequest(BaseModel):
     password: str | None = Field(default=None, min_length=8, max_length=128)
     password_encrypted: str | None = None
     full_name: str = Field(min_length=2, max_length=200)
-    phone: str | None = None
+    phone: str = Field(min_length=7, max_length=30, pattern=r"^[\d\s+\-()]{7,30}$")
     document_id: str | None = None
+    captcha_token: str | None = None
+    accept_privacy_policy: bool = False
+    accept_marketing: bool = False
+
+    @model_validator(mode="after")
+    def require_password(self):
+        if not self.password and not self.password_encrypted:
+            raise ValueError("Se requiere contraseña o password_encrypted")
+        if not self.accept_privacy_policy:
+            raise ValueError(
+                "Debe aceptar el tratamiento de datos personales y los términos de la plataforma TAVA"
+            )
+        return self
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+    captcha_token: str | None = None
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str = Field(min_length=20)
+    password: str | None = Field(default=None, min_length=8, max_length=128)
+    password_encrypted: str | None = None
     captcha_token: str | None = None
 
     @model_validator(mode="after")
