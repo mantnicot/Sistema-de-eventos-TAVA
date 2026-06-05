@@ -1,16 +1,20 @@
-"""Inicialización de tablas y datos demo al arrancar la API."""
+"""Inicialización de tablas y datos mínimos al arrancar la API."""
 import logging
-from datetime import date, time
 
 from sqlalchemy import select
 
-from tava.domain.enums import EventStatus, UserRole
+from tava.domain.enums import UserRole
+from tava.infrastructure.demo_reset import (
+    ADMIN_EMAIL,
+    ADMIN_PASSWORD,
+    TEST_EMAIL,
+    TEST_PASSWORD,
+    reset_demo_data,
+)
 from tava.infrastructure.persistence.database import AsyncSessionLocal, init_db
-from tava.infrastructure.persistence.models import BannerModel, EventModel, UserModel
+from tava.infrastructure.persistence.models import UserModel
 from tava.infrastructure.services.site_settings import ensure_default_settings
 from tava.infrastructure.security.password import hash_password, verify_password
-
-ADMIN_SEED_PASSWORD = "AdminTava2026!"
 
 logger = logging.getLogger("tava.bootstrap")
 
@@ -19,75 +23,42 @@ async def bootstrap_application() -> None:
     await init_db()
     async with AsyncSessionLocal() as session:
         try:
-            admin_email = "admin@tavateatro.com"
-            result = await session.execute(select(UserModel).where(UserModel.email == admin_email))
-            admin = result.scalar_one_or_none()
+            await reset_demo_data(session)
+
+            admin = (
+                await session.execute(select(UserModel).where(UserModel.email == ADMIN_EMAIL))
+            ).scalar_one_or_none()
             if not admin:
                 admin = UserModel(
-                    email=admin_email,
-                    password_hash=hash_password(ADMIN_SEED_PASSWORD),
+                    email=ADMIN_EMAIL,
+                    password_hash=hash_password(ADMIN_PASSWORD),
                     full_name="Administrador TAVA",
                     role=UserRole.ADMIN,
                     email_verified=True,
                 )
                 session.add(admin)
-                await session.flush()
-                logger.info("Usuario admin creado: %s", admin_email)
             else:
                 admin.email_verified = True
-                if not verify_password(ADMIN_SEED_PASSWORD, admin.password_hash):
-                    admin.password_hash = hash_password(ADMIN_SEED_PASSWORD)
-                    logger.info("Contraseña admin sincronizada con seed de bootstrap")
+                if not verify_password(ADMIN_PASSWORD, admin.password_hash):
+                    admin.password_hash = hash_password(ADMIN_PASSWORD)
+
+            test_user = (
+                await session.execute(select(UserModel).where(UserModel.email == TEST_EMAIL))
+            ).scalar_one_or_none()
+            if not test_user:
+                session.add(
+                    UserModel(
+                        email=TEST_EMAIL,
+                        password_hash=hash_password(TEST_PASSWORD),
+                        full_name="Usuario Prueba TAVA",
+                        role=UserRole.GENERAL,
+                        email_verified=True,
+                    )
+                )
 
             await ensure_default_settings(session)
-
-            if not admin:
-                result = await session.execute(select(UserModel).where(UserModel.email == admin_email))
-                admin = result.scalar_one()
-            organizer_id = admin.id
-
-            event_result = await session.execute(
-                select(EventModel).where(EventModel.name == "Noche de Estreno TAVA")
-            )
-            if not event_result.scalar_one_or_none():
-                session.add(
-                    EventModel(
-                        name="Noche de Estreno TAVA",
-                        description="Experiencia teatral del grupo TAVA.",
-                        theatrical_details={
-                            "synopsis": "Una noche de estreno que celebra el arte en vivo.",
-                            "cast": ["Elenco TAVA"],
-                            "director": "Dirección TAVA",
-                            "duration_minutes": 90,
-                            "age_rating": "Todo público",
-                            "language": "Español",
-                        },
-                        event_date=date(2026, 7, 15),
-                        event_time=time(19, 30),
-                        city="Bogotá",
-                        address="Teatro TAVA",
-                        category="Teatro",
-                        status=EventStatus.PUBLISHED,
-                        capacity=120,
-                        main_image_url="/assets/events/estreno.jpg",
-                        organizer_id=organizer_id,
-                    )
-                )
-
-            banner_result = await session.execute(select(BannerModel).limit(1))
-            if not banner_result.scalar_one_or_none():
-                session.add(
-                    BannerModel(
-                        title="Temporada 2026 — TAVA Teatro",
-                        image_url="/assets/banners/temporada.jpg",
-                        link_url="/eventos",
-                        banner_type="promocional",
-                        sort_order=0,
-                    )
-                )
-
             await session.commit()
-            logger.info("Bootstrap de datos completado")
+            logger.info("Bootstrap completado (modo pruebas, sin eventos demo)")
         except Exception:
             await session.rollback()
             logger.exception("Bootstrap de datos falló")

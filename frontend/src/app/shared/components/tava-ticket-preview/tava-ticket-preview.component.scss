@@ -1,111 +1,105 @@
 .ticket-preview {
-  max-width: 340px;
+  max-width: 420px;
   margin: 0 auto;
-  border-radius: 16px;
+  border-radius: 12px;
   overflow: hidden;
-  background: #ffffff;
-  color: #1a1410;
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.12), 0 0 0 2px rgba(201, 162, 39, 0.45);
+  background: #fff;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.14), 0 0 0 2px rgba(201, 162, 39, 0.45);
 
-  &--vip {
-    box-shadow: 0 16px 48px rgba(201, 162, 39, 0.2), 0 0 0 2px rgba(232, 197, 71, 0.65);
+  &__body {
+    display: grid;
+    grid-template-columns: 1.6fr 1fr;
+    min-height: 180px;
   }
 
-  &__hero {
+  &__left {
     position: relative;
-    min-height: 160px;
     overflow: hidden;
+    background: #2a1520;
   }
 
-  &__hero-img {
+  &__bg {
     position: absolute;
     inset: 0;
     background-size: cover;
     background-position: center;
-    filter: blur(12px) brightness(0.95);
-    transform: scale(1.1);
+    filter: blur(10px);
+    transform: scale(1.08);
+    opacity: 0.9;
   }
 
-  &__hero-overlay {
+  &__info {
     position: relative;
     z-index: 1;
-    min-height: 160px;
+    padding: 0.85rem;
+    color: #fff;
+    background: rgba(20, 12, 16, 0.55);
+    height: 100%;
     display: flex;
     flex-direction: column;
-    justify-content: flex-end;
-    padding: 0.85rem 1rem;
-    background: rgba(255, 255, 255, 0.78);
+    justify-content: center;
     text-align: center;
   }
 
   &__brand {
-    display: block;
-    font-size: 0.58rem;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    color: #8b6914;
+    font-size: 0.55rem;
+    letter-spacing: 0.12em;
+    color: #c9a227;
     font-weight: 700;
-    margin-bottom: 0.35rem;
+    margin-bottom: 0.3rem;
   }
 
   &__event {
-    margin: 0;
+    margin: 0 0 0.35rem;
     font-family: var(--tava-font-display, Georgia, serif);
-    font-size: 1.3rem;
-    color: #1a1410;
+    font-size: 1.05rem;
     line-height: 1.15;
   }
 
-  &__body {
-    padding: 0.85rem 1rem 0.5rem;
-    text-align: center;
-    background: #fff;
-  }
-
-  &__holder {
-    margin: 0 0 0.25rem;
-    font-size: 0.92rem;
-    font-weight: 600;
+  &__holder,
+  &__type,
+  &__meta,
+  &__venue {
+    margin: 0.12rem 0 0;
+    font-size: 0.72rem;
   }
 
   &__type {
-    margin: 0;
     font-weight: 700;
-    font-size: 0.88rem;
-    color: #8b6914;
+    color: #e8d49b;
   }
 
-  &__meta,
-  &__venue {
-    margin: 0.2rem 0 0;
-    font-size: 0.74rem;
-    color: #666;
-  }
-
-  &__foot {
+  &__right {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 0.4rem;
-    padding: 0.75rem 1rem 1rem;
+    justify-content: center;
+    gap: 0.35rem;
+    padding: 0.65rem 0.5rem;
     background: #fff;
-    border-top: 1px solid #eee;
+    border-left: 2px dashed rgba(201, 162, 39, 0.45);
+  }
+
+  &__scan {
+    font-size: 0.55rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: #8b6914;
   }
 
   &__qr {
-    width: 88px;
-    height: 88px;
-    border-radius: 8px;
+    width: 72px;
+    height: 72px;
     border: 2px solid rgba(201, 162, 39, 0.55);
+    border-radius: 6px;
     background:
       #fff
-      repeating-linear-gradient(90deg, #1a1410 0, #1a1410 5px, #fff 5px, #fff 10px);
+      repeating-linear-gradient(90deg, #1a1410 0, #1a1410 4px, #fff 4px, #fff 8px);
   }
 
   &__code {
-    margin: 0;
-    font-size: 0.62rem;
-    letter-spacing: 0.06em;
+    font-size: 0.55rem;
     color: #8b6914;
+    text-align: center;
   }
 }
