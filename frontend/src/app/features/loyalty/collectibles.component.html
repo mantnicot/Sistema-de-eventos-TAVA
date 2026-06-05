@@ -16,10 +16,10 @@
         <button
           type="button"
           class="lamina tava-card"
-          [style.backgroundImage]="'url(' + mediaUrl(lamina.lamina_url) + ')'"
           (click)="openLamina(lamina)"
           [attr.aria-label]="'Lámina de ' + (lamina.event?.name ?? 'evento')"
         >
+          <img [src]="laminaImg(lamina)" [alt]="lamina.event?.name ?? 'Lámina'" loading="lazy" (error)="onImgError($event)" />
           <span class="lamina__shine"></span>
           @if (lamina.event; as ev) {
             @if (ev.name) {
@@ -41,10 +41,8 @@
   <div class="modal-backdrop" (click)="closeModal()" role="presentation"></div>
   <dialog class="modal tava-card" open>
     <button type="button" class="modal__close" (click)="closeModal()" aria-label="Cerrar">×</button>
-    <div
-      class="modal__hero"
-      [style.backgroundImage]="'linear-gradient(to top, var(--tava-hero-overlay), transparent), url(' + mediaUrl(sel.lamina_url || sel.event?.main_image_url) + ')'"
-    >
+    <div class="modal__hero">
+      <img class="modal__hero-img" [src]="laminaImg(sel)" [alt]="sel.event?.name ?? ''" (error)="onImgError($event)" />
       <h2 class="tava-glow-text">{{ sel.event?.name ?? 'Evento' }}</h2>
       @if (sel.event) {
         <p>{{ sel.event.city }} · {{ sel.event.event_date | date:'mediumDate' }}</p>

@@ -63,6 +63,12 @@ export class ProfileComponent implements OnInit {
     }
   }
 
+  onImgError(ev: Event): void {
+    const img = ev.target as HTMLImageElement;
+    if (img.src.includes('logo-tava')) return;
+    img.src = '/logo-tava.png';
+  }
+
   downloadPdf(pdfUrl: string, label: string): void {
     this.api.downloadBlob(pdfUrl).subscribe({
       next: (blob) => {

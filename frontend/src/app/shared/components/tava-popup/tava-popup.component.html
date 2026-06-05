@@ -1,11 +1,17 @@
 @if (notify.state(); as s) {
   <div class="overlay" role="dialog" aria-modal="true">
     <div class="stage" aria-hidden="true">
-      <div class="stage__curtain stage__curtain--left"></div>
-      <div class="stage__curtain stage__curtain--right"></div>
-      <div class="stage__floor"></div>
+      <div class="stage__glow"></div>
       @for (i of roseSlots; track i) {
-        <span class="rose" [style.--delay]="i * 0.35 + 's'" [style.--lane]="i">🌹</span>
+        <span
+          class="rose"
+          [style.--delay]="(i * 0.18) + 's'"
+          [style.--lane]="i"
+          [style.--size]="roseSize(i)"
+        >🌹</span>
+      }
+      @for (p of petalSlots; track p) {
+        <span class="petal" [style.--delay]="(p * 0.25) + 's'" [style.--lane]="p">✿</span>
       }
     </div>
 

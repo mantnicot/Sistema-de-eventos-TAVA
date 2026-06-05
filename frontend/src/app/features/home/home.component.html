@@ -25,10 +25,9 @@
     <div class="show-grid">
       @for (ev of featured(); track ev.id) {
         <a [routerLink]="['/eventos', ev.id]" class="show-card tava-card">
-          <div
-            class="show-card__img"
-            [style.backgroundImage]="'url(' + mediaUrl(ev.main_image_url) + ')'"
-          ></div>
+          <div class="show-card__img">
+            <img [src]="mediaUrl(ev.main_image_url)" [alt]="ev.name" loading="lazy" (error)="onImgError($event)" />
+          </div>
           <div class="show-card__body">
             <span class="show-card__cat">{{ ev.category }}</span>
             <h3>{{ ev.name }}</h3>

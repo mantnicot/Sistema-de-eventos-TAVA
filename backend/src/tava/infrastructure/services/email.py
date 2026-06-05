@@ -379,6 +379,56 @@ async def send_password_reset_email(to_email: str, full_name: str, reset_url: st
     return await _deliver_email(to_email, subject, html, text)
 
 
+def _tickets_email_html(
+    full_name: str,
+    event_name: str,
+    quantity: int,
+    *,
+    is_seller_copy: bool = False,
+    event_date: str = "",
+    event_time: str = "",
+) -> str:
+    role = "confirmación de venta" if is_seller_copy else "confirmación de compra"
+    when = f"{event_date} · {event_time}" if event_date else "Consulta tu boleta adjunta"
+    return f"""
+<!DOCTYPE html>
+<html lang="es">
+<body style="margin:0;padding:0;background:#1a1410;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:linear-gradient(180deg,#1a1410 0%,#2d2218 50%,#1a1410 100%);padding:32px 16px;">
+    <tr><td align="center">
+      <table role="presentation" width="560" cellspacing="0" cellpadding="0" style="max-width:560px;background:#fffefb;border-radius:16px;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,0.45);">
+        <tr>
+          <td style="background:linear-gradient(135deg,#6b1a2a,#3d0f18);padding:28px 32px;text-align:center;">
+            <p style="margin:0 0 6px;font-family:Georgia,serif;font-size:11px;letter-spacing:0.2em;color:#e8d49b;text-transform:uppercase;">Grupo TAVA</p>
+            <h1 style="margin:0;font-family:Georgia,serif;font-size:28px;color:#c9a227;font-weight:700;">🎭 TAVA Teatro</h1>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:32px 36px;font-family:Georgia,serif;color:#3d2a14;line-height:1.65;">
+            <p style="margin:0 0 16px;font-size:16px;">Hola <strong style="color:#6b1a2a;">{full_name}</strong>,</p>
+            <p style="margin:0 0 20px;font-size:15px;">Adjuntamos tu <strong>{role}</strong> de <strong>{quantity}</strong> boleta(s) para:</p>
+            <div style="background:linear-gradient(145deg,#f8f0e4,#fffefb);border:2px solid #c9a227;border-radius:12px;padding:20px 24px;margin:0 0 24px;text-align:center;">
+              <p style="margin:0 0 8px;font-size:22px;font-weight:700;color:#8b6914;">{event_name}</p>
+              <p style="margin:0;font-size:14px;color:#6b5344;">📅 {when}</p>
+            </div>
+            <p style="margin:0 0 12px;font-size:14px;">El PDF adjunto incluye el <strong>código QR</strong> para validar tu ingreso.</p>
+            <p style="margin:0;font-size:13px;color:#6b5344;font-style:italic;">Llega con 30 minutos de anticipación. ¡Nos vemos en el teatro!</p>
+          </td>
+        </tr>
+        <tr>
+          <td style="background:#f0e6d4;padding:18px 32px;text-align:center;border-top:1px dashed #c9a227;">
+            <p style="margin:0;font-family:Georgia,serif;font-size:12px;color:#6b5344;">
+              @tavateatro · Experiencias en vivo
+            </p>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>"""
+
+
 async def send_tickets_confirmation_email(
     to_email: str,
     full_name: str,
@@ -387,17 +437,19 @@ async def send_tickets_confirmation_email(
     pdf_bytes: bytes,
     *,
     is_seller_copy: bool = False,
+    event_date: str = "",
+    event_time: str = "",
 ) -> bool:
     role = "confirmación de venta" if is_seller_copy else "confirmación de compra"
-    subject = f"Boletas {event_name} — TAVA Teatro"
-    html = f"""
-    <div style="font-family: Georgia, serif; max-width: 520px; margin: 0 auto; color: #3d2a14;">
-      <h1 style="color: #b8860b;">TAVA Teatro</h1>
-      <p>Hola <strong>{full_name}</strong>,</p>
-      <p>Adjuntamos tu {role} de <strong>{quantity}</strong> boleta(s) para <strong>{event_name}</strong>.</p>
-      <p>El PDF incluye el código QR para validar el ingreso. Llega con 30 minutos de anticipación.</p>
-    </div>
-    """
-    text = f"Hola {full_name},\n\nAdjuntamos {quantity} boleta(s) para {event_name}.\n"
+    subject = f"🎭 Boletas {event_name} — TAVA Teatro"
+    html = _tickets_email_html(
+        full_name,
+        event_name,
+        quantity,
+        is_seller_copy=is_seller_copy,
+        event_date=event_date,
+        event_time=event_time,
+    )
+    text = f"Hola {full_name},\n\nAdjuntamos tu {role} de {quantity} boleta(s) para {event_name}.\n"
     filename = f"boletas-{event_name.replace(' ', '-')[:40]}.pdf"
     return await _deliver_email(to_email, subject, html, text, (filename, pdf_bytes))

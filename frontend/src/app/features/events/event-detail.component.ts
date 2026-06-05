@@ -7,8 +7,8 @@ import { ApiService } from '../../core/services/api.service';
 import { AuthService } from '../../core/services/auth.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { TavaEventDetail } from '../../core/models/event.model';
-import { resolveMediaUrl } from '../../core/utils/media-url.util';
-import { trailerEmbedUrl } from '../../core/utils/trailer-embed.util';
+import { mediaBackgroundStyle, resolveMediaUrl } from '../../core/utils/media-url.util';
+import { trailerEmbedUrl, trailerVideoSrc } from '../../core/utils/trailer-embed.util';
 import { TavaTicketPreviewComponent } from '../../shared/components/tava-ticket-preview/tava-ticket-preview.component';
 
 @Component({
@@ -28,6 +28,15 @@ export class EventDetailComponent implements OnInit {
   readonly event = signal<TavaEventDetail | null>(null);
   readonly selectedTypeId = signal<string | null>(null);
   readonly mediaUrl = resolveMediaUrl;
+  readonly mediaBg = mediaBackgroundStyle;
+  readonly trailerVideo = trailerVideoSrc;
+  purchasing = false;
+
+  onImgError(ev: Event): void {
+    const img = ev.target as HTMLImageElement;
+    if (img.src.includes('logo-tava')) return;
+    img.src = '/logo-tava.png';
+  }
 
   safeTrailer(url: string | undefined): SafeResourceUrl | null {
     const embed = trailerEmbedUrl(url);
@@ -95,10 +104,14 @@ export class EventDetailComponent implements OnInit {
       return;
     }
 
+    if (this.purchasing) return;
+
     this.notify.confirm(
       'Comprar boletas',
       `¿Confirmas la compra de ${this.quantity} boleta(s)? Recibirás el PDF por correo.`,
       () => {
+        if (this.purchasing) return;
+        this.purchasing = true;
         this.notify.loadingTheatrical('Taquilla', 'purchase');
         this.api
           .post<{ message?: string }>('/tickets/purchase', {
@@ -111,11 +124,13 @@ export class EventDetailComponent implements OnInit {
           })
           .subscribe({
             next: (res) => {
+              this.purchasing = false;
               this.notify.hide();
               this.notify.success('Compra', res.message ?? 'Boletas generadas. Revisa tu correo.');
               this.router.navigate(['/perfil']);
             },
             error: (err) => {
+              this.purchasing = false;
               this.notify.hide();
               const msg = err?.error?.detail ?? 'No se pudo completar la compra';
               this.notify.error('Compra', typeof msg === 'string' ? msg : 'Error en la compra');

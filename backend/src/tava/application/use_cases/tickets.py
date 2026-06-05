@@ -128,13 +128,27 @@ class TicketUseCase:
             tickets=[(t.qr_token, t.holder_name or buyer.full_name) for t in tickets],
         )
         ok_buyer = await send_tickets_confirmation_email(
-            buyer.email, buyer.full_name, event.name, len(tickets), pdf, is_seller_copy=False
+            buyer.email,
+            buyer.full_name,
+            event.name,
+            len(tickets),
+            pdf,
+            is_seller_copy=False,
+            event_date=event.event_date.isoformat(),
+            event_time=event.event_time.strftime("%H:%M"),
         )
         if not ok_buyer:
             raise ValueError(last_email_failure() or "No se pudo enviar el correo al comprador")
-        if seller:
+        if seller and seller.email.lower() != buyer.email.lower():
             await send_tickets_confirmation_email(
-                seller.email, seller.full_name, event.name, len(tickets), pdf, is_seller_copy=True
+                seller.email,
+                seller.full_name,
+                event.name,
+                len(tickets),
+                pdf,
+                is_seller_copy=True,
+                event_date=event.event_date.isoformat(),
+                event_time=event.event_time.strftime("%H:%M"),
             )
 
     async def purchase_for_user(

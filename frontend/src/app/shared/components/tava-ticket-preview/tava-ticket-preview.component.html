@@ -6,7 +6,7 @@
   @if (imageUrl()) {
     <div
       class="ticket-preview__image"
-      [style.backgroundImage]="'url(' + imageUrl() + ')'"
+      [style.backgroundImage]="'url(&quot;' + imageUrl() + '&quot;)'"
     ></div>
   }
   <div class="ticket-preview__body">
@@ -30,12 +30,7 @@
     <p class="ticket-preview__price">${{ price() | number:'1.0-0' }} COP</p>
   </div>
   <footer class="ticket-preview__foot">
-    <div class="ticket-preview__qr" aria-hidden="true">
-      <span></span><span></span><span></span><span></span>
-      <span></span><span></span><span></span><span></span>
-      <span></span><span></span><span></span><span></span>
-      <span></span><span></span><span></span><span></span>
-    </div>
+    <div class="ticket-preview__qr" aria-hidden="true"></div>
     <p class="ticket-preview__code">TAVA · PREVIEW</p>
   </footer>
 </article>

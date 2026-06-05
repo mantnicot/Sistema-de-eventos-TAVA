@@ -20,6 +20,10 @@ interface Collection {
   free_ticket_available: boolean;
 }
 
+function laminaImageUrl(item: LaminaItem): string {
+  return resolveMediaUrl(item.lamina_url || item.event?.main_image_url);
+}
+
 @Component({
   selector: 'app-collectibles',
   standalone: true,
@@ -32,6 +36,13 @@ export class CollectiblesComponent implements OnInit {
   readonly collection = signal<Collection | null>(null);
   readonly selectedLamina = signal<LaminaItem | null>(null);
   readonly mediaUrl = resolveMediaUrl;
+  readonly laminaImg = laminaImageUrl;
+
+  onImgError(ev: Event): void {
+    const img = ev.target as HTMLImageElement;
+    if (img.src.includes('logo-tava')) return;
+    img.src = '/logo-tava.png';
+  }
 
   lockedCount(): number {
     const c = this.collection();

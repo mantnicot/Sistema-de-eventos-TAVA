@@ -50,7 +50,7 @@
 
 .lamina {
   aspect-ratio: 3/4;
-  background: var(--tava-velvet) center/cover;
+  background: var(--tava-velvet);
   border-radius: var(--tava-radius);
   position: relative;
   overflow: hidden;
@@ -59,6 +59,13 @@
   cursor: pointer;
   padding: 0;
   text-align: left;
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
 
   &__shine {
     position: absolute;
@@ -130,12 +137,35 @@
 
   &__hero {
     min-height: 160px;
-    background-size: cover;
-    background-position: center;
+    position: relative;
     padding: 2rem 1.25rem 1.25rem;
     display: flex;
     flex-direction: column;
     justify-content: flex-end;
+    overflow: hidden;
+
+    &-img {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      z-index: 0;
+    }
+
+    h2,
+    p {
+      position: relative;
+      z-index: 1;
+    }
+
+    &::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to top, var(--tava-hero-overlay), transparent 55%);
+      z-index: 0;
+    }
 
     h2 {
       margin: 0 0 0.25rem;

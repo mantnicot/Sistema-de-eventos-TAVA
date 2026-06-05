@@ -62,7 +62,10 @@ export class SellerSellComponent implements OnInit {
     if (this.holderNames.length > q) this.holderNames = this.holderNames.slice(0, q);
   }
 
+  selling = false;
+
   vender(): void {
+    if (this.selling) return;
     const ev = this.eventDetail();
     if (!ev || !this.selectedTypeId || !this.buyerEmail.trim()) {
       this.notify.warning('Datos', 'Completa evento, tipo de boleta y correo del comprador');
@@ -78,6 +81,8 @@ export class SellerSellComponent implements OnInit {
       'Vender boletas',
       `¿Confirmas la venta de ${this.quantity} boleta(s) a ${this.buyerEmail}?`,
       () => {
+        if (this.selling) return;
+        this.selling = true;
         this.notify.loadingTheatrical('Taquilla', 'purchase');
         this.api
           .post<{ message?: string }>('/tickets/sell', {
@@ -91,6 +96,7 @@ export class SellerSellComponent implements OnInit {
           })
           .subscribe({
             next: (res) => {
+              this.selling = false;
               this.notify.hide();
               this.notify.success('Venta', res.message ?? 'Boletas enviadas por correo');
               this.buyerEmail = '';
@@ -99,6 +105,7 @@ export class SellerSellComponent implements OnInit {
               this.onEventChange();
             },
             error: (err) => {
+              this.selling = false;
               this.notify.hide();
               const msg = err?.error?.detail ?? 'No se pudo completar la venta';
               this.notify.error('Venta', typeof msg === 'string' ? msg : 'Error en la venta');

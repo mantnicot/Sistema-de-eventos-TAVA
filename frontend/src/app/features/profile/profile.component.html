@@ -8,47 +8,51 @@
     <section class="section">
       <h2>Mis boletas</h2>
       <p class="section__hint">Boletas compradas o asignadas a tu cuenta. Descarga el PDF con QR para validar en taquilla.</p>
-      @for (t of tickets(); track t.id) {
-        <article class="ticket tava-card">
-          <div class="ticket__visual" [style.backgroundImage]="'url(' + mediaUrl(t.main_image_url) + ')'"></div>
-          <div class="ticket__body">
-            <h3>{{ t.event_name }}</h3>
-            <p class="ticket__meta">
-              {{ t.event_date | date:'mediumDate' }} · {{ t.event_time }}
-              <br />{{ t.city }} — {{ t.address }}
-            </p>
-            <p><strong>{{ t.ticket_type }}</strong> · ${{ t.price | number }}</p>
-            @if (t.holder_name) {
-              <p class="holder">A nombre de: <strong>{{ t.holder_name }}</strong></p>
-            }
-            <span class="status" [class.used]="t.is_used">{{ t.is_used ? 'Utilizada' : 'Válida' }}</span>
-          </div>
-          <button type="button" class="tava-btn-primary ticket__pdf" (click)="downloadPdf(t.pdf_url, 'boleta-' + t.event_name)">
-            Descargar PDF
-          </button>
-        </article>
-      } @empty {
-        <p class="muted">Aún no tienes boletas. <a routerLink="/eventos">Explorar eventos</a></p>
-      }
+      <div class="ticket-grid">
+        @for (t of tickets(); track t.id) {
+          <article class="ticket tava-card">
+            <div class="ticket__visual">
+              <img [src]="mediaUrl(t.main_image_url)" [alt]="t.event_name" loading="lazy" (error)="onImgError($event)" />
+            </div>
+            <div class="ticket__body">
+              <h3>{{ t.event_name }}</h3>
+              <p class="ticket__meta">
+                {{ t.event_date | date:'mediumDate' }} · {{ t.event_time }}
+                <br />{{ t.city }}
+              </p>
+              <p><strong>{{ t.ticket_type }}</strong> · ${{ t.price | number }}</p>
+              @if (t.holder_name) {
+                <p class="holder">A nombre de: <strong>{{ t.holder_name }}</strong></p>
+              }
+              <span class="status" [class.used]="t.is_used">{{ t.is_used ? 'Utilizada' : 'Válida' }}</span>
+            </div>
+            <button type="button" class="tava-btn-primary ticket__pdf" (click)="downloadPdf(t.pdf_url, 'boleta-' + t.event_name)">
+              Descargar PDF
+            </button>
+          </article>
+        } @empty {
+          <p class="muted ticket-grid__empty">Aún no tienes boletas. <a routerLink="/eventos">Explorar eventos</a></p>
+        }
+      </div>
     </section>
 
     @if (auth.isSeller() && sellerSales().length) {
       <section class="section">
         <h2>Ventas realizadas</h2>
-        @for (s of sellerSales(); track s.order_id) {
-          <article class="sale tava-card">
-            <div>
+        <div class="sale-grid">
+          @for (s of sellerSales(); track s.order_id) {
+            <article class="sale tava-card">
               <h3>{{ s.event_name }}</h3>
               <p>{{ s.quantity }} boleta(s) · ${{ s.total | number }}</p>
               @if (s.holders.length) {
                 <p class="muted">Asistentes: {{ s.holders.join(', ') }}</p>
               }
-            </div>
-            <button type="button" class="tava-btn-primary" (click)="downloadPdf(s.pdf_url, 'venta-' + s.event_name)">
-              PDF
-            </button>
-          </article>
-        }
+              <button type="button" class="tava-btn-primary" (click)="downloadPdf(s.pdf_url, 'venta-' + s.event_name)">
+                Descargar PDF
+              </button>
+            </article>
+          }
+        </div>
       </section>
     }
   </section>

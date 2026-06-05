@@ -1,4 +1,4 @@
-"""Generación de boletas PDF con QR (ReportLab + qrcode)."""
+"""Generación de boletas PDF con QR — estilo teatral TAVA."""
 import io
 from datetime import date, time
 from decimal import Decimal
@@ -8,13 +8,23 @@ from urllib.parse import urlparse
 import qrcode
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
-from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
-from reportlab.lib.units import cm
-from reportlab.platypus import Image, Paragraph, SimpleDocTemplate, Spacer
+from reportlab.lib.styles import ParagraphStyle
+from reportlab.lib.units import cm, mm
+from reportlab.pdfgen import canvas
+from reportlab.platypus import Paragraph
+from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY
 
 from tava.config import get_settings
 
 settings = get_settings()
+
+PAGE_W, PAGE_H = A4
+MARGIN = 1.4 * cm
+GOLD = colors.HexColor("#C9A227")
+GOLD_DARK = colors.HexColor("#8B6914")
+VELVET = colors.HexColor("#1A1410")
+CREAM = colors.HexColor("#F5E6C8")
+BURGUNDY = colors.HexColor("#6B1A2A")
 
 
 def _terms_text(event_name: str, event_date: date, event_time: time, age_rating: str) -> str:
@@ -61,20 +71,148 @@ def _resolve_image_path(image_url: str | None) -> Path | None:
     return p if p.is_file() else None
 
 
-def _qr_image(qr_token: str, accent_hex: str) -> Image:
-    qr = qrcode.QRCode(version=1, box_size=6, border=2)
+def _draw_ticket_page(
+    c: canvas.Canvas,
+    *,
+    event_name: str,
+    event_date: date,
+    event_time: time,
+    city: str,
+    address: str,
+    age_rating: str | None,
+    main_image_url: str | None,
+    ticket_type_name: str,
+    price: Decimal,
+    qr_token: str,
+    holder_name: str,
+) -> None:
+    w, h = PAGE_W, PAGE_H
+    inner_x = MARGIN
+    inner_y = MARGIN
+    inner_w = w - 2 * MARGIN
+    inner_h = h - 2 * MARGIN
+
+    # Fondo velvet con marco dorado
+    c.setFillColor(VELVET)
+    c.roundRect(inner_x, inner_y, inner_w, inner_h, 14, fill=1, stroke=0)
+    c.setStrokeColor(GOLD)
+    c.setLineWidth(2.5)
+    c.roundRect(inner_x + 4, inner_y + 4, inner_w - 8, inner_h - 8, 12, fill=0, stroke=1)
+    c.setStrokeColor(GOLD_DARK)
+    c.setLineWidth(0.8)
+    c.roundRect(inner_x + 10, inner_y + 10, inner_w - 20, inner_h - 20, 10, fill=0, stroke=1)
+
+    # Banda superior decorativa
+    band_h = 1.1 * cm
+    c.setFillColor(BURGUNDY)
+    c.roundRect(inner_x + 14, inner_y + inner_h - band_h - 18, inner_w - 28, band_h, 6, fill=1, stroke=0)
+    c.setFillColor(GOLD)
+    c.setFont("Helvetica-Bold", 9)
+    c.drawCentredString(w / 2, inner_y + inner_h - band_h - 10, "TAVA TEATRO · BOLETA OFICIAL")
+
+    y = inner_y + inner_h - 2.2 * cm
+
+    # Imagen del evento
+    img_path = _resolve_image_path(main_image_url)
+    img_h = 4.2 * cm
+    if img_path:
+        try:
+            c.drawImage(
+                str(img_path),
+                inner_x + 22,
+                y - img_h,
+                width=inner_w - 44,
+                height=img_h,
+                preserveAspectRatio=True,
+                anchor="c",
+                mask="auto",
+            )
+            y -= img_h + 0.35 * cm
+        except Exception:
+            y -= 0.2 * cm
+    else:
+        y -= 0.2 * cm
+
+    # Nombre del evento — grande y teatral
+    c.setFillColor(GOLD)
+    c.setFont("Helvetica-Bold", 26)
+    title_lines = []
+    words = event_name.split()
+    line = ""
+    for word in words:
+        test = f"{line} {word}".strip()
+        if c.stringWidth(test, "Helvetica-Bold", 26) < inner_w - 50:
+            line = test
+        else:
+            if line:
+                title_lines.append(line)
+            line = word
+    if line:
+        title_lines.append(line)
+    for tl in title_lines[:2]:
+        c.drawCentredString(w / 2, y, tl)
+        y -= 0.95 * cm
+
+    y -= 0.15 * cm
+    c.setFillColor(CREAM)
+    c.setFont("Helvetica", 11)
+    c.drawCentredString(w / 2, y, f"Asistente: {holder_name}")
+    y -= 0.65 * cm
+
+    c.setFont("Helvetica-Bold", 12)
+    c.setFillColor(GOLD)
+    c.drawCentredString(w / 2, y, f"{ticket_type_name}  ·  ${price:,.0f} COP")
+    y -= 0.7 * cm
+
+    c.setFillColor(CREAM)
+    c.setFont("Helvetica", 10)
+    when = f"{event_date.isoformat()} · {event_time.strftime('%H:%M')}"
+    c.drawCentredString(w / 2, y, when)
+    y -= 0.5 * cm
+    c.drawCentredString(w / 2, y, f"{city} — {address}")
+    y -= 0.9 * cm
+
+    # QR en marco dorado
+    qr = qrcode.QRCode(version=1, box_size=8, border=1)
     qr.add_data(qr_token)
     qr.make(fit=True)
-    img = qr.make_image(fill_color=accent_hex, back_color="white")
-    buf = io.BytesIO()
-    img.save(buf, format="PNG")
-    buf.seek(0)
-    return Image(buf, width=4.2 * cm, height=4.2 * cm)
+    qr_img = qr.make_image(fill_color="#C9A227", back_color="#1A1410")
+    qr_buf = io.BytesIO()
+    qr_img.save(qr_buf, format="PNG")
+    qr_buf.seek(0)
+    qr_size = 3.8 * cm
+    qr_x = (w - qr_size) / 2
+    c.setStrokeColor(GOLD)
+    c.setLineWidth(2)
+    c.roundRect(qr_x - 6, y - qr_size - 6, qr_size + 12, qr_size + 12, 8, fill=0, stroke=1)
+    c.drawImage(qr_buf, qr_x, y - qr_size, width=qr_size, height=qr_size, mask="auto")
+    y -= qr_size + 0.55 * cm
 
+    c.setFillColor(GOLD)
+    c.setFont("Helvetica-Oblique", 9)
+    c.drawCentredString(w / 2, y, "Presenta este QR en la entrada")
+    y -= 1.1 * cm
 
-def _accent_from_event(main_image_url: str | None) -> str:
-    """Color de acento; futuro: extraer de imagen. Por ahora dorado TAVA."""
-    return "#B8860B"
+    # Línea decorativa
+    c.setStrokeColor(GOLD_DARK)
+    c.setLineWidth(0.5)
+    c.line(inner_x + 30, y, w - inner_x - 30, y)
+    y -= 0.5 * cm
+
+    # Términos
+    terms_style = ParagraphStyle(
+        "Terms",
+        fontName="Helvetica",
+        fontSize=6.5,
+        leading=8.5,
+        textColor=colors.HexColor("#B8A88A"),
+        alignment=TA_JUSTIFY,
+    )
+    terms = Paragraph(_terms_text(event_name, event_date, event_time, age_rating or ""), terms_style)
+    tw, th = terms.wrap(inner_w - 50, y - inner_y - 20)
+    terms.drawOn(c, inner_x + 25, max(inner_y + 18, y - th))
+
+    c.showPage()
 
 
 def build_tickets_pdf(
@@ -90,52 +228,22 @@ def build_tickets_pdf(
     price: Decimal,
     tickets: list[tuple[str, str]],
 ) -> bytes:
-    """
-    tickets: lista de (ticket_id, qr_token, holder_name) — holder en tickets[2] via tuple
-    Actually tickets: list of dict or tuple (qr_token, holder_name)
-    """
     buffer = io.BytesIO()
-    doc = SimpleDocTemplate(buffer, pagesize=A4, topMargin=1.2 * cm, bottomMargin=1.2 * cm)
-    styles = getSampleStyleSheet()
-    accent = _accent_from_event(main_image_url)
-    title_style = ParagraphStyle(
-        "EventTitle",
-        parent=styles["Heading1"],
-        fontSize=22,
-        textColor=colors.HexColor(accent),
-        spaceAfter=8,
-        alignment=1,
-    )
-    body = ParagraphStyle("Body", parent=styles["Normal"], fontSize=9, leading=12)
-    terms_style = ParagraphStyle("Terms", parent=styles["Normal"], fontSize=7, leading=9, textColor=colors.grey)
-
-    img_path = _resolve_image_path(main_image_url)
-    story: list = []
-
+    c = canvas.Canvas(buffer, pagesize=A4)
     for qr_token, holder_name in tickets:
-        if img_path:
-            try:
-                story.append(Image(str(img_path), width=16 * cm, height=5 * cm))
-                story.append(Spacer(1, 0.3 * cm))
-            except Exception:
-                pass
-        story.append(Paragraph(event_name, title_style))
-        story.append(Paragraph(f"<b>Asistente:</b> {holder_name}", body))
-        story.append(Paragraph(f"<b>Tipo:</b> {ticket_type_name} · <b>Valor:</b> ${price:,.0f} COP", body))
-        story.append(
-            Paragraph(
-                f"<b>Fecha y hora:</b> {event_date.isoformat()} · {event_time.strftime('%H:%M')}<br/>"
-                f"<b>Lugar:</b> {city} — {address}",
-                body,
-            )
+        _draw_ticket_page(
+            c,
+            event_name=event_name,
+            event_date=event_date,
+            event_time=event_time,
+            city=city,
+            address=address,
+            age_rating=age_rating,
+            main_image_url=main_image_url,
+            ticket_type_name=ticket_type_name,
+            price=price,
+            qr_token=qr_token,
+            holder_name=holder_name,
         )
-        story.append(Spacer(1, 0.4 * cm))
-        story.append(_qr_image(qr_token, accent))
-        story.append(Spacer(1, 0.2 * cm))
-        story.append(Paragraph("<i>Presenta este QR en la entrada · TAVA Teatro</i>", body))
-        story.append(Spacer(1, 0.5 * cm))
-        story.append(Paragraph(_terms_text(event_name, event_date, event_time, age_rating or ""), terms_style))
-        story.append(Spacer(1, 1 * cm))
-
-    doc.build(story)
+    c.save()
     return buffer.getvalue()

@@ -18,50 +18,38 @@
   pointer-events: none;
   overflow: hidden;
 
-  &__curtain {
+  &__glow {
     position: absolute;
-    top: 0;
-    width: 28%;
-    height: 55%;
-    background: linear-gradient(180deg, #6b1a2a 0%, #3d0f18 100%);
-    opacity: 0.75;
-    box-shadow: inset 0 -20px 40px rgba(0, 0, 0, 0.35);
-
-    &--left {
-      left: 0;
-      border-bottom-right-radius: 80% 20%;
-      animation: curtainLeft 1.2s ease-out;
-    }
-
-    &--right {
-      right: 0;
-      border-bottom-left-radius: 80% 20%;
-      animation: curtainRight 1.2s ease-out;
-    }
-  }
-
-  &__floor {
-    position: absolute;
-    left: 10%;
-    right: 10%;
-    bottom: 18%;
-    height: 8px;
-    background: linear-gradient(90deg, transparent, #c9a227, transparent);
-    border-radius: 50%;
-    opacity: 0.5;
-    box-shadow: 0 0 30px rgba(201, 162, 39, 0.45);
+    top: 20%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 60vw;
+    height: 40vh;
+    background: radial-gradient(ellipse, rgba(201, 162, 39, 0.18), transparent 70%);
+    animation: glowPulse 3s ease-in-out infinite;
   }
 }
 
 .rose {
   position: absolute;
-  bottom: -10%;
-  font-size: 1.35rem;
+  bottom: -12%;
+  font-size: var(--size, 1.2rem);
   opacity: 0;
-  animation: roseToStage 2.8s ease-in infinite;
+  animation: roseFloat 3.2s ease-in infinite;
   animation-delay: var(--delay, 0s);
-  left: calc(10% + (var(--lane, 0) * 11%));
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+  left: calc(2% + (var(--lane, 0) * 3.4%));
+  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.35));
+}
+
+.petal {
+  position: absolute;
+  bottom: -8%;
+  font-size: 0.85rem;
+  color: #d4a574;
+  opacity: 0;
+  animation: petalDrift 4s ease-in infinite;
+  animation-delay: var(--delay, 0s);
+  left: calc(5% + (var(--lane, 0) * 5.5%));
 }
 
 .popup {
@@ -133,28 +121,30 @@
   from { opacity: 0; transform: translateY(4px); }
   to { opacity: 1; transform: translateY(0); }
 }
-@keyframes curtainLeft {
-  from { transform: translateX(-100%); }
-  to { transform: translateX(0); }
+@keyframes glowPulse {
+  0%, 100% { opacity: 0.6; transform: translateX(-50%) scale(1); }
+  50% { opacity: 1; transform: translateX(-50%) scale(1.08); }
 }
-@keyframes curtainRight {
-  from { transform: translateX(100%); }
-  to { transform: translateX(0); }
-}
-@keyframes roseToStage {
+@keyframes roseFloat {
   0% {
     opacity: 0;
-    transform: translate(0, 0) rotate(0deg) scale(0.6);
+    transform: translate(0, 0) rotate(0deg) scale(0.5);
   }
-  15% {
-    opacity: 1;
-  }
-  70% {
-    opacity: 1;
-    transform: translate(calc(40vw - 50% - var(--lane) * 2vw), -55vh) rotate(280deg) scale(1);
+  12% { opacity: 1; }
+  75% {
+    opacity: 0.9;
+    transform: translate(calc(45vw - 50% - var(--lane) * 1.5vw), -62vh) rotate(300deg) scale(1.1);
   }
   100% {
     opacity: 0;
-    transform: translate(calc(42vw - 50%), -58vh) rotate(320deg) scale(0.4);
+    transform: translate(calc(48vw - 50%), -65vh) rotate(360deg) scale(0.3);
+  }
+}
+@keyframes petalDrift {
+  0% { opacity: 0; transform: translateY(0) rotate(0deg); }
+  15% { opacity: 0.7; }
+  100% {
+    opacity: 0;
+    transform: translate(calc(20vw - var(--lane) * 2vw), -50vh) rotate(180deg);
   }
 }

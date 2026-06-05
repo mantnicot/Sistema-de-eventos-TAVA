@@ -27,6 +27,12 @@ export class HomeComponent implements OnInit {
 
   readonly mediaUrl = resolveMediaUrl;
 
+  onImgError(ev: Event): void {
+    const img = ev.target as HTMLImageElement;
+    if (img.src.includes('logo-tava')) return;
+    img.src = '/logo-tava.png';
+  }
+
   ngOnInit(): void {
     this.api.get<FeaturedEvent[]>('/marketing/carousel/destacados').subscribe({
       next: (e) => this.featured.set(e),

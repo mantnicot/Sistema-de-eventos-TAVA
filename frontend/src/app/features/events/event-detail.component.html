@@ -1,9 +1,7 @@
 @if (event(); as ev) {
   <article class="detail">
-    <div
-      class="detail__hero tava-card"
-      [style.backgroundImage]="'linear-gradient(to top, var(--tava-hero-overlay), transparent), url(' + mediaUrl(ev.main_image_url) + ')'"
-    >
+    <div class="detail__hero tava-card" [style.backgroundImage]="mediaBg(ev.main_image_url)">
+      <img class="detail__hero-fallback" [src]="mediaUrl(ev.main_image_url)" [alt]="ev.name" (error)="onImgError($event)" />
       <div class="detail__hero-content">
         <span class="badge">{{ ev.category }}</span>
         <h1 class="tava-glow-text">{{ ev.name }}</h1>
@@ -25,17 +23,23 @@
         @if (ev.trailer_url) {
           <section class="tava-card block trailer-block">
             <h2>Trailer</h2>
-            @if (safeTrailer(ev.trailer_url); as embed) {
-              <div class="trailer-block__frame">
-                <iframe
-                  [src]="embed"
-                  title="Trailer de {{ ev.name }}"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowfullscreen
-                ></iframe>
-              </div>
+            @if (trailerVideo(ev.trailer_url); as videoSrc) {
+              <video class="trailer-block__video" [src]="videoSrc" controls playsinline preload="metadata">
+                Tu navegador no reproduce video embebido.
+              </video>
             } @else {
-              <a [href]="ev.trailer_url" target="_blank" rel="noopener" class="tava-btn-primary">Ver trailer</a>
+              @if (safeTrailer(ev.trailer_url); as embed) {
+                <div class="trailer-block__frame">
+                  <iframe
+                    [src]="embed"
+                    title="Trailer de {{ ev.name }}"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    allowfullscreen
+                  ></iframe>
+                </div>
+              } @else {
+                <p class="muted">Formato de trailer no reconocido. URL: {{ ev.trailer_url }}</p>
+              }
             }
           </section>
         }
@@ -73,7 +77,7 @@
             <h2>Galería</h2>
             <div class="gallery__grid">
               @for (m of ev.gallery; track m.id) {
-                <img [src]="mediaUrl(m.url)" [alt]="ev.name" loading="lazy" />
+                <img [src]="mediaUrl(m.url)" [alt]="ev.name" loading="lazy" (error)="onImgError($event)" />
               }
             </div>
           </section>
@@ -149,9 +153,9 @@
             type="button"
             class="tava-btn-primary detail__buy-btn"
             (click)="comprar()"
-            [disabled]="!selectedTypeId() || !legalAccepted"
+            [disabled]="!selectedTypeId() || !legalAccepted || purchasing"
           >
-            Comprar boletas
+            {{ purchasing ? 'Procesando…' : 'Comprar boletas' }}
           </button>
         } @else {
           <p class="muted">Próximamente tipos de boleta para este evento.</p>

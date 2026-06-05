@@ -2,48 +2,71 @@
   --ticket-accent: var(--tava-gold, #c9a227);
   max-width: 320px;
   margin: 0 auto;
-  border-radius: 14px;
+  border-radius: 18px;
   overflow: hidden;
-  background: linear-gradient(145deg, #1a1410 0%, #2d2218 55%, #1a1410 100%);
+  background: linear-gradient(155deg, #1a1410 0%, #2a1f18 45%, #1a1410 100%);
   color: #f5e6c8;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(201, 162, 39, 0.35);
+  box-shadow:
+    0 16px 48px rgba(0, 0, 0, 0.4),
+    0 0 0 1px rgba(201, 162, 39, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
   font-family: var(--tava-font-body, system-ui, sans-serif);
+  position: relative;
+
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 6px;
+    border: 1px solid rgba(201, 162, 39, 0.25);
+    border-radius: 14px;
+    pointer-events: none;
+  }
 
   &--vip {
     --ticket-accent: #e8c547;
-    box-shadow: 0 12px 40px rgba(201, 162, 39, 0.25), 0 0 0 2px rgba(232, 197, 71, 0.6);
+    box-shadow:
+      0 16px 48px rgba(201, 162, 39, 0.3),
+      0 0 0 2px rgba(232, 197, 71, 0.55);
   }
 
   &__head {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 0.65rem 1rem;
-    background: rgba(201, 162, 39, 0.15);
-    border-bottom: 1px dashed rgba(201, 162, 39, 0.4);
+    padding: 0.7rem 1rem;
+    background: linear-gradient(90deg, rgba(107, 26, 42, 0.5), rgba(201, 162, 39, 0.12));
+    border-bottom: 1px solid rgba(201, 162, 39, 0.3);
   }
 
   &__brand {
-    font-size: 0.7rem;
-    letter-spacing: 0.12em;
+    font-size: 0.68rem;
+    letter-spacing: 0.14em;
     text-transform: uppercase;
     color: var(--ticket-accent);
     font-weight: 700;
   }
 
   &__kind {
-    font-size: 0.65rem;
-    padding: 0.15rem 0.5rem;
+    font-size: 0.62rem;
+    padding: 0.2rem 0.55rem;
     border: 1px solid var(--ticket-accent);
     border-radius: 999px;
     color: var(--ticket-accent);
+    background: rgba(0, 0, 0, 0.2);
   }
 
   &__image {
-    height: 72px;
+    height: 88px;
     background-size: cover;
     background-position: center;
-    opacity: 0.85;
+    position: relative;
+
+    &::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to bottom, transparent 40%, rgba(26, 20, 16, 0.85));
+    }
   }
 
   &__body {
@@ -54,22 +77,24 @@
   &__event {
     margin: 0 0 0.35rem;
     font-family: var(--tava-font-display, Georgia, serif);
-    font-size: 1.15rem;
+    font-size: 1.2rem;
     color: var(--ticket-accent);
     line-height: 1.2;
+    text-shadow: 0 1px 8px rgba(201, 162, 39, 0.25);
   }
 
   &__meta,
   &__venue {
     margin: 0;
-    font-size: 0.75rem;
-    opacity: 0.85;
+    font-size: 0.74rem;
+    opacity: 0.88;
   }
 
   &__type {
     margin: 0.75rem 0 0.25rem;
     font-weight: 700;
     font-size: 0.95rem;
+    letter-spacing: 0.03em;
   }
 
   &__benefits {
@@ -81,13 +106,13 @@
 
   &__holder {
     margin: 0.5rem 0 0.25rem;
-    font-size: 0.8rem;
-    opacity: 0.7;
+    font-size: 0.82rem;
+    color: #e8d49b;
   }
 
   &__price {
     margin: 0.5rem 0 0;
-    font-size: 1.25rem;
+    font-size: 1.3rem;
     font-weight: 700;
     color: var(--ticket-accent);
   }
@@ -97,32 +122,33 @@
     align-items: center;
     justify-content: space-between;
     gap: 0.75rem;
-    padding: 0.75rem 1rem;
-    border-top: 1px dashed rgba(201, 162, 39, 0.35);
-    background: rgba(0, 0, 0, 0.2);
+    padding: 0.8rem 1rem;
+    border-top: 1px solid rgba(201, 162, 39, 0.25);
+    background: rgba(0, 0, 0, 0.25);
   }
 
   &__qr {
-    display: grid;
-    grid-template-columns: repeat(4, 6px);
-    gap: 2px;
-
-    span {
-      width: 6px;
-      height: 6px;
-      background: #f5e6c8;
-      border-radius: 1px;
-
-      &:nth-child(3n) {
-        opacity: 0.35;
-      }
-    }
+    width: 52px;
+    height: 52px;
+    border-radius: 8px;
+    border: 2px solid rgba(201, 162, 39, 0.5);
+    background:
+      radial-gradient(circle at 30% 30%, rgba(201, 162, 39, 0.15), transparent),
+      repeating-linear-gradient(
+        45deg,
+        rgba(245, 230, 200, 0.9) 0,
+        rgba(245, 230, 200, 0.9) 4px,
+        transparent 4px,
+        transparent 8px
+      );
+    opacity: 0.85;
   }
 
   &__code {
     margin: 0;
     font-size: 0.6rem;
-    letter-spacing: 0.08em;
-    opacity: 0.6;
+    letter-spacing: 0.1em;
+    opacity: 0.65;
+    text-transform: uppercase;
   }
 }

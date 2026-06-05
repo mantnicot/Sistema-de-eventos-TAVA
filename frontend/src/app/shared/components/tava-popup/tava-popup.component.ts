@@ -11,7 +11,8 @@ import { randomPopupPhrase } from '../../../core/utils/theatrical-messages.util'
 export class TavaPopupComponent implements OnDestroy {
   readonly notify = inject(NotificationService);
   readonly rotatingPhrase = signal('');
-  readonly roseSlots = [0, 1, 2, 3, 4, 5, 6, 7];
+  readonly roseSlots = Array.from({ length: 28 }, (_, i) => i);
+  readonly petalSlots = Array.from({ length: 16 }, (_, i) => i);
 
   private phraseTimer: ReturnType<typeof setInterval> | null = null;
 
@@ -26,6 +27,11 @@ export class TavaPopupComponent implements OnDestroy {
         }, 5000);
       }
     });
+  }
+
+  roseSize(i: number): string {
+    const sizes = ['1rem', '1.2rem', '1.45rem', '1.1rem', '1.6rem', '0.95rem'];
+    return sizes[i % sizes.length];
   }
 
   ngOnDestroy(): void {

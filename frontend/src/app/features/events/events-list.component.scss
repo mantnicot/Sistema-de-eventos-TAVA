@@ -63,9 +63,15 @@
 
   &__img {
     height: 220px;
-    background-size: cover;
-    background-position: center;
     background-color: var(--tava-velvet);
+    overflow: hidden;
+
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
   }
 
   &__body {
