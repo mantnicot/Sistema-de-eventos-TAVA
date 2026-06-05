@@ -54,6 +54,10 @@ export const routes: Routes = [
         path: 'coleccion',
         loadComponent: () => import('./features/loyalty/collectibles.component').then((m) => m.CollectiblesComponent),
       },
+      {
+        path: 'vender',
+        loadComponent: () => import('./features/seller/seller-sell.component').then((m) => m.SellerSellComponent),
+      },
     ],
   },
   { path: '**', redirectTo: '' },

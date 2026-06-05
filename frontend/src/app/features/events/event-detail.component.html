@@ -20,55 +20,68 @@
       </div>
     </div>
 
-    <div class="detail__body">
-      <section class="tava-card block">
-        <h2>Sinopsis</h2>
-        <p>{{ ev.theatrical_details?.synopsis || ev.description }}</p>
-      </section>
-
-      @if (ev.theatrical_details; as td) {
-        @if (td.director || (td.cast && td.cast.length > 0)) {
-          <section class="tava-card block">
-            <h2>Ficha artística</h2>
-            @if (td.director) {
-              <p><strong>Dirección:</strong> {{ td.director }}</p>
-            }
-            @if (td.cast && td.cast.length) {
-              <p><strong>Elenco:</strong> {{ td.cast.join(', ') }}</p>
-            }
-            @if (td.language) {
-              <p><strong>Idioma:</strong> {{ td.language }}</p>
-            }
-            @if (td.warnings) {
-              <p class="warn"><strong>Avisos:</strong> {{ td.warnings }}</p>
-            }
-            @if (td.credits) {
-              <p class="muted">{{ td.credits }}</p>
+    <div class="detail__layout">
+      <div class="detail__main">
+        @if (ev.trailer_url) {
+          <section class="tava-card block trailer-block">
+            <h2>Trailer</h2>
+            @if (safeTrailer(ev.trailer_url); as embed) {
+              <div class="trailer-block__frame">
+                <iframe
+                  [src]="embed"
+                  title="Trailer de {{ ev.name }}"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowfullscreen
+                ></iframe>
+              </div>
+            } @else {
+              <a [href]="ev.trailer_url" target="_blank" rel="noopener" class="tava-btn-primary">Ver trailer</a>
             }
           </section>
         }
-      }
 
-      @if (ev.trailer_url) {
         <section class="tava-card block">
-          <h2>Trailer</h2>
-          <a [href]="ev.trailer_url" target="_blank" rel="noopener" class="tava-btn-primary">Ver trailer</a>
+          <h2>Sinopsis</h2>
+          <p>{{ ev.theatrical_details?.synopsis || ev.description }}</p>
         </section>
-      }
 
-      @if (ev.gallery.length) {
-        <section class="gallery block">
-          <h2>Galería</h2>
-          <div class="gallery__grid">
-            @for (m of ev.gallery; track m.id) {
-              <img [src]="mediaUrl(m.url)" [alt]="ev.name" loading="lazy" />
-            }
-          </div>
-        </section>
-      }
+        @if (ev.theatrical_details; as td) {
+          @if (td.director || (td.cast && td.cast.length > 0)) {
+            <section class="tava-card block">
+              <h2>Ficha artística</h2>
+              @if (td.director) {
+                <p><strong>Dirección:</strong> {{ td.director }}</p>
+              }
+              @if (td.cast && td.cast.length) {
+                <p><strong>Elenco:</strong> {{ td.cast.join(', ') }}</p>
+              }
+              @if (td.language) {
+                <p><strong>Idioma:</strong> {{ td.language }}</p>
+              }
+              @if (td.warnings) {
+                <p class="warn"><strong>Avisos:</strong> {{ td.warnings }}</p>
+              }
+              @if (td.credits) {
+                <p class="muted">{{ td.credits }}</p>
+              }
+            </section>
+          }
+        }
 
-      <section class="cta-box tava-card">
-        <h3>Boletas</h3>
+        @if (ev.gallery.length) {
+          <section class="gallery block">
+            <h2>Galería</h2>
+            <div class="gallery__grid">
+              @for (m of ev.gallery; track m.id) {
+                <img [src]="mediaUrl(m.url)" [alt]="ev.name" loading="lazy" />
+              }
+            </div>
+          </section>
+        }
+      </div>
+
+      <aside class="detail__buy tava-card">
+        <h2 class="detail__buy-title">Boletas</h2>
         @if (ev.ticket_types.length) {
           @for (tt of ev.ticket_types; track tt.id) {
             <label class="ticket-opt">
@@ -82,6 +95,32 @@
               {{ tt.name }} — ${{ tt.price | number }} ({{ tt.quantity_available }} disp.)
             </label>
           }
+
+          <label class="field">
+            Cantidad
+            <input
+              type="number"
+              min="1"
+              max="20"
+              [(ngModel)]="quantity"
+              (ngModelChange)="onQuantityChange()"
+            />
+          </label>
+
+          <fieldset class="holders">
+            <legend>Nombre en cada boleta</legend>
+            @for (name of holderNames; track $index) {
+              <label>
+                Asistente {{ $index + 1 }}
+                <input
+                  type="text"
+                  [(ngModel)]="holderNames[$index]"
+                  placeholder="Nombre completo"
+                />
+              </label>
+            }
+          </fieldset>
+
           @if (selectedTicketType(); as st) {
             <div class="ticket-preview-buy">
               <p class="muted">Vista previa</p>
@@ -96,18 +135,31 @@
                 [price]="st.price"
                 [benefits]="st.benefits"
                 [imageUrl]="mediaUrl(ev.main_image_url)"
-                [holderName]="auth.user()?.full_name ?? 'Tu nombre'"
+                [holderName]="holderNames[0] || auth.user()?.full_name || 'Tu nombre'"
               />
             </div>
           }
-          <button type="button" class="tava-btn-primary" (click)="comprar()" [disabled]="!selectedTypeId()">
+
+          <label class="legal">
+            <input type="checkbox" [(ngModel)]="legalAccepted" />
+            Acepto los términos y condiciones de la boleta
+          </label>
+
+          <button
+            type="button"
+            class="tava-btn-primary detail__buy-btn"
+            (click)="comprar()"
+            [disabled]="!selectedTypeId() || !legalAccepted"
+          >
             Comprar boletas
           </button>
         } @else {
           <p class="muted">Próximamente tipos de boleta para este evento.</p>
         }
-      </section>
+      </aside>
+    </div>
 
+    <div class="detail__footer">
       <a routerLink="/eventos" class="back">← Volver a cartelera</a>
     </div>
   </article>

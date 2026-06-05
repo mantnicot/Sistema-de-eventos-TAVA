@@ -4,8 +4,14 @@
   margin: 0 auto;
   text-align: center;
 
-  h1 { font-family: var(--tava-font-display); }
-  > p { color: var(--tava-cream-muted); margin-bottom: 2rem; }
+  h1 {
+    font-family: var(--tava-font-display);
+  }
+
+  > p {
+    color: var(--tava-cream-muted);
+    margin-bottom: 2rem;
+  }
 }
 
 .progress {
@@ -24,13 +30,21 @@
     transition: width 0.6s ease;
   }
 
-  span, .reward { position: relative; }
-  .reward { color: var(--tava-gold-glow); font-weight: 600; margin-top: 0.75rem; }
+  span,
+  .reward {
+    position: relative;
+  }
+
+  .reward {
+    color: var(--tava-gold-glow);
+    font-weight: 600;
+    margin-top: 0.75rem;
+  }
 }
 
 .laminas {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
   gap: 1rem;
 }
 
@@ -41,13 +55,29 @@
   position: relative;
   overflow: hidden;
   animation: tava-curtain-reveal 0.5s ease backwards;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  text-align: left;
 
   &__shine {
     position: absolute;
     inset: 0;
-    background: linear-gradient(135deg, transparent 40%, rgba(255,255,255,0.15) 50%, transparent 60%);
+    background: linear-gradient(135deg, transparent 40%, rgba(255, 255, 255, 0.15) 50%, transparent 60%);
     animation: tava-shimmer 3s infinite;
     background-size: 200% 100%;
+    pointer-events: none;
+  }
+
+  &__title {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    padding: 0.5rem;
+    font-size: 0.7rem;
+    background: linear-gradient(transparent, rgba(0, 0, 0, 0.75));
+    color: var(--tava-cream);
   }
 
   &--locked {
@@ -55,6 +85,86 @@
     align-items: center;
     justify-content: center;
     background: var(--tava-stage-mid);
-    span { font-size: 2rem; color: var(--tava-gold); opacity: 0.4; }
+    cursor: default;
+
+    span {
+      font-size: 2rem;
+      color: var(--tava-gold);
+      opacity: 0.4;
+    }
+  }
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  z-index: 200;
+}
+
+.modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 201;
+  width: min(520px, 92vw);
+  max-height: 85vh;
+  overflow: auto;
+  border: none;
+  padding: 0;
+  margin: 0;
+
+  &__close {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.75rem;
+    z-index: 2;
+    background: transparent;
+    border: none;
+    color: var(--tava-cream);
+    font-size: 1.75rem;
+    cursor: pointer;
+    line-height: 1;
+  }
+
+  &__hero {
+    min-height: 160px;
+    background-size: cover;
+    background-position: center;
+    padding: 2rem 1.25rem 1.25rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+
+    h2 {
+      margin: 0 0 0.25rem;
+      font-family: var(--tava-font-display);
+    }
+
+    p {
+      margin: 0;
+      font-size: 0.9rem;
+      opacity: 0.9;
+    }
+  }
+
+  &__body {
+    padding: 1.25rem;
+    text-align: left;
+
+    p {
+      margin: 0 0 0.65rem;
+      line-height: 1.5;
+    }
+
+    .muted {
+      font-size: 0.85rem;
+    }
+
+    a {
+      display: inline-block;
+      margin-top: 0.75rem;
+    }
   }
 }

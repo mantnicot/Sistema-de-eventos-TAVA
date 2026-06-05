@@ -1,5 +1,5 @@
 .profile {
-  max-width: 800px;
+  max-width: 860px;
   margin: 0 auto;
   padding: 2rem;
 
@@ -7,29 +7,112 @@
     padding: 2rem;
     text-align: center;
     margin-bottom: 2rem;
-    h1 { font-family: var(--tava-font-display); margin: 0; }
-    p { color: var(--tava-cream-muted); }
+
+    h1 {
+      font-family: var(--tava-font-display);
+      margin: 0;
+    }
+
+    p {
+      color: var(--tava-cream-muted);
+    }
   }
 }
 
-.section h2 {
-  font-family: var(--tava-font-display);
-  color: var(--tava-gold-glow);
+.section {
+  margin-bottom: 2.5rem;
+
+  h2 {
+    font-family: var(--tava-font-display);
+    color: var(--tava-gold-glow);
+    margin: 0 0 0.35rem;
+  }
+
+  &__hint {
+    color: var(--tava-cream-muted);
+    font-size: 0.9rem;
+    margin: 0 0 1rem;
+  }
 }
 
 .ticket {
-  padding: 1rem 1.25rem;
-  margin-bottom: 0.75rem;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem;
+  display: grid;
+  grid-template-columns: 100px 1fr auto;
+  gap: 1rem;
+  padding: 1rem;
+  margin-bottom: 0.85rem;
   align-items: center;
-  justify-content: space-between;
 
-  .qr-hint { font-size: 0.75rem; color: var(--tava-gold); }
-  .status { font-size: 0.85rem; color: #81c784; }
-  .status.used { color: #e57373; }
+  @media (max-width: 640px) {
+    grid-template-columns: 1fr;
+  }
+
+  &__visual {
+    width: 100px;
+    height: 130px;
+    border-radius: var(--tava-radius);
+    background: var(--tava-velvet) center/cover;
+  }
+
+  &__body {
+    min-width: 0;
+
+    h3 {
+      margin: 0 0 0.35rem;
+      font-family: var(--tava-font-display);
+    }
+  }
+
+  &__meta {
+    font-size: 0.85rem;
+    color: var(--tava-cream-muted);
+    margin: 0 0 0.5rem;
+  }
+
+  .holder {
+    font-size: 0.9rem;
+    margin: 0.25rem 0;
+  }
+
+  .status {
+    font-size: 0.85rem;
+    color: #81c784;
+  }
+
+  .status.used {
+    color: #e57373;
+  }
+
+  &__pdf {
+    white-space: nowrap;
+    align-self: center;
+  }
 }
 
-.muted { color: var(--tava-cream-muted); }
-.center { text-align: center; padding: 3rem; }
+.sale {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  margin-bottom: 0.75rem;
+
+  h3 {
+    margin: 0 0 0.25rem;
+    font-size: 1rem;
+  }
+
+  p {
+    margin: 0;
+    font-size: 0.9rem;
+  }
+}
+
+.muted {
+  color: var(--tava-cream-muted);
+}
+
+.center {
+  text-align: center;
+  padding: 3rem;
+}

@@ -1,0 +1,67 @@
+<section class="sell">
+  <header class="sell__header tava-card">
+    <h1 class="tava-glow-text">Vender boletas</h1>
+    <p>Registra la venta a nombre del asistente. El comprador y tú recibirán el PDF con QR por correo.</p>
+  </header>
+
+  <form class="sell__form tava-card" (ngSubmit)="vender()">
+    <label>
+      Evento
+      <select [(ngModel)]="selectedEventId" name="event" (ngModelChange)="onEventChange()" required>
+        <option value="">Selecciona un evento</option>
+        @for (ev of events(); track ev.id) {
+          <option [value]="ev.id">{{ ev.name }} — {{ ev.event_date }}</option>
+        }
+      </select>
+    </label>
+
+    @if (eventDetail(); as ev) {
+      <label>
+        Tipo de boleta
+        <select [(ngModel)]="selectedTypeId" name="type" required>
+          @for (tt of ev.ticket_types; track tt.id) {
+            <option [value]="tt.id">
+              {{ tt.name }} — ${{ tt.price | number }} ({{ tt.quantity_available }} disp.)
+            </option>
+          }
+        </select>
+      </label>
+
+      <label>
+        Cantidad
+        <input
+          type="number"
+          min="1"
+          max="20"
+          [(ngModel)]="quantity"
+          name="qty"
+          (ngModelChange)="onQuantityChange()"
+          required
+        />
+      </label>
+
+      <label>
+        Correo del comprador (cuenta registrada)
+        <input type="email" [(ngModel)]="buyerEmail" name="buyer" required placeholder="comprador@correo.com" />
+      </label>
+
+      <fieldset class="holders">
+        <legend>Nombre en cada boleta</legend>
+        @for (name of holderNames; track $index) {
+          <label>
+            Asistente {{ $index + 1 }}
+            <input
+              type="text"
+              [(ngModel)]="holderNames[$index]"
+              [name]="'holder' + $index"
+              required
+              placeholder="Nombre completo"
+            />
+          </label>
+        }
+      </fieldset>
+
+      <button type="submit" class="tava-btn-primary sell__cta">Confirmar venta y enviar PDF</button>
+    }
+  </form>
+</section>

@@ -25,6 +25,7 @@ async def apply_schema_upgrades(conn: AsyncConnection) -> None:
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS privacy_policy_version VARCHAR(20)",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS marketing_opt_in BOOLEAN NOT NULL DEFAULT FALSE",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS marketing_opt_in_at TIMESTAMPTZ",
+        "ALTER TABLE tickets ADD COLUMN IF NOT EXISTS holder_name VARCHAR(200)",
         """
         CREATE TABLE IF NOT EXISTS password_reset_tokens (
             id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

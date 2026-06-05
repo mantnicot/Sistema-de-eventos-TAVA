@@ -1,8 +1,10 @@
 """Envío de correos: API HTTP (Brevo/Resend) en producción; SMTP solo en desarrollo local."""
 import asyncio
+import base64
 import logging
 import re
 import smtplib
+from email.mime.application import MIMEApplication
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
@@ -171,7 +173,9 @@ def _send_smtp_sync(to_email: str, subject: str, html: str, text: str) -> None:
         server.sendmail(sender, [to_email], msg.as_string())
 
 
-async def _send_brevo(to_email: str, subject: str, html: str, text: str) -> bool:
+async def _send_brevo(
+    to_email: str, subject: str, html: str, text: str, attachment: tuple[str, bytes] | None = None
+) -> bool:
     api_key = settings.brevo_api_key.strip()
     if not api_key:
         return False
@@ -191,6 +195,18 @@ async def _send_brevo(to_email: str, subject: str, html: str, text: str) -> bool
                     "subject": subject,
                     "htmlContent": html,
                     "textContent": text,
+                    **(
+                        {
+                            "attachment": [
+                                {
+                                    "content": base64.b64encode(attachment[1]).decode(),
+                                    "name": attachment[0],
+                                }
+                            ]
+                        }
+                        if attachment
+                        else {}
+                    ),
                 },
             )
         if response.is_success:
@@ -202,7 +218,9 @@ async def _send_brevo(to_email: str, subject: str, html: str, text: str) -> bool
         return False
 
 
-async def _send_resend(to_email: str, subject: str, html: str, text: str) -> bool:
+async def _send_resend(
+    to_email: str, subject: str, html: str, text: str, attachment: tuple[str, bytes] | None = None
+) -> bool:
     api_key = settings.resend_api_key.strip()
     if not api_key:
         return False
@@ -218,6 +236,18 @@ async def _send_resend(to_email: str, subject: str, html: str, text: str) -> boo
                     "subject": subject,
                     "html": html,
                     "text": text,
+                    **(
+                        {
+                            "attachments": [
+                                {
+                                    "filename": attachment[0],
+                                    "content": base64.b64encode(attachment[1]).decode(),
+                                }
+                            ]
+                        }
+                        if attachment
+                        else {}
+                    ),
                 },
             )
         if response.is_success:
@@ -229,7 +259,47 @@ async def _send_resend(to_email: str, subject: str, html: str, text: str) -> boo
         return False
 
 
-async def _deliver_email(to_email: str, subject: str, html: str, text: str) -> bool:
+def _send_smtp_with_attachment_sync(
+    to_email: str, subject: str, html: str, text: str, attachment: tuple[str, bytes] | None
+) -> None:
+    password = _clean_secret(settings.smtp_password)
+    login = _smtp_login_email()
+    msg = MIMEMultipart("mixed")
+    msg["Subject"] = subject
+    msg["From"] = _from_header()
+    msg["To"] = to_email
+    alt = MIMEMultipart("alternative")
+    alt.attach(MIMEText(text, "plain", "utf-8"))
+    alt.attach(MIMEText(html, "html", "utf-8"))
+    msg.attach(alt)
+    if attachment:
+        part = MIMEApplication(attachment[1], _subtype="pdf")
+        part.add_header("Content-Disposition", "attachment", filename=attachment[0])
+        msg.attach(part)
+    host = settings.smtp_host.strip()
+    port = settings.smtp_port
+    timeout = 30
+    if port == 465:
+        with smtplib.SMTP_SSL(host, port, timeout=timeout) as server:
+            server.login(login, password)
+            server.sendmail(_envelope_sender(), [to_email], msg.as_string())
+        return
+    with smtplib.SMTP(host, port, timeout=timeout) as server:
+        server.ehlo()
+        if server.has_extn("starttls"):
+            server.starttls()
+            server.ehlo()
+        server.login(login, password)
+        server.sendmail(_envelope_sender(), [to_email], msg.as_string())
+
+
+async def _deliver_email(
+    to_email: str,
+    subject: str,
+    html: str,
+    text: str,
+    attachment: tuple[str, bytes] | None = None,
+) -> bool:
     global _last_failure
     _last_failure = ""
 
@@ -241,20 +311,25 @@ async def _deliver_email(to_email: str, subject: str, html: str, text: str) -> b
         return False
 
     if brevo_configured():
-        if await _send_brevo(to_email, subject, html, text):
+        if await _send_brevo(to_email, subject, html, text, attachment):
             logger.info("Correo enviado vía Brevo a %s", to_email)
             return True
         logger.warning("Brevo falló; probando otros transportes")
 
     if resend_configured():
-        if await _send_resend(to_email, subject, html, text):
+        if await _send_resend(to_email, subject, html, text, attachment):
             logger.info("Correo enviado vía Resend a %s", to_email)
             return True
         logger.warning("Resend falló; probando SMTP si está permitido")
 
     if smtp_allowed():
         try:
-            await asyncio.to_thread(_send_smtp_sync, to_email, subject, html, text)
+            if attachment:
+                await asyncio.to_thread(
+                    _send_smtp_with_attachment_sync, to_email, subject, html, text, attachment
+                )
+            else:
+                await asyncio.to_thread(_send_smtp_sync, to_email, subject, html, text)
             logger.info("Correo enviado vía SMTP a %s", to_email)
             return True
         except smtplib.SMTPAuthenticationError as exc:
@@ -302,3 +377,27 @@ def _password_reset_content(full_name: str, reset_url: str) -> tuple[str, str, s
 async def send_password_reset_email(to_email: str, full_name: str, reset_url: str) -> bool:
     subject, html, text = _password_reset_content(full_name, reset_url)
     return await _deliver_email(to_email, subject, html, text)
+
+
+async def send_tickets_confirmation_email(
+    to_email: str,
+    full_name: str,
+    event_name: str,
+    quantity: int,
+    pdf_bytes: bytes,
+    *,
+    is_seller_copy: bool = False,
+) -> bool:
+    role = "confirmación de venta" if is_seller_copy else "confirmación de compra"
+    subject = f"Boletas {event_name} — TAVA Teatro"
+    html = f"""
+    <div style="font-family: Georgia, serif; max-width: 520px; margin: 0 auto; color: #3d2a14;">
+      <h1 style="color: #b8860b;">TAVA Teatro</h1>
+      <p>Hola <strong>{full_name}</strong>,</p>
+      <p>Adjuntamos tu {role} de <strong>{quantity}</strong> boleta(s) para <strong>{event_name}</strong>.</p>
+      <p>El PDF incluye el código QR para validar el ingreso. Llega con 30 minutos de anticipación.</p>
+    </div>
+    """
+    text = f"Hola {full_name},\n\nAdjuntamos {quantity} boleta(s) para {event_name}.\n"
+    filename = f"boletas-{event_name.replace(' ', '-')[:40]}.pdf"
+    return await _deliver_email(to_email, subject, html, text, (filename, pdf_bytes))

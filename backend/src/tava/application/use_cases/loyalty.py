@@ -3,7 +3,7 @@ from uuid import UUID
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from tava.infrastructure.persistence.models import CollectibleModel, LoyaltyRewardModel
+from tava.infrastructure.persistence.models import CollectibleModel, EventModel, LoyaltyRewardModel
 
 
 LOYALTY_EVENTS_REQUIRED = 5
@@ -48,11 +48,12 @@ class LoyaltyUseCase:
 
     async def get_collection(self, user_id: UUID) -> dict:
         result = await self._session.execute(
-            select(CollectibleModel).where(CollectibleModel.user_id == user_id).order_by(
-                CollectibleModel.earned_at.desc()
-            )
+            select(CollectibleModel, EventModel)
+            .join(EventModel, CollectibleModel.event_id == EventModel.id)
+            .where(CollectibleModel.user_id == user_id)
+            .order_by(CollectibleModel.earned_at.desc())
         )
-        items = result.scalars().all()
+        rows = result.all()
         reward_result = await self._session.execute(
             select(LoyaltyRewardModel).where(
                 LoyaltyRewardModel.user_id == user_id,
@@ -60,13 +61,32 @@ class LoyaltyUseCase:
             )
         )
         reward = reward_result.scalar_one_or_none()
+        laminas = []
+        for c, ev in rows:
+            td = ev.theatrical_details if isinstance(ev.theatrical_details, dict) else {}
+            laminas.append(
+                {
+                    "event_id": str(c.event_id),
+                    "lamina_url": c.lamina_url or ev.main_image_url,
+                    "earned_at": c.earned_at.isoformat(),
+                    "event": {
+                        "name": ev.name,
+                        "description": ev.description,
+                        "event_date": ev.event_date.isoformat(),
+                        "event_time": ev.event_time.isoformat(),
+                        "city": ev.city,
+                        "address": ev.address,
+                        "category": ev.category,
+                        "main_image_url": ev.main_image_url,
+                        "trailer_url": ev.trailer_url,
+                        "theatrical_details": td,
+                    },
+                }
+            )
         return {
-            "laminas": [
-                {"event_id": str(c.event_id), "lamina_url": c.lamina_url, "earned_at": c.earned_at.isoformat()}
-                for c in items
-            ],
-            "total": len(items),
-            "progress_to_free_ticket": min(len(items), LOYALTY_EVENTS_REQUIRED),
+            "laminas": laminas,
+            "total": len(laminas),
+            "progress_to_free_ticket": min(len(laminas), LOYALTY_EVENTS_REQUIRED),
             "events_required": LOYALTY_EVENTS_REQUIRED,
             "free_ticket_available": reward is not None,
         }

@@ -37,6 +37,16 @@
       <div class="nav__divider" aria-hidden="true"></div>
     }
 
+    @if (auth.isSeller()) {
+      <div class="nav__cluster">
+        <span class="nav__heading">Taquilla</span>
+        <div class="nav__links">
+          <a routerLink="/vender" routerLinkActive="active">Vender boletas</a>
+        </div>
+      </div>
+      <div class="nav__divider" aria-hidden="true"></div>
+    }
+
     @if (auth.isValidator()) {
       <div class="nav__cluster">
         <span class="nav__heading">Personal</span>

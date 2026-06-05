@@ -1,6 +1,6 @@
 <section class="collection">
   <h1 class="tava-glow-text">Coleccionables TAVA</h1>
-  <p>Cada función te regala una lámina digital. ¡5 láminas = 1 entrada gratis!</p>
+  <p>Cada función te regala una lámina digital. Haz clic en una lámina para ver la ficha del evento. ¡5 láminas = 1 entrada gratis!</p>
 
   @if (collection(); as c) {
     <div class="progress tava-card">
@@ -13,9 +13,20 @@
 
     <div class="laminas">
       @for (lamina of c.laminas; track lamina.event_id) {
-        <div class="lamina tava-card" [style.backgroundImage]="'url(' + lamina.lamina_url + ')'">
+        <button
+          type="button"
+          class="lamina tava-card"
+          [style.backgroundImage]="'url(' + mediaUrl(lamina.lamina_url) + ')'"
+          (click)="openLamina(lamina)"
+          [attr.aria-label]="'Lámina de ' + (lamina.event?.name ?? 'evento')"
+        >
           <span class="lamina__shine"></span>
-        </div>
+          @if (lamina.event; as ev) {
+            @if (ev.name) {
+              <span class="lamina__title">{{ ev.name }}</span>
+            }
+          }
+        </button>
       }
       @for (i of [1,2,3,4,5].slice(0, lockedCount()); track i) {
         <div class="lamina lamina--locked tava-card">
@@ -25,3 +36,37 @@
     </div>
   }
 </section>
+
+@if (selectedLamina(); as sel) {
+  <div class="modal-backdrop" (click)="closeModal()" role="presentation"></div>
+  <dialog class="modal tava-card" open>
+    <button type="button" class="modal__close" (click)="closeModal()" aria-label="Cerrar">×</button>
+    <div
+      class="modal__hero"
+      [style.backgroundImage]="'linear-gradient(to top, var(--tava-hero-overlay), transparent), url(' + mediaUrl(sel.lamina_url || sel.event?.main_image_url) + ')'"
+    >
+      <h2 class="tava-glow-text">{{ sel.event?.name ?? 'Evento' }}</h2>
+      @if (sel.event) {
+        <p>{{ sel.event.city }} · {{ sel.event.event_date | date:'mediumDate' }}</p>
+      }
+    </div>
+    @if (sel.event; as ev) {
+      <div class="modal__body">
+        <p>{{ ev.theatrical_details?.synopsis || ev.description }}</p>
+        @if (ev.theatrical_details; as td) {
+          @if (td.director) {
+            <p><strong>Dirección:</strong> {{ td.director }}</p>
+          }
+          @if (td.cast && td.cast.length) {
+            <p><strong>Elenco:</strong> {{ td.cast.join(', ') }}</p>
+          }
+          @if (td.age_rating) {
+            <p><strong>Edad:</strong> {{ td.age_rating }}</p>
+          }
+        }
+        <p class="muted">Lámina obtenida: {{ sel.earned_at | date:'medium' }}</p>
+        <a [routerLink]="['/eventos', sel.event_id]" class="tava-btn-primary" (click)="closeModal()">Ver evento</a>
+      </div>
+    }
+  </dialog>
+}

@@ -209,10 +209,27 @@ class PurchaseRequest(BaseModel):
     event_id: UUID
     ticket_type_id: UUID
     quantity: int = Field(ge=1, le=20)
+    holder_names: list[str] | None = None
     seat_ids: list[UUID] | None = None
     legal_accepted: bool = False
     captcha_token: str | None = None
     promotion_code: str | None = None
+
+
+class SellTicketRequest(BaseModel):
+    event_id: UUID
+    ticket_type_id: UUID
+    quantity: int = Field(ge=1, le=20)
+    buyer_email: EmailStr
+    holder_names: list[str] = Field(min_length=1)
+    legal_accepted: bool = True
+    captcha_token: str | None = None
+
+    @model_validator(mode="after")
+    def holders_match_qty(self):
+        if len(self.holder_names) != self.quantity:
+            raise ValueError("Debe indicar un nombre por cada boleta (holder_names)")
+        return self
 
 
 class ApiMessage(BaseModel):
