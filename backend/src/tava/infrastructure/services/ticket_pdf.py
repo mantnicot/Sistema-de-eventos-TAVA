@@ -12,7 +12,8 @@ from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.units import cm, mm
 from reportlab.pdfgen import canvas
 from reportlab.platypus import Paragraph
-from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY
+from reportlab.lib.enums import TA_JUSTIFY
+from reportlab.lib.utils import ImageReader
 
 from tava.config import get_settings
 
@@ -56,19 +57,32 @@ Al comprar el boleto para <b>{event_name}</b> el cliente acepta y se compromete 
 cumplir con los términos y condiciones establecidos; en caso de no estar de acuerdo posee 2 días hábiles después de la compra de la boleta."""
 
 
-def _resolve_image_path(image_url: str | None) -> Path | None:
+def _resolve_image_reader(image_url: str | None) -> ImageReader | None:
     if not image_url:
         return None
     raw = image_url.strip()
+
     if raw.startswith("http"):
+        try:
+            import httpx
+
+            response = httpx.get(raw, timeout=15, follow_redirects=True)
+            if response.is_success and response.content:
+                return ImageReader(io.BytesIO(response.content))
+        except Exception:
+            pass
         path_part = urlparse(raw).path
         if path_part.startswith("/uploads/"):
             raw = path_part
+
     if raw.startswith("/uploads/"):
         p = Path(settings.uploads_dir) / raw.removeprefix("/uploads/").lstrip("/")
-        return p if p.is_file() else None
+        if p.is_file():
+            return ImageReader(str(p))
     p = Path(raw)
-    return p if p.is_file() else None
+    if p.is_file():
+        return ImageReader(str(p))
+    return None
 
 
 def _draw_ticket_page(
@@ -113,12 +127,12 @@ def _draw_ticket_page(
     y = inner_y + inner_h - 2.2 * cm
 
     # Imagen del evento
-    img_path = _resolve_image_path(main_image_url)
+    img_reader = _resolve_image_reader(main_image_url)
     img_h = 4.2 * cm
-    if img_path:
+    if img_reader:
         try:
             c.drawImage(
-                str(img_path),
+                img_reader,
                 inner_x + 22,
                 y - img_h,
                 width=inner_w - 44,
@@ -185,7 +199,7 @@ def _draw_ticket_page(
     c.setStrokeColor(GOLD)
     c.setLineWidth(2)
     c.roundRect(qr_x - 6, y - qr_size - 6, qr_size + 12, qr_size + 12, 8, fill=0, stroke=1)
-    c.drawImage(qr_buf, qr_x, y - qr_size, width=qr_size, height=qr_size, mask="auto")
+    c.drawImage(ImageReader(qr_buf), qr_x, y - qr_size, width=qr_size, height=qr_size, mask="auto")
     y -= qr_size + 0.55 * cm
 
     c.setFillColor(GOLD)

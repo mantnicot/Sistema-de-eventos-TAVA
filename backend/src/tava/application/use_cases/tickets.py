@@ -232,7 +232,7 @@ class TicketUseCase:
                 }
                 for t in tickets
             ],
-            "pdf_url": f"/api/v1/tickets/orders/{order.id}/pdf",
+            "pdf_url": f"/tickets/orders/{order.id}/pdf",
             "message": "Boletas generadas. Revisa tu correo con el PDF adjunto.",
         }
 
@@ -293,7 +293,7 @@ class TicketUseCase:
                 "qr_token": t.qr_token,
                 "is_used": t.is_used,
                 "main_image_url": ev.main_image_url,
-                "pdf_url": f"/api/v1/tickets/orders/{t.order_id}/pdf",
+                "pdf_url": f"/tickets/orders/{t.order_id}/pdf",
             }
             for t, ev, tt, _o in rows
         ]
@@ -318,7 +318,7 @@ class TicketUseCase:
                     "total": float(order.total_amount),
                     "quantity": len(tickets),
                     "created_at": order.created_at.isoformat() if order.created_at else None,
-                    "pdf_url": f"/api/v1/tickets/orders/{order.id}/pdf",
+                    "pdf_url": f"/tickets/orders/{order.id}/pdf",
                     "holders": [t.holder_name for t in tickets],
                 }
             )

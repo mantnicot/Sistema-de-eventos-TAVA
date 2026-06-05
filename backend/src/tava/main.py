@@ -122,6 +122,8 @@ async def health():
     from tava.infrastructure.services.email import email_status_summary, email_transport_ready
 
     mail = email_status_summary()
+    from tava.infrastructure.services.cloudinary_storage import cloudinary_configured
+
     return {
         "status": "ok",
         "service": "tava-api",
@@ -131,6 +133,7 @@ async def health():
         "resend_configured": mail.get("resend_configured"),
         "smtp_blocked_on_render": mail.get("smtp_blocked_on_render"),
         "sender_email": mail.get("sender_email"),
+        "cloudinary_configured": cloudinary_configured(),
     }
 
 

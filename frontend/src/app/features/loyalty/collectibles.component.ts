@@ -3,6 +3,7 @@ import { DatePipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { ApiService } from '../../core/services/api.service';
 import { TavaEvent, TheatricalDetails } from '../../core/models/event.model';
+import { onEventImageError } from '../../core/utils/event-image.util';
 import { resolveMediaUrl } from '../../core/utils/media-url.util';
 
 interface LaminaItem {
@@ -38,11 +39,7 @@ export class CollectiblesComponent implements OnInit {
   readonly mediaUrl = resolveMediaUrl;
   readonly laminaImg = laminaImageUrl;
 
-  onImgError(ev: Event): void {
-    const img = ev.target as HTMLImageElement;
-    if (img.src.includes('logo-tava')) return;
-    img.src = '/logo-tava.png';
-  }
+  readonly onImgError = onEventImageError;
 
   lockedCount(): number {
     const c = this.collection();

@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" role="img" aria-label="Sin imagen">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#2d2218"/>
+      <stop offset="50%" style="stop-color:#6b1a2a"/>
+      <stop offset="100%" style="stop-color:#1a1410"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#e8c547"/>
+      <stop offset="100%" style="stop-color:#8b6914"/>
+    </linearGradient>
+  </defs>
+  <rect width="400" height="300" fill="url(#bg)"/>
+  <ellipse cx="200" cy="260" rx="120" ry="18" fill="#c9a227" opacity="0.25"/>
+  <path d="M80 220 Q200 80 320 220" fill="none" stroke="url(#gold)" stroke-width="3" opacity="0.6"/>
+  <text x="200" y="155" text-anchor="middle" fill="#c9a227" font-family="Georgia, serif" font-size="42"><­</text>
+  <text x="200" y="195" text-anchor="middle" fill="#f5e6c8" font-family="Georgia, serif" font-size="16" opacity="0.85">TAVA Teatro</text>
+</svg>

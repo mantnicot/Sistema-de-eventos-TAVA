@@ -2,6 +2,7 @@ import { Component, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { ApiService } from '../../core/services/api.service';
+import { onEventImageError } from '../../core/utils/event-image.util';
 import { resolveMediaUrl } from '../../core/utils/media-url.util';
 
 interface FeaturedEvent {
@@ -27,11 +28,7 @@ export class HomeComponent implements OnInit {
 
   readonly mediaUrl = resolveMediaUrl;
 
-  onImgError(ev: Event): void {
-    const img = ev.target as HTMLImageElement;
-    if (img.src.includes('logo-tava')) return;
-    img.src = '/logo-tava.png';
-  }
+  readonly onImgError = onEventImageError;
 
   ngOnInit(): void {
     this.api.get<FeaturedEvent[]>('/marketing/carousel/destacados').subscribe({

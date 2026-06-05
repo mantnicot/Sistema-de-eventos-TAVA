@@ -9,12 +9,14 @@ import { NotificationService } from '../../core/services/notification.service';
 import { TavaEventDetail } from '../../core/models/event.model';
 import { mediaBackgroundStyle, resolveMediaUrl } from '../../core/utils/media-url.util';
 import { trailerEmbedUrl, trailerVideoSrc } from '../../core/utils/trailer-embed.util';
+import { onEventImageError } from '../../core/utils/event-image.util';
+import { TavaTheatricalVideoComponent } from '../../shared/components/tava-theatrical-video/tava-theatrical-video.component';
 import { TavaTicketPreviewComponent } from '../../shared/components/tava-ticket-preview/tava-ticket-preview.component';
 
 @Component({
   selector: 'app-event-detail',
   standalone: true,
-  imports: [RouterLink, FormsModule, DecimalPipe, TavaTicketPreviewComponent],
+  imports: [RouterLink, FormsModule, DecimalPipe, TavaTheatricalVideoComponent, TavaTicketPreviewComponent],
   templateUrl: './event-detail.component.html',
   styleUrl: './event-detail.component.scss',
 })
@@ -32,11 +34,7 @@ export class EventDetailComponent implements OnInit {
   readonly trailerVideo = trailerVideoSrc;
   purchasing = false;
 
-  onImgError(ev: Event): void {
-    const img = ev.target as HTMLImageElement;
-    if (img.src.includes('logo-tava')) return;
-    img.src = '/logo-tava.png';
-  }
+  readonly onImgError = onEventImageError;
 
   safeTrailer(url: string | undefined): SafeResourceUrl | null {
     const embed = trailerEmbedUrl(url);

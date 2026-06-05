@@ -3,6 +3,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../core/services/api.service';
 import { TavaEvent } from '../../core/models/event.model';
+import { onEventImageError } from '../../core/utils/event-image.util';
 import { resolveMediaUrl } from '../../core/utils/media-url.util';
 
 @Component({
@@ -20,11 +21,7 @@ export class EventsListComponent implements OnInit {
   category = '';
   readonly mediaUrl = resolveMediaUrl;
 
-  onImgError(ev: Event): void {
-    const img = ev.target as HTMLImageElement;
-    if (img.src.includes('logo-tava')) return;
-    img.src = '/logo-tava.png';
-  }
+  readonly onImgError = onEventImageError;
 
   ngOnInit(): void {
     this.route.queryParamMap.subscribe((q) => {

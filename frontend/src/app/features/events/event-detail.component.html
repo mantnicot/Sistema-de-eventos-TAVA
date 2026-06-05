@@ -24,9 +24,11 @@
           <section class="tava-card block trailer-block">
             <h2>Trailer</h2>
             @if (trailerVideo(ev.trailer_url); as videoSrc) {
-              <video class="trailer-block__video" [src]="videoSrc" controls playsinline preload="metadata">
-                Tu navegador no reproduce video embebido.
-              </video>
+              <tava-theatrical-video
+                [src]="videoSrc"
+                [poster]="mediaUrl(ev.main_image_url)"
+                [title]="'Trailer — ' + ev.name"
+              />
             } @else {
               @if (safeTrailer(ev.trailer_url); as embed) {
                 <div class="trailer-block__frame">

@@ -19,6 +19,12 @@ class Settings(BaseSettings):
     uploads_dir: str = "uploads"
     """URL pública del API sin /api/v1 (p. ej. https://tava-api-1.onrender.com)."""
     api_public_base_url: str = ""
+    # Cloudinary — almacenamiento persistente (imágenes/videos no se pierden en Render)
+    cloudinary_cloud_name: str = ""
+    cloudinary_api_key: str = ""
+    cloudinary_api_secret: str = ""
+    """Preset de subida sin firma (más fácil en Render). Crear en Cloudinary → Settings → Upload."""
+    cloudinary_upload_preset: str = ""
     # Correo (opcional: sin SMTP solo se registra en logs en desarrollo)
     smtp_host: str = ""
     smtp_port: int = 587

@@ -35,6 +35,13 @@ export class ApiService {
   }
 
   downloadBlob(path: string): Observable<Blob> {
-    return this.http.get(`${this.base}${path}`, { responseType: 'blob' });
+    let p = path.trim();
+    if (p.startsWith('http://') || p.startsWith('https://')) {
+      return this.http.get(p, { responseType: 'blob' });
+    }
+    // Evitar /api/v1 duplicado si el backend devolvió ruta con prefijo antiguo
+    p = p.replace(/^\/api\/v1/, '');
+    if (!p.startsWith('/')) p = `/${p}`;
+    return this.http.get(`${this.base}${p}`, { responseType: 'blob' });
   }
 }

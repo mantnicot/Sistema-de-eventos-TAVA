@@ -4,6 +4,7 @@ import { DatePipe, DecimalPipe } from '@angular/common';
 import { AuthService } from '../../core/services/auth.service';
 import { ApiService } from '../../core/services/api.service';
 import { NotificationService } from '../../core/services/notification.service';
+import { onEventImageError } from '../../core/utils/event-image.util';
 import { resolveMediaUrl } from '../../core/utils/media-url.util';
 
 interface MyTicket {
@@ -63,11 +64,7 @@ export class ProfileComponent implements OnInit {
     }
   }
 
-  onImgError(ev: Event): void {
-    const img = ev.target as HTMLImageElement;
-    if (img.src.includes('logo-tava')) return;
-    img.src = '/logo-tava.png';
-  }
+  readonly onImgError = onEventImageError;
 
   downloadPdf(pdfUrl: string, label: string): void {
     this.api.downloadBlob(pdfUrl).subscribe({

@@ -1,0 +1,42 @@
+<div class="theater-video">
+  <div class="theater-video__frame">
+    <div class="theater-video__curtains" aria-hidden="true">
+      <span></span><span></span>
+    </div>
+    <video
+      #video
+      class="theater-video__media"
+      [src]="src()"
+      [poster]="poster() ?? undefined"
+      playsinline
+      preload="metadata"
+      (play)="onPlay()"
+      (pause)="onPause()"
+      (timeupdate)="onTimeUpdate()"
+      (click)="togglePlay()"
+    ></video>
+    @if (!playing) {
+      <button type="button" class="theater-video__play" (click)="togglePlay()" [attr.aria-label]="'Reproducir ' + title()">
+        <span class="theater-video__play-ring"></span>
+        <span class="theater-video__play-icon">▶</span>
+      </button>
+    }
+  </div>
+  <div class="theater-video__bar">
+    <button type="button" class="theater-video__btn" (click)="togglePlay()" [attr.aria-label]="playing ? 'Pausar' : 'Reproducir'">
+      {{ playing ? '⏸' : '▶' }}
+    </button>
+    <input
+      #progress
+      type="range"
+      class="theater-video__progress"
+      min="0"
+      value="0"
+      (input)="seek($event)"
+    />
+    <button type="button" class="theater-video__btn" (click)="toggleMute()" [attr.aria-label]="muted ? 'Activar sonido' : 'Silenciar'">
+      {{ muted ? '🔇' : '🔊' }}
+    </button>
+  </div>
+  <p class="theater-video__label">{{ title() }}</p>
+</div>
