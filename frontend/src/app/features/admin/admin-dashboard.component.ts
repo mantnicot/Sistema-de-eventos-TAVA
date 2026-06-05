@@ -6,6 +6,13 @@ import { ApiService } from '../../core/services/api.service';
 import { AuthService } from '../../core/services/auth.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { SiteAppearance, SiteSettingsService } from '../../core/services/site-settings.service';
+import {
+  GALLERY_IMAGE_SPEC,
+  GALLERY_VIDEO_SPEC,
+  IMAGE_EVENT_SPEC,
+  VIDEO_HERO_SPEC,
+  VIDEO_TRAILER_SPEC,
+} from '../../core/constants/media-upload-specs.const';
 import { TavaFileUploadComponent } from '../../shared/components/tava-file-upload/tava-file-upload.component';
 import { TavaTicketPreviewComponent } from '../../shared/components/tava-ticket-preview/tava-ticket-preview.component';
 import { TavaEvent, TavaEventDetail, TheatricalDetails } from '../../core/models/event.model';
@@ -43,6 +50,11 @@ export class AdminDashboardComponent implements OnInit {
   private readonly site = inject(SiteSettingsService);
 
   readonly tab = signal<'kpis' | 'events' | 'users' | 'appearance'>('kpis');
+  readonly imageEventSpec = IMAGE_EVENT_SPEC;
+  readonly videoTrailerSpec = VIDEO_TRAILER_SPEC;
+  readonly galleryImageSpec = GALLERY_IMAGE_SPEC;
+  readonly galleryVideoSpec = GALLERY_VIDEO_SPEC;
+  readonly videoHeroSpec = VIDEO_HERO_SPEC;
   readonly kpis = signal<Kpis | null>(null);
   readonly adminEvents = signal<TavaEvent[]>([]);
   readonly users = signal<AdminUser[]>([]);

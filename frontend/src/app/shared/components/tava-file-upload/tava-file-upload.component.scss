@@ -1,0 +1,81 @@
+.upload-zone {
+  position: relative;
+  border: 2px dashed rgba(201, 162, 39, 0.45);
+  border-radius: var(--tava-radius);
+  padding: 1.25rem;
+  text-align: center;
+  background: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+  transition: border-color var(--tava-transition), box-shadow var(--tava-transition);
+
+  &:hover {
+    border-color: var(--tava-gold);
+    box-shadow: var(--tava-shadow-glow);
+  }
+
+  &--busy {
+    opacity: 0.75;
+    pointer-events: none;
+  }
+
+  &__input {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+  }
+
+  &__preview {
+    max-height: 120px;
+    border-radius: 8px;
+    margin-bottom: 0.75rem;
+    object-fit: cover;
+  }
+
+  &__label {
+    font-weight: 600;
+    color: var(--tava-gold-glow);
+    margin: 0 0 0.25rem;
+  }
+
+  &__hint,
+  &__status,
+  &__done {
+    font-size: 0.8rem;
+    color: var(--tava-cream-muted);
+    margin: 0.2rem 0;
+  }
+
+  &__specs {
+    margin: 0.75rem 0 0;
+    padding: 0.65rem 0.85rem;
+    text-align: left;
+    background: rgba(201, 162, 39, 0.08);
+    border-radius: 8px;
+    border: 1px solid rgba(201, 162, 39, 0.2);
+    font-size: 0.75rem;
+    color: var(--tava-cream-muted);
+    line-height: 1.45;
+
+    strong {
+      display: block;
+      color: var(--tava-gold-glow);
+      margin-bottom: 0.35rem;
+      font-size: 0.78rem;
+    }
+
+    ul {
+      margin: 0;
+      padding-left: 1.1rem;
+    }
+
+    li {
+      margin-bottom: 0.2rem;
+    }
+  }
+
+  &__done {
+    color: #2d6a4f;
+    font-weight: 600;
+  }
+}

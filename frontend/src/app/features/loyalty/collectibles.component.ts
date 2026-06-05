@@ -3,7 +3,7 @@ import { DatePipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { ApiService } from '../../core/services/api.service';
 import { TavaEvent, TheatricalDetails } from '../../core/models/event.model';
-import { onEventImageError } from '../../core/utils/event-image.util';
+import { EVENT_IMAGE_PLACEHOLDER, onEventImageError } from '../../core/utils/event-image.util';
 import { resolveMediaUrl } from '../../core/utils/media-url.util';
 
 interface LaminaItem {
@@ -22,7 +22,9 @@ interface Collection {
 }
 
 function laminaImageUrl(item: LaminaItem): string {
-  return resolveMediaUrl(item.lamina_url || item.event?.main_image_url);
+  const raw = item.event?.main_image_url || item.lamina_url;
+  if (!raw?.trim()) return EVENT_IMAGE_PLACEHOLDER;
+  return resolveMediaUrl(raw);
 }
 
 @Component({

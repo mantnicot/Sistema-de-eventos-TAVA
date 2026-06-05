@@ -1,0 +1,37 @@
+<div
+  class="upload-zone"
+  [class.upload-zone--busy]="uploading()"
+  (dragover)="$event.preventDefault()"
+  (drop)="onDrop($event)"
+>
+  <input
+    #fileInput
+    type="file"
+    class="upload-zone__input"
+    [accept]="accept()"
+    (change)="onPick($event)"
+  />
+  @if (previewUrl() && kind() === 'image') {
+    <img [src]="previewUrl()!" alt="Vista previa" class="upload-zone__preview" />
+  }
+  <p class="upload-zone__label">{{ label() }}</p>
+  <p class="upload-zone__hint">
+    Arrastra aquí o haz clic · {{ kind() === 'video' ? 'MP4, WebM' : 'JPG, PNG, WebP' }}
+  </p>
+  @if (specs(); as sp) {
+    <div class="upload-zone__specs">
+      <strong>{{ sp.title }}</strong>
+      <ul>
+        @for (line of sp.lines; track line) {
+          <li>{{ line }}</li>
+        }
+      </ul>
+    </div>
+  }
+  @if (uploading()) {
+    <span class="upload-zone__status">{{ uploadLine() }}</span>
+  }
+  @if (lastUrl()) {
+    <p class="upload-zone__done">✓ Archivo listo</p>
+  }
+</div>

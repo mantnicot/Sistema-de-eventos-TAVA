@@ -64,10 +64,14 @@ class LoyaltyUseCase:
         laminas = []
         for c, ev in rows:
             td = ev.theatrical_details if isinstance(ev.theatrical_details, dict) else {}
+            # Priorizar imagen actual del evento (Cloudinary); la lámina guardada puede ser /uploads/ viejo
+            display_url = ev.main_image_url or c.lamina_url or ""
+            if ev.main_image_url and c.lamina_url != ev.main_image_url:
+                c.lamina_url = ev.main_image_url
             laminas.append(
                 {
                     "event_id": str(c.event_id),
-                    "lamina_url": c.lamina_url or ev.main_image_url,
+                    "lamina_url": display_url,
                     "earned_at": c.earned_at.isoformat(),
                     "event": {
                         "name": ev.name,
