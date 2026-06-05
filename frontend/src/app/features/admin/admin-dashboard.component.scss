@@ -1,5 +1,5 @@
 .admin {
-  max-width: 1100px;
+  max-width: 1400px;
   margin: 0 auto;
   padding: 1.5rem;
 }
@@ -55,23 +55,62 @@
   }
 }
 
-.staff-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1rem;
+.staff-search {
+  margin-bottom: 0.5rem;
+}
 
-  @media (max-width: 640px) {
-    grid-template-columns: 1fr;
+.staff-table-wrap {
+  max-height: 280px;
+  overflow: auto;
+  border: 1px solid rgba(201, 162, 39, 0.25);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.staff-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+
+  th,
+  td {
+    padding: 0.45rem 0.55rem;
+    text-align: left;
+    vertical-align: top;
+    border-bottom: 1px solid rgba(201, 162, 39, 0.12);
+  }
+
+  th {
+    position: sticky;
+    top: 0;
+    background: #faf6ee;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  &__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    align-items: center;
   }
 }
 
-.staff-check {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.5rem;
-  font-size: 0.85rem;
-  margin-bottom: 0.35rem;
+.staff-pill {
+  border: 1px solid rgba(201, 162, 39, 0.45);
+  background: #fff;
+  border-radius: 999px;
+  padding: 0.2rem 0.55rem;
+  font-size: 0.72rem;
   cursor: pointer;
+  font-family: inherit;
+
+  &--on {
+    background: var(--tava-gold-light);
+    color: #3d2a14;
+    font-weight: 600;
+  }
 }
 
 .staff-save {
@@ -95,9 +134,51 @@
 }
 
 .admin-events-layout {
+  display: grid;
+  grid-template-columns: 1fr minmax(280px, 340px);
+  gap: 1.25rem;
+  align-items: start;
+
+  @media (max-width: 1100px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.admin-events-main {
+  min-width: 0;
+}
+
+.admin-events-sidebar {
+  position: sticky;
+  top: 1rem;
+  max-height: calc(100vh - 2rem);
+  overflow: hidden;
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  padding: 1rem;
+
+  h2 {
+    margin: 0 0 0.25rem;
+    font-family: var(--tava-font-display);
+    color: var(--tava-gold-glow);
+    font-size: 1.1rem;
+  }
+
+  @media (max-width: 1100px) {
+    position: static;
+    max-height: none;
+  }
+}
+
+.admin-list--sidebar {
+  overflow-y: auto;
+  flex: 1;
+  margin-top: 0.5rem;
+}
+
+.admin-list__item--active {
+  outline: 2px solid rgba(201, 162, 39, 0.55);
+  background: rgba(255, 248, 230, 0.6);
 }
 
 .admin-grid {

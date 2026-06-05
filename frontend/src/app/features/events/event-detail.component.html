@@ -113,19 +113,36 @@
             />
           </label>
 
-          <fieldset class="holders">
-            <legend>Nombre en cada boleta</legend>
-            @for (name of holderNames; track $index) {
-              <label>
-                Asistente {{ $index + 1 }}
-                <input
-                  type="text"
-                  [(ngModel)]="holderNames[$index]"
-                  placeholder="Nombre completo"
-                />
-              </label>
-            }
-          </fieldset>
+          <label class="check-row buy-hint">
+            <input type="checkbox" [(ngModel)]="singleHolderMode" (ngModelChange)="onHolderModeChange()" />
+            Un solo nombre para todas las boletas
+          </label>
+
+          @if (singleHolderMode) {
+            <label class="field">
+              Nombre en las {{ quantity }} boleta(s)
+              <input
+                type="text"
+                [(ngModel)]="holderName"
+                placeholder="Nombre del asistente o grupo"
+              />
+            </label>
+            <p class="hint">Puedes comprar varias boletas con el mismo nombre (familia, grupo, etc.).</p>
+          } @else {
+            <fieldset class="holders">
+              <legend>Nombre en cada boleta</legend>
+              @for (name of holderNames; track $index) {
+                <label>
+                  Asistente {{ $index + 1 }}
+                  <input
+                    type="text"
+                    [(ngModel)]="holderNames[$index]"
+                    placeholder="Nombre completo"
+                  />
+                </label>
+              }
+            </fieldset>
+          }
 
           @if (selectedTicketType(); as st) {
             <div class="ticket-preview-buy">
@@ -141,7 +158,7 @@
                 [price]="st.price"
                 [benefits]="st.benefits"
                 [imageUrl]="mediaUrl(ev.main_image_url)"
-                [holderName]="holderNames[0] || auth.user()?.full_name || 'Tu nombre'"
+                [holderName]="previewHolderName()"
               />
             </div>
           }
@@ -150,6 +167,16 @@
             <input type="checkbox" [(ngModel)]="legalAccepted" />
             Acepto los términos y condiciones de la boleta
           </label>
+          @if (!legalAccepted) {
+            <p class="hint hint--warn">Debes aceptar los términos y condiciones para poder comprar.</p>
+          }
+
+          @if (selectedTicketType(); as st) {
+            <p class="hint hint--total">
+              Total estimado: <strong>${{ totalPrice() | number:'1.0-0' }} COP</strong>
+              ({{ quantity }} × ${{ st.price | number:'1.0-0' }})
+            </p>
+          }
 
           <button
             type="button"

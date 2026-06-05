@@ -2,7 +2,7 @@ import { Injectable, signal } from '@angular/core';
 import { ParsedHttpError } from '../utils/http-error.util';
 import { randomTheatricalMessage } from '../utils/theatrical-messages.util';
 
-export type NotifyType = 'success' | 'error' | 'confirm' | 'warning' | 'loading';
+export type NotifyType = 'success' | 'error' | 'confirm' | 'warning' | 'loading' | 'celebration';
 
 export interface NotifyState {
   visible: boolean;
@@ -50,6 +50,11 @@ export class NotificationService {
 
   confirm(title: string, message: string, onConfirm: () => void, confirmLabel = 'Confirmar'): void {
     this.show({ visible: true, type: 'confirm', title, message, confirmLabel, onConfirm });
+  }
+
+  /** Mensaje grande de agradecimiento tras compra exitosa. */
+  celebration(title: string, message: string): void {
+    this.show({ visible: true, type: 'celebration', title, message });
   }
 
   hide(): void {

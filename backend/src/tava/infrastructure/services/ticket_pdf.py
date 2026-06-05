@@ -8,12 +8,13 @@ from urllib.parse import urlparse
 import qrcode
 from PIL import Image, ImageFilter
 from reportlab.lib import colors
+from reportlab.lib.colors import Color
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.units import cm
 from reportlab.pdfgen import canvas
 from reportlab.platypus import Paragraph
-from reportlab.lib.enums import TA_JUSTIFY
+from reportlab.lib.enums import TA_JUSTIFY, TA_CENTER
 from reportlab.lib.utils import ImageReader
 
 from tava.config import get_settings
@@ -24,9 +25,7 @@ PAGE_W, PAGE_H = A4
 MARGIN = 1.2 * cm
 GOLD = colors.HexColor("#C9A227")
 GOLD_DARK = colors.HexColor("#8B6914")
-VELVET = colors.HexColor("#1A1410")
-CREAM = colors.HexColor("#F5E6C8")
-BURGUNDY = colors.HexColor("#6B1A2A")
+INK = colors.HexColor("#1A1410")
 WHITE = colors.white
 
 
@@ -94,7 +93,7 @@ def _blurred_image_reader(image_url: str | None, width_px: int, height_px: int) 
     try:
         img = Image.open(io.BytesIO(data)).convert("RGB")
         img = img.resize((width_px, height_px), Image.Resampling.LANCZOS)
-        img = img.filter(ImageFilter.GaussianBlur(radius=14))
+        img = img.filter(ImageFilter.GaussianBlur(radius=16))
         buf = io.BytesIO()
         img.save(buf, format="PNG")
         buf.seek(0)
@@ -123,34 +122,35 @@ def _draw_ticket_page(
     inner_y = MARGIN
     inner_w = w - 2 * MARGIN
     inner_h = h - 2 * MARGIN
+    pad = 14
 
-    # Fondo blanco de la boleta
+    card_bottom = inner_y + pad
+    card_top = inner_y + inner_h - pad
+    card_h = card_top - card_bottom
+
+    # Marco y fondo blanco
     c.setFillColor(WHITE)
     c.roundRect(inner_x, inner_y, inner_w, inner_h, 14, fill=1, stroke=0)
     c.setStrokeColor(GOLD)
     c.setLineWidth(2)
     c.roundRect(inner_x + 3, inner_y + 3, inner_w - 6, inner_h - 6, 12, fill=0, stroke=1)
 
-    burgundy_h = inner_h * 0.42
-    burgundy_y = inner_y + inner_h - burgundy_h - 14
+    content_x = inner_x + pad + 6
+    content_w = inner_w - 2 * (pad + 6)
 
-    # Zona morada superior con imagen difuminada (ocupa la mitad de la banda)
-    c.setFillColor(BURGUNDY)
-    c.roundRect(inner_x + 14, burgundy_y, inner_w - 28, burgundy_h, 8, fill=1, stroke=0)
+    # Mitad superior: imagen difuminada de fondo
+    hero_h = card_h * 0.48
+    hero_bottom = card_top - hero_h
 
-    img_h = burgundy_h * 0.5
-    img_w = inner_w - 56
-    img_x = inner_x + 28
-    img_y = burgundy_y + burgundy_h - img_h - 0.35 * cm
-    blurred = _blurred_image_reader(main_image_url, int(img_w * 2.5), int(img_h * 2.5))
+    blurred = _blurred_image_reader(main_image_url, int(content_w * 3), int(hero_h * 3))
     if blurred:
         try:
             c.drawImage(
                 blurred,
-                img_x,
-                img_y,
-                width=img_w,
-                height=img_h,
+                content_x,
+                hero_bottom,
+                width=content_w,
+                height=hero_h,
                 preserveAspectRatio=True,
                 anchor="c",
                 mask="auto",
@@ -158,19 +158,23 @@ def _draw_ticket_page(
         except Exception:
             pass
 
-    c.setFillColor(GOLD)
-    c.setFont("Helvetica-Bold", 8)
-    c.drawCentredString(w / 2, burgundy_y + burgundy_h - 0.45 * cm, "TAVA TEATRO · BOLETA OFICIAL")
+    # Velo blanco sobre la imagen para que el texto se lea bien
+    c.setFillColor(Color(1, 1, 1, alpha=0.78))
+    c.rect(content_x, hero_bottom, content_w, hero_h, fill=1, stroke=0)
 
-    c.setFillColor(WHITE)
-    c.setFont("Helvetica-Bold", 22)
-    title_y = burgundy_y + burgundy_h * 0.38
+    c.setFillColor(GOLD_DARK)
+    c.setFont("Helvetica-Bold", 8)
+    c.drawCentredString(w / 2, card_top - 0.55 * cm, "TAVA TEATRO · BOLETA OFICIAL")
+
+    c.setFillColor(INK)
+    c.setFont("Helvetica-Bold", 20)
+    title_y = hero_bottom + hero_h * 0.42
     words = event_name.split()
     line = ""
     title_lines: list[str] = []
     for word in words:
         test = f"{line} {word}".strip()
-        if c.stringWidth(test, "Helvetica-Bold", 22) < inner_w - 60:
+        if c.stringWidth(test, "Helvetica-Bold", 20) < content_w - 20:
             line = test
         else:
             if line:
@@ -180,69 +184,81 @@ def _draw_ticket_page(
         title_lines.append(line)
     for tl in title_lines[:2]:
         c.drawCentredString(w / 2, title_y, tl)
-        title_y -= 0.85 * cm
+        title_y += 0.8 * cm
 
-    white_top = inner_y + 14
-    white_h = burgundy_y - white_top - 0.4 * cm
+    # Zona inferior blanca: detalles + QR + términos (sin solapamientos)
+    terms_reserved = 5.2 * cm
+    qr_size = 5.6 * cm
+    qr_label_h = 0.55 * cm
+    qr_padding = 0.45 * cm
+    qr_zone_h = qr_size + qr_padding * 2 + qr_label_h
+    details_h = 2.4 * cm
+
+    terms_top = card_bottom + terms_reserved
+    qr_zone_bottom = terms_top + 0.35 * cm
+    qr_zone_top = qr_zone_bottom + qr_zone_h
+    details_bottom = qr_zone_top + 0.25 * cm
+    details_top = details_bottom + details_h
+
+    # Fondo blanco sólido en zona de contenido inferior
     c.setFillColor(WHITE)
-    c.roundRect(inner_x + 14, white_top, inner_w - 28, white_h, 6, fill=1, stroke=0)
+    c.rect(content_x, card_bottom, content_w, details_top - card_bottom, fill=1, stroke=0)
 
-    y = burgundy_y - 0.55 * cm
-    c.setFillColor(VELVET)
+    y = details_top - 0.35 * cm
+    c.setFillColor(INK)
     c.setFont("Helvetica", 10)
     c.drawCentredString(w / 2, y, f"Asistente: {holder_name}")
-    y -= 0.6 * cm
+    y -= 0.58 * cm
     c.setFont("Helvetica-Bold", 11)
-    c.setFillColor(BURGUNDY)
+    c.setFillColor(GOLD_DARK)
     c.drawCentredString(w / 2, y, f"{ticket_type_name}  ·  ${price:,.0f} COP")
-    y -= 0.55 * cm
+    y -= 0.52 * cm
     c.setFont("Helvetica", 9)
     c.setFillColor(colors.HexColor("#444444"))
     when = f"{event_date.isoformat()} · {event_time.strftime('%H:%M')}"
     c.drawCentredString(w / 2, y, when)
-    y -= 0.45 * cm
+    y -= 0.42 * cm
     c.drawCentredString(w / 2, y, f"{city} — {address}")
-    y -= 0.75 * cm
 
-    # QR sobre fondo blanco (alto contraste para lectura)
-    qr = qrcode.QRCode(version=1, box_size=8, border=2)
+    # Zona QR exclusiva — nada puede invadirla
+    c.setFillColor(WHITE)
+    c.rect(content_x, qr_zone_bottom, content_w, qr_zone_h, fill=1, stroke=0)
+    c.setStrokeColor(GOLD)
+    c.setLineWidth(1.2)
+    c.roundRect(content_x + 4, qr_zone_bottom + 2, content_w - 8, qr_zone_h - 4, 6, fill=0, stroke=1)
+
+    qr = qrcode.QRCode(version=1, box_size=10, border=2)
     qr.add_data(qr_token)
     qr.make(fit=True)
     qr_img = qr.make_image(fill_color="#1A1410", back_color="#FFFFFF")
     qr_buf = io.BytesIO()
     qr_img.save(qr_buf, format="PNG")
     qr_buf.seek(0)
-    qr_size = 4 * cm
+
     qr_x = (w - qr_size) / 2
-    c.setFillColor(WHITE)
-    c.roundRect(qr_x - 10, y - qr_size - 10, qr_size + 20, qr_size + 20, 6, fill=1, stroke=0)
-    c.setStrokeColor(GOLD)
-    c.setLineWidth(1.5)
-    c.roundRect(qr_x - 10, y - qr_size - 10, qr_size + 20, qr_size + 20, 6, fill=0, stroke=1)
-    c.drawImage(ImageReader(qr_buf), qr_x, y - qr_size, width=qr_size, height=qr_size, mask="auto")
-    y -= qr_size + 0.5 * cm
+    qr_y = qr_zone_bottom + qr_padding + qr_label_h * 0.2
+    c.drawImage(ImageReader(qr_buf), qr_x, qr_y, width=qr_size, height=qr_size, mask="auto")
 
     c.setFillColor(GOLD_DARK)
-    c.setFont("Helvetica-Oblique", 9)
-    c.drawCentredString(w / 2, y, "Presenta este QR en la entrada")
-    y -= 0.9 * cm
+    c.setFont("Helvetica-Oblique", 8)
+    c.drawCentredString(w / 2, qr_zone_bottom + qr_padding * 0.35, "Presenta este QR en la entrada")
 
-    c.setStrokeColor(colors.HexColor("#DDDDDD"))
+    # Términos solo debajo del bloque QR
+    c.setStrokeColor(colors.HexColor("#E8E8E8"))
     c.setLineWidth(0.5)
-    c.line(inner_x + 30, y, w - inner_x - 30, y)
-    y -= 0.4 * cm
+    c.line(content_x + 8, terms_top + 0.15 * cm, content_x + content_w - 8, terms_top + 0.15 * cm)
 
     terms_style = ParagraphStyle(
         "Terms",
         fontName="Helvetica",
-        fontSize=6.5,
-        leading=8.5,
+        fontSize=6,
+        leading=7.5,
         textColor=colors.HexColor("#666666"),
         alignment=TA_JUSTIFY,
     )
     terms = Paragraph(_terms_text(event_name, event_date, event_time, age_rating or ""), terms_style)
-    tw, th = terms.wrap(inner_w - 50, y - inner_y - 16)
-    terms.drawOn(c, inner_x + 25, max(inner_y + 14, y - th))
+    terms.wrap(content_w - 16, terms_reserved - 0.3 * cm)
+    terms.drawOn(c, content_x + 8, card_bottom + 0.12 * cm)
 
     c.showPage()
 

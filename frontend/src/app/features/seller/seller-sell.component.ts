@@ -25,6 +25,8 @@ export class SellerSellComponent implements OnInit {
   selectedTypeId = '';
   quantity = 1;
   buyerEmail = '';
+  singleHolderMode = true;
+  holderName = '';
   holderNames: string[] = [''];
 
   ngOnInit(): void {
@@ -57,8 +59,20 @@ export class SellerSellComponent implements OnInit {
   onQuantityChange(): void {
     const q = Math.max(1, Math.min(20, this.quantity || 1));
     this.quantity = q;
+    if (this.singleHolderMode) return;
     while (this.holderNames.length < q) this.holderNames.push('');
     if (this.holderNames.length > q) this.holderNames = this.holderNames.slice(0, q);
+  }
+
+  selectedType() {
+    const ev = this.eventDetail();
+    if (!ev || !this.selectedTypeId) return null;
+    return ev.ticket_types.find((t) => t.id === this.selectedTypeId) ?? null;
+  }
+
+  totalPrice(): number {
+    const tt = this.selectedType();
+    return (tt?.price ?? 0) * this.quantity;
   }
 
   selling = false;
@@ -70,15 +84,21 @@ export class SellerSellComponent implements OnInit {
       this.notify.warning('Datos', 'Completa evento, tipo de boleta y correo del comprador');
       return;
     }
-    const names = this.holderNames.map((n) => n.trim()).filter(Boolean);
-    if (names.length !== this.quantity) {
-      this.notify.warning('Nombres', 'Indica el nombre de cada asistente');
+    const names = this.singleHolderMode
+      ? this.holderName.trim()
+        ? [this.holderName.trim()]
+        : []
+      : this.holderNames.map((n) => n.trim()).filter(Boolean);
+    if (this.singleHolderMode ? names.length !== 1 : names.length !== this.quantity) {
+      this.notify.warning('Nombres', this.singleHolderMode ? 'Indica el nombre' : 'Indica el nombre de cada asistente');
       return;
     }
 
+    const tt = this.selectedType();
+    const total = this.totalPrice();
     this.notify.confirm(
       'Vender boletas',
-      `¿Confirmas la venta de ${this.quantity} boleta(s) a ${this.buyerEmail}?`,
+      `Venta para el evento «${ev.name}»: ${this.quantity} boleta(s) por $${total.toLocaleString('es-CO')} COP a ${this.buyerEmail}.`,
       () => {
         if (this.selling) return;
         this.selling = true;

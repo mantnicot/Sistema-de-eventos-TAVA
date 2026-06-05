@@ -1,12 +1,12 @@
 <article class="ticket-preview" [class.ticket-preview--vip]="kind() === 'vip'">
-  <header class="ticket-preview__burgundy">
+  <header class="ticket-preview__hero">
     @if (imageUrl()) {
       <div
         class="ticket-preview__hero-img"
         [style.backgroundImage]="'url(&quot;' + imageUrl() + '&quot;)'"
       ></div>
     }
-    <div class="ticket-preview__burgundy-content">
+    <div class="ticket-preview__hero-overlay">
       <span class="ticket-preview__brand">TAVA TEATRO · BOLETA OFICIAL</span>
       <h3 class="ticket-preview__event">{{ eventName() || 'Nombre del evento' }}</h3>
     </div>
@@ -14,11 +14,7 @@
 
   <div class="ticket-preview__body">
     <p class="ticket-preview__holder">{{ holderName() }}</p>
-    <p class="ticket-preview__type">{{ typeName() }} · <span class="ticket-preview__kind">{{ kindLabel() }}</span></p>
-    @if (benefits()) {
-      <p class="ticket-preview__benefits">{{ benefits() }}</p>
-    }
-    <p class="ticket-preview__price">${{ price() | number:'1.0-0' }} COP</p>
+    <p class="ticket-preview__type">{{ typeName() }} · ${{ price() | number:'1.0-0' }} COP</p>
     <p class="ticket-preview__meta">
       @if (eventDate()) { <time>{{ eventDate() }}</time> }
       @if (eventTime()) { · {{ eventTime() }} }

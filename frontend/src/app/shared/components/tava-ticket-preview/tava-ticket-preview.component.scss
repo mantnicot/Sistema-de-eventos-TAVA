@@ -1,50 +1,41 @@
 .ticket-preview {
-  --ticket-accent: #6b1a2a;
   max-width: 340px;
   margin: 0 auto;
   border-radius: 16px;
   overflow: hidden;
   background: #ffffff;
-  color: #333;
-  box-shadow:
-    0 16px 48px rgba(0, 0, 0, 0.15),
-    0 0 0 2px rgba(201, 162, 39, 0.45);
+  color: #1a1410;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.12), 0 0 0 2px rgba(201, 162, 39, 0.45);
 
   &--vip {
-    box-shadow:
-      0 16px 48px rgba(201, 162, 39, 0.25),
-      0 0 0 2px rgba(232, 197, 71, 0.65);
+    box-shadow: 0 16px 48px rgba(201, 162, 39, 0.2), 0 0 0 2px rgba(232, 197, 71, 0.65);
   }
 
-  &__burgundy {
+  &__hero {
     position: relative;
-    min-height: 150px;
-    background: linear-gradient(160deg, #6b1a2a, #4a1220);
+    min-height: 160px;
     overflow: hidden;
-    display: flex;
-    align-items: flex-end;
   }
 
   &__hero-img {
     position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 55%;
+    inset: 0;
     background-size: cover;
     background-position: center;
-    filter: blur(10px) brightness(0.85);
-    transform: scale(1.08);
-    opacity: 0.9;
+    filter: blur(12px) brightness(0.95);
+    transform: scale(1.1);
   }
 
-  &__burgundy-content {
+  &__hero-overlay {
     position: relative;
     z-index: 1;
-    width: 100%;
-    padding: 0.85rem 1rem 1rem;
+    min-height: 160px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    padding: 0.85rem 1rem;
+    background: rgba(255, 255, 255, 0.78);
     text-align: center;
-    background: linear-gradient(to top, rgba(107, 26, 42, 0.92), transparent);
   }
 
   &__brand {
@@ -52,7 +43,7 @@
     font-size: 0.58rem;
     letter-spacing: 0.14em;
     text-transform: uppercase;
-    color: #c9a227;
+    color: #8b6914;
     font-weight: 700;
     margin-bottom: 0.35rem;
   }
@@ -60,55 +51,33 @@
   &__event {
     margin: 0;
     font-family: var(--tava-font-display, Georgia, serif);
-    font-size: 1.35rem;
-    color: #fff;
+    font-size: 1.3rem;
+    color: #1a1410;
     line-height: 1.15;
-    text-shadow: 0 2px 12px rgba(0, 0, 0, 0.35);
   }
 
   &__body {
-    padding: 1rem 1rem 0.5rem;
+    padding: 0.85rem 1rem 0.5rem;
     text-align: center;
     background: #fff;
   }
 
   &__holder {
-    margin: 0 0 0.35rem;
-    font-size: 0.95rem;
+    margin: 0 0 0.25rem;
+    font-size: 0.92rem;
     font-weight: 600;
-    color: #1a1410;
   }
 
   &__type {
     margin: 0;
     font-weight: 700;
-    font-size: 0.9rem;
-    color: var(--ticket-accent);
-  }
-
-  &__kind {
-    font-weight: 500;
-    font-size: 0.78rem;
-    color: #666;
-  }
-
-  &__benefits {
-    margin: 0.3rem 0 0;
-    font-size: 0.72rem;
-    color: #666;
-    font-style: italic;
-  }
-
-  &__price {
-    margin: 0.5rem 0 0.25rem;
-    font-size: 1.25rem;
-    font-weight: 700;
-    color: #c9a227;
+    font-size: 0.88rem;
+    color: #8b6914;
   }
 
   &__meta,
   &__venue {
-    margin: 0.15rem 0 0;
+    margin: 0.2rem 0 0;
     font-size: 0.74rem;
     color: #666;
   }
@@ -117,34 +86,26 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 0.45rem;
-    padding: 0.85rem 1rem 1rem;
-    border-top: 1px solid #eee;
+    gap: 0.4rem;
+    padding: 0.75rem 1rem 1rem;
     background: #fff;
+    border-top: 1px solid #eee;
   }
 
   &__qr {
-    width: 72px;
-    height: 72px;
+    width: 88px;
+    height: 88px;
     border-radius: 8px;
     border: 2px solid rgba(201, 162, 39, 0.55);
     background:
-      linear-gradient(135deg, #fff 0%, #f8f8f8 100%),
-      repeating-linear-gradient(
-        90deg,
-        #1a1410 0,
-        #1a1410 6px,
-        #fff 6px,
-        #fff 12px
-      );
-    background-blend-mode: multiply;
+      #fff
+      repeating-linear-gradient(90deg, #1a1410 0, #1a1410 5px, #fff 5px, #fff 10px);
   }
 
   &__code {
     margin: 0;
-    font-size: 0.65rem;
-    letter-spacing: 0.08em;
+    font-size: 0.62rem;
+    letter-spacing: 0.06em;
     color: #8b6914;
-    text-transform: uppercase;
   }
 }

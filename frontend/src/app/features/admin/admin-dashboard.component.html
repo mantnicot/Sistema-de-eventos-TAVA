@@ -29,6 +29,7 @@
 
   @if (tab() === 'events') {
     <div class="admin-events-layout">
+      <div class="admin-events-main">
       <div class="admin-grid">
       <form class="tava-card admin-form" (ngSubmit)="saveEvent()">
         <h2>{{ editingId() ? 'Editar evento' : 'Nuevo evento' }}</h2>
@@ -102,38 +103,62 @@
         @if (editingId()) {
           <section class="staff-block">
             <h3>Personal por evento</h3>
-            <p class="muted">Marca quién puede validar o vender boletas de esta obra.</p>
-            <div class="staff-grid">
-              <div>
-                <h4>Validadores</h4>
-                @for (u of validatorUsers(); track u.id) {
-                  <label class="staff-check">
-                    <input
-                      type="checkbox"
-                      [checked]="isStaffValidator(u.id)"
-                      (change)="toggleStaffValidator(u.id, $event)"
-                    />
-                    {{ u.full_name }} <span class="muted-inline">{{ u.email }}</span>
-                  </label>
-                } @empty {
-                  <p class="muted">No hay usuarios con rol validador.</p>
-                }
-              </div>
-              <div>
-                <h4>Vendedores</h4>
-                @for (u of sellerUsers(); track u.id) {
-                  <label class="staff-check">
-                    <input
-                      type="checkbox"
-                      [checked]="isStaffSeller(u.id)"
-                      (change)="toggleStaffSeller(u.id, $event)"
-                    />
-                    {{ u.full_name }} <span class="muted-inline">{{ u.email }}</span>
-                  </label>
-                } @empty {
-                  <p class="muted">No hay usuarios con rol vendedor.</p>
-                }
-              </div>
+            <p class="muted">Busca usuarios y asígnalos como validador, vendedor o ambos para esta obra.</p>
+            <label class="staff-search">
+              Buscar usuario
+              <input
+                type="search"
+                [(ngModel)]="staffSearch"
+                name="staffSearch"
+                placeholder="Nombre o correo..."
+              />
+            </label>
+            <div class="staff-table-wrap">
+              <table class="staff-table">
+                <thead>
+                  <tr>
+                    <th>Usuario</th>
+                    <th>Rol cuenta</th>
+                    <th>Asignación evento</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (u of filteredStaffUsers(); track u.id) {
+                    <tr>
+                      <td>
+                        <strong>{{ u.full_name }}</strong>
+                        <span class="muted-inline">{{ u.email }}</span>
+                      </td>
+                      <td><span class="badge">{{ u.role }}</span></td>
+                      <td class="staff-table__actions">
+                        <button
+                          type="button"
+                          class="staff-pill"
+                          [class.staff-pill--on]="isStaffValidator(u.id)"
+                          (click)="toggleStaffValidatorBtn(u.id)"
+                        >
+                          Validador
+                        </button>
+                        <button
+                          type="button"
+                          class="staff-pill"
+                          [class.staff-pill--on]="isStaffSeller(u.id)"
+                          (click)="toggleStaffSellerBtn(u.id)"
+                        >
+                          Vendedor
+                        </button>
+                        @if (isStaffValidator(u.id) || isStaffSeller(u.id)) {
+                          <button type="button" class="link-btn" (click)="clearStaffUser(u.id)">Quitar</button>
+                        }
+                      </td>
+                    </tr>
+                  } @empty {
+                    <tr>
+                      <td colspan="3" class="muted">No hay usuarios que coincidan con la búsqueda.</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
             </div>
             <button type="button" class="tava-btn-primary staff-save" (click)="saveStaffOnly()">
               Guardar asignación de personal
@@ -225,25 +250,29 @@
         }
       </aside>
       </div>
-
-      <div class="admin-list">
-        <h2>Eventos registrados</h2>
-        @for (ev of adminEvents(); track ev.id) {
-          <article class="tava-card admin-list__item">
-            <div>
-              <strong>{{ ev.name }}</strong>
-              <span class="badge">{{ ev.status }}</span>
-              <p class="muted">{{ ev.event_date }} · {{ ev.city }}</p>
-            </div>
-            <div class="admin-list__actions">
-              <button type="button" (click)="editEvent(ev)">Editar</button>
-              <button type="button" class="btn-danger" (click)="deleteEvent(ev)">Eliminar</button>
-            </div>
-          </article>
-        } @empty {
-          <p class="muted">No hay eventos. Crea el primero.</p>
-        }
       </div>
+
+      <aside class="admin-events-sidebar tava-card">
+        <h2>Eventos registrados</h2>
+        <p class="muted">Selecciona uno para editar sin bajar al final.</p>
+        <div class="admin-list admin-list--sidebar">
+          @for (ev of adminEvents(); track ev.id) {
+            <article class="admin-list__item" [class.admin-list__item--active]="editingId() === ev.id">
+              <div>
+                <strong>{{ ev.name }}</strong>
+                <span class="badge">{{ ev.status }}</span>
+                <p class="muted">{{ ev.event_date }} · {{ ev.city }}</p>
+              </div>
+              <div class="admin-list__actions">
+                <button type="button" (click)="editEvent(ev)">Editar</button>
+                <button type="button" class="btn-danger" (click)="deleteEvent(ev)">Eliminar</button>
+              </div>
+            </article>
+          } @empty {
+            <p class="muted">No hay eventos. Crea el primero.</p>
+          }
+        </div>
+      </aside>
     </div>
   }
 

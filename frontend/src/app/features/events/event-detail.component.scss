@@ -224,3 +224,35 @@
 .muted {
   color: var(--tava-cream-muted);
 }
+
+.buy-hint {
+  flex-direction: row !important;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  margin: 0.25rem 0;
+}
+
+.hint {
+  margin: 0.35rem 0 0;
+  font-size: 0.8rem;
+  color: var(--tava-cream-muted);
+  line-height: 1.35;
+
+  &--warn {
+    color: #b42318;
+    background: rgba(180, 35, 24, 0.08);
+    padding: 0.5rem 0.65rem;
+    border-radius: var(--tava-radius);
+    border: 1px solid rgba(180, 35, 24, 0.2);
+  }
+
+  &--total {
+    font-size: 0.9rem;
+    color: var(--tava-gold-glow);
+
+    strong {
+      font-size: 1.05rem;
+    }
+  }
+}

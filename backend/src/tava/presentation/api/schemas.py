@@ -259,6 +259,8 @@ class SellTicketRequest(BaseModel):
 
     @model_validator(mode="after")
     def holders_match_qty(self):
+        if len(self.holder_names) == 1:
+            return self
         if len(self.holder_names) != self.quantity:
             raise ValueError("Debe indicar un nombre por cada boleta (holder_names)")
         return self

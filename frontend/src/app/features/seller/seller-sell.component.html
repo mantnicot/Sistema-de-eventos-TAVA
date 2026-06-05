@@ -45,21 +45,33 @@
         <input type="email" [(ngModel)]="buyerEmail" name="buyer" required placeholder="comprador@correo.com" />
       </label>
 
-      <fieldset class="holders">
-        <legend>Nombre en cada boleta</legend>
-        @for (name of holderNames; track $index) {
-          <label>
-            Asistente {{ $index + 1 }}
-            <input
-              type="text"
-              [(ngModel)]="holderNames[$index]"
-              [name]="'holder' + $index"
-              required
-              placeholder="Nombre completo"
-            />
-          </label>
-        }
-      </fieldset>
+      <label class="check-row">
+        <input type="checkbox" [(ngModel)]="singleHolderMode" name="singleHolder" (ngModelChange)="onQuantityChange()" />
+        Un solo nombre para todas las boletas
+      </label>
+
+      @if (singleHolderMode) {
+        <label>
+          Nombre en las {{ quantity }} boleta(s)
+          <input type="text" [(ngModel)]="holderName" name="holderOne" required placeholder="Nombre del asistente" />
+        </label>
+      } @else {
+        <fieldset class="holders">
+          <legend>Nombre en cada boleta</legend>
+          @for (name of holderNames; track $index) {
+            <label>
+              Asistente {{ $index + 1 }}
+              <input
+                type="text"
+                [(ngModel)]="holderNames[$index]"
+                [name]="'holder' + $index"
+                required
+                placeholder="Nombre completo"
+              />
+            </label>
+          }
+        </fieldset>
+      }
 
       <button type="submit" class="tava-btn-primary sell__cta">Confirmar venta y enviar PDF</button>
     }

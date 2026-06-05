@@ -63,6 +63,7 @@ export class AdminDashboardComponent implements OnInit {
   castInput = '';
   staffValidatorIds: string[] = [];
   staffSellerIds: string[] = [];
+  staffSearch = '';
 
   theatrical: TheatricalDetails = {};
   eventForm = {
@@ -112,12 +113,16 @@ export class AdminDashboardComponent implements OnInit {
     return u.id === this.auth.user()?.id;
   }
 
-  validatorUsers(): AdminUser[] {
-    return this.users().filter((u) => u.role === 'validator');
-  }
-
-  sellerUsers(): AdminUser[] {
-    return this.users().filter((u) => u.role === 'seller');
+  filteredStaffUsers(): AdminUser[] {
+    const q = this.staffSearch.trim().toLowerCase();
+    const list = this.users().filter((u) => u.role !== 'admin');
+    if (!q) return list;
+    return list.filter(
+      (u) =>
+        u.full_name.toLowerCase().includes(q) ||
+        u.email.toLowerCase().includes(q) ||
+        u.role.toLowerCase().includes(q)
+    );
   }
 
   isStaffValidator(id: string): boolean {
@@ -128,26 +133,25 @@ export class AdminDashboardComponent implements OnInit {
     return this.staffSellerIds.includes(id);
   }
 
-  toggleStaffValidator(id: string, ev: Event): void {
-    const checked = (ev.target as HTMLInputElement).checked;
-    if (checked) {
-      if (!this.staffValidatorIds.includes(id)) {
-        this.staffValidatorIds = [...this.staffValidatorIds, id];
-      }
-    } else {
+  toggleStaffValidatorBtn(id: string): void {
+    if (this.staffValidatorIds.includes(id)) {
       this.staffValidatorIds = this.staffValidatorIds.filter((x) => x !== id);
+    } else {
+      this.staffValidatorIds = [...this.staffValidatorIds, id];
     }
   }
 
-  toggleStaffSeller(id: string, ev: Event): void {
-    const checked = (ev.target as HTMLInputElement).checked;
-    if (checked) {
-      if (!this.staffSellerIds.includes(id)) {
-        this.staffSellerIds = [...this.staffSellerIds, id];
-      }
-    } else {
+  toggleStaffSellerBtn(id: string): void {
+    if (this.staffSellerIds.includes(id)) {
       this.staffSellerIds = this.staffSellerIds.filter((x) => x !== id);
+    } else {
+      this.staffSellerIds = [...this.staffSellerIds, id];
     }
+  }
+
+  clearStaffUser(id: string): void {
+    this.staffValidatorIds = this.staffValidatorIds.filter((x) => x !== id);
+    this.staffSellerIds = this.staffSellerIds.filter((x) => x !== id);
   }
 
   saveStaffOnly(): void {

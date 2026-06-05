@@ -42,6 +42,8 @@ export class EventDetailComponent implements OnInit {
   }
 
   quantity = 1;
+  singleHolderMode = true;
+  holderName = '';
   holderNames: string[] = [''];
   legalAccepted = false;
 
@@ -52,8 +54,21 @@ export class EventDetailComponent implements OnInit {
     return ev.ticket_types.find((t) => t.id === id) ?? null;
   }
 
+  totalPrice(): number {
+    const tt = this.selectedTicketType();
+    return (tt?.price ?? 0) * this.quantity;
+  }
+
+  previewHolderName(): string {
+    if (this.singleHolderMode) {
+      return this.holderName.trim() || this.auth.user()?.full_name || 'Tu nombre';
+    }
+    return this.holderNames[0]?.trim() || this.auth.user()?.full_name || 'Tu nombre';
+  }
+
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('id');
+    this.holderName = this.auth.user()?.full_name ?? '';
     if (id) {
       this.api.get<TavaEventDetail>(`/events/${id}`).subscribe({
         next: (e) => {
@@ -75,11 +90,28 @@ export class EventDetailComponent implements OnInit {
   onQuantityChange(): void {
     const q = Math.max(1, Math.min(20, this.quantity || 1));
     this.quantity = q;
+    if (this.singleHolderMode) return;
     const defaultName = this.auth.user()?.full_name ?? '';
     while (this.holderNames.length < q) {
       this.holderNames.push(this.holderNames.length === 0 ? defaultName : '');
     }
     if (this.holderNames.length > q) this.holderNames = this.holderNames.slice(0, q);
+  }
+
+  onHolderModeChange(): void {
+    if (this.singleHolderMode) return;
+    this.onQuantityChange();
+  }
+
+  private resolveHolderNames(): string[] | null {
+    if (this.singleHolderMode) {
+      const name = this.holderName.trim();
+      if (!name) return null;
+      return [name];
+    }
+    const names = this.holderNames.map((n) => n.trim()).filter(Boolean);
+    if (names.length !== this.quantity) return null;
+    return names;
   }
 
   comprar(): void {
@@ -89,52 +121,65 @@ export class EventDetailComponent implements OnInit {
       return;
     }
     if (!this.legalAccepted) {
-      this.notify.warning('Términos', 'Debes aceptar los términos y condiciones');
+      this.notify.warning('Términos', 'Debes marcar la casilla de términos y condiciones para poder comprar');
       return;
     }
     const ev = this.event();
     const typeId = this.selectedTypeId();
-    if (!ev || !typeId) return;
+    const tt = this.selectedTicketType();
+    if (!ev || !typeId || !tt) return;
 
-    const names = this.holderNames.map((n) => n.trim()).filter(Boolean);
-    if (names.length !== this.quantity) {
-      this.notify.warning('Nombres', 'Indica el nombre de cada asistente');
+    const names = this.resolveHolderNames();
+    if (!names) {
+      this.notify.warning(
+        'Nombres',
+        this.singleHolderMode
+          ? 'Indica el nombre para las boletas'
+          : 'Indica el nombre de cada asistente'
+      );
       return;
     }
 
     if (this.purchasing) return;
 
-    this.notify.confirm(
-      'Comprar boletas',
-      `¿Confirmas la compra de ${this.quantity} boleta(s)? Recibirás el PDF por correo.`,
-      () => {
-        if (this.purchasing) return;
-        this.purchasing = true;
-        this.notify.loadingTheatrical('Taquilla', 'purchase');
-        this.api
-          .post<{ message?: string }>('/tickets/purchase', {
-            event_id: ev.id,
-            ticket_type_id: typeId,
-            quantity: this.quantity,
-            holder_names: names,
-            legal_accepted: true,
-            captcha_token: 'dev-captcha',
-          })
-          .subscribe({
-            next: (res) => {
-              this.purchasing = false;
+    const total = this.totalPrice();
+    const confirmMsg =
+      `Su compra sería boletas para el evento «${ev.name}», ` +
+      `con la cantidad de ${this.quantity} boleta(s), ` +
+      `por un valor de $${total.toLocaleString('es-CO')} COP.`;
+
+    this.notify.confirm('Confirmar compra', confirmMsg, () => {
+      if (this.purchasing) return;
+      this.purchasing = true;
+      this.notify.loadingTheatrical('Enviando boletas', 'purchase');
+      this.api
+        .post<{ message?: string }>('/tickets/purchase', {
+          event_id: ev.id,
+          ticket_type_id: typeId,
+          quantity: this.quantity,
+          holder_names: names,
+          legal_accepted: true,
+          captcha_token: 'dev-captcha',
+        })
+        .subscribe({
+          next: (res) => {
+            this.purchasing = false;
+            this.notify.celebration(
+              '¡Compra exitosa!',
+              res.message ?? 'Tus boletas fueron generadas y enviadas a tu correo electrónico.'
+            );
+            setTimeout(() => {
               this.notify.hide();
-              this.notify.success('Compra', res.message ?? 'Boletas generadas. Revisa tu correo.');
               this.router.navigate(['/perfil']);
-            },
-            error: (err) => {
-              this.purchasing = false;
-              this.notify.hide();
-              const msg = err?.error?.detail ?? 'No se pudo completar la compra';
-              this.notify.error('Compra', typeof msg === 'string' ? msg : 'Error en la compra');
-            },
-          });
-      }
-    );
+            }, 4500);
+          },
+          error: (err) => {
+            this.purchasing = false;
+            this.notify.hide();
+            const msg = err?.error?.detail ?? 'No se pudo completar la compra';
+            this.notify.error('Compra', typeof msg === 'string' ? msg : 'Error en la compra');
+          },
+        });
+    });
   }
 }

@@ -27,6 +27,9 @@
           <button type="button" class="ghost" (click)="cancel()">Cancelar</button>
           <button type="button" class="tava-btn-primary" (click)="confirm()">{{ s.confirmLabel }}</button>
         </div>
+      } @else if (s.type === 'celebration') {
+        <p class="popup__celebration">¡Muchas gracias por su compra!</p>
+        <button type="button" class="tava-btn-primary popup__celebration-btn" (click)="cancel()">¡Bravo!</button>
       } @else if (s.type !== 'loading') {
         <button type="button" class="tava-btn-primary" (click)="cancel()">Entendido</button>
       }
