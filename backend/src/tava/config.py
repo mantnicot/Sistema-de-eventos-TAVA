@@ -26,7 +26,9 @@ class Settings(BaseSettings):
     smtp_password: str = ""
     email_from: str = "TAVA Teatro <no-reply@tavateatro.com>"
     email_verification_expire_hours: int = 48
-    resend_api_key: str = ""  # opcional: https://resend.com si Gmail SMTP falla en Render
+    resend_api_key: str = ""  # https://resend.com (API HTTPS, funciona en Render)
+    brevo_api_key: str = ""  # https://www.brevo.com — recomendado en Render (gratis ~300/día)
+    email_enable_smtp: bool = False  # True solo en local; Render bloquea puertos 25/465/587
 
     @property
     def cors_origin_list(self) -> list[str]:

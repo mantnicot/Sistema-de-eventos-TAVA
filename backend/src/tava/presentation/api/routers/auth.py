@@ -34,10 +34,10 @@ async def email_status(_user=Depends(require_roles(UserRole.ADMIN))):
         "ready": email_transport_ready(),
         **status,
         "hint": (
-            "Configura SMTP_HOST, SMTP_USER (solo correo o Nombre <correo>), SMTP_PASSWORD "
-            "(contraseña de aplicación Google) o RESEND_API_KEY en Render."
+            "En Render SMTP Gmail NO funciona (puertos bloqueados). Configura BREVO_API_KEY "
+            "(recomendado) o RESEND_API_KEY. Verifica el remitente en el panel de Brevo/Resend."
             if not email_transport_ready()
-            else "Transporte de correo configurado."
+            else "Transporte de correo configurado (API HTTP)."
         ),
     }
 

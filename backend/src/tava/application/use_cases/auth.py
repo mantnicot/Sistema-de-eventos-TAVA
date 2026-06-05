@@ -15,7 +15,7 @@ from tava.infrastructure.security.verification_tokens import (
     hash_verification_token,
     verify_verification_token,
 )
-from tava.infrastructure.services.email import send_verification_email
+from tava.infrastructure.services.email import last_email_failure, send_verification_email
 
 settings = get_settings()
 
@@ -54,9 +54,10 @@ class AuthUseCase:
             if pending:
                 await self._session.delete(pending)
                 await self._session.flush()
-            raise ValueError(
+            detail = last_email_failure() or (
                 "Falló el envío del correo. Vamos revisando cómo solucionarlo; inténtalo de nuevo en un rato."
             )
+            raise ValueError(detail)
         return user, email_sent
 
     async def _create_verification_token(self, user_id: UUID) -> str:
@@ -105,9 +106,10 @@ class AuthUseCase:
         verify_url = f"{settings.frontend_url.rstrip('/')}/verificar-email?token={raw_token}"
         email_sent = await send_verification_email(model.email, model.full_name, verify_url)
         if not email_sent:
-            raise ValueError(
+            detail = last_email_failure() or (
                 "Falló el envío del correo. Vamos revisando cómo solucionarlo; inténtalo de nuevo en un rato."
             )
+            raise ValueError(detail)
         return email_sent
 
     async def login(self, email: str, password: str):

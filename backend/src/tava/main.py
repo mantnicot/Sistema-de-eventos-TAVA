@@ -58,7 +58,8 @@ async def lifespan(app: FastAPI):
             )
         elif app_settings.app_env == "production":
             logger.warning(
-                "PRODUCCIÓN sin correo: define SMTP_* o RESEND_API_KEY en Render. Registro fallará."
+                "PRODUCCIÓN sin correo HTTP: define BREVO_API_KEY o RESEND_API_KEY en Render "
+                "(SMTP Gmail está bloqueado en Render). Registro fallará."
             )
         else:
             logger.warning("Correo no configurado (desarrollo). Registro sin envío real.")
@@ -125,7 +126,11 @@ async def health():
         "status": "ok",
         "service": "tava-api",
         "email_ready": email_transport_ready(),
-        "smtp_login_email": mail.get("smtp_login_email"),
+        "http_email_ready": mail.get("http_ready"),
+        "brevo_configured": mail.get("brevo_configured"),
+        "resend_configured": mail.get("resend_configured"),
+        "smtp_blocked_on_render": mail.get("smtp_blocked_on_render"),
+        "sender_email": mail.get("sender_email"),
     }
 
 
