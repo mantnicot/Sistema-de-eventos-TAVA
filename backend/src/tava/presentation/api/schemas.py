@@ -213,6 +213,28 @@ class ValidationResponse(BaseModel):
     result: str
     ticket_id: UUID | None = None
     message: str
+    holder_name: str | None = None
+    event_id: UUID | None = None
+    event_name: str | None = None
+    ingresados: int | None = None
+    boletas_vendidas: int | None = None
+    pendientes_ingreso: int | None = None
+
+
+class AttendeeItem(BaseModel):
+    ticket_id: UUID
+    holder_name: str | None = None
+    is_used: bool
+    used_at: str | None = None
+
+
+class AttendeesListResponse(BaseModel):
+    event_id: UUID
+    event_name: str
+    ingresados: int
+    boletas_vendidas: int
+    pendientes_ingreso: int
+    attendees: list[AttendeeItem]
 
 
 class PurchaseRequest(BaseModel):

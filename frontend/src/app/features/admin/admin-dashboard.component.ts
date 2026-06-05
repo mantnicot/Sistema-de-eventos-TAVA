@@ -113,11 +113,65 @@ export class AdminDashboardComponent implements OnInit {
   }
 
   validatorUsers(): AdminUser[] {
-    return this.users().filter((u) => u.role === 'validator' || u.role === 'admin');
+    return this.users().filter((u) => u.role === 'validator');
   }
 
   sellerUsers(): AdminUser[] {
-    return this.users().filter((u) => u.role === 'seller' || u.role === 'admin');
+    return this.users().filter((u) => u.role === 'seller');
+  }
+
+  isStaffValidator(id: string): boolean {
+    return this.staffValidatorIds.includes(id);
+  }
+
+  isStaffSeller(id: string): boolean {
+    return this.staffSellerIds.includes(id);
+  }
+
+  toggleStaffValidator(id: string, ev: Event): void {
+    const checked = (ev.target as HTMLInputElement).checked;
+    if (checked) {
+      if (!this.staffValidatorIds.includes(id)) {
+        this.staffValidatorIds = [...this.staffValidatorIds, id];
+      }
+    } else {
+      this.staffValidatorIds = this.staffValidatorIds.filter((x) => x !== id);
+    }
+  }
+
+  toggleStaffSeller(id: string, ev: Event): void {
+    const checked = (ev.target as HTMLInputElement).checked;
+    if (checked) {
+      if (!this.staffSellerIds.includes(id)) {
+        this.staffSellerIds = [...this.staffSellerIds, id];
+      }
+    } else {
+      this.staffSellerIds = this.staffSellerIds.filter((x) => x !== id);
+    }
+  }
+
+  saveStaffOnly(): void {
+    const eventId = this.editingId();
+    if (!eventId) {
+      this.notify.warning('Personal', 'Primero guarda el evento o selecciona uno para editar');
+      return;
+    }
+    this.notify.loadingTheatrical('Asignando personal', 'admin');
+    this.api
+      .put(`/events/${eventId}/staff`, {
+        validator_ids: this.staffValidatorIds,
+        seller_ids: this.staffSellerIds,
+      })
+      .subscribe({
+        next: () => {
+          this.notify.hide();
+          this.notify.success('Personal', 'Asignación guardada');
+        },
+        error: () => {
+          this.notify.hide();
+          this.notify.error('Personal', 'No se pudo guardar la asignación');
+        },
+      });
   }
 
   downloadReport(format: 'pdf' | 'xlsx'): void {
@@ -292,8 +346,8 @@ export class AdminDashboardComponent implements OnInit {
       .get<{ validator_ids: string[]; seller_ids: string[] }>(`/events/${ev.id}/staff`)
       .subscribe({
         next: (staff) => {
-          this.staffValidatorIds = staff.validator_ids ?? [];
-          this.staffSellerIds = staff.seller_ids ?? [];
+          this.staffValidatorIds = (staff.validator_ids ?? []).map(String);
+          this.staffSellerIds = (staff.seller_ids ?? []).map(String);
         },
       });
   }

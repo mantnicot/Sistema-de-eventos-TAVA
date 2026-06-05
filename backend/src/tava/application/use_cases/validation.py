@@ -74,9 +74,39 @@ class ValidationUseCase:
         vendidos = sold.scalar() or 0
         capacidad = event.capacity
         return {
+            "event_name": event.name,
             "capacidad_total": capacidad,
             "ingresados": ingresados,
             "boletas_vendidas": vendidos,
             "pendientes_ingreso": max(vendidos - ingresados, 0),
             "disponibilidad": max(capacidad - ingresados, 0) if capacidad else None,
+        }
+
+    async def list_attendees(self, event_id: UUID) -> dict | None:
+        event_result = await self._session.execute(select(EventModel).where(EventModel.id == event_id))
+        event = event_result.scalar_one_or_none()
+        if not event:
+            return None
+        tickets_result = await self._session.execute(
+            select(TicketModel)
+            .where(TicketModel.event_id == event_id)
+            .order_by(TicketModel.is_used.desc(), TicketModel.holder_name.asc())
+        )
+        tickets = tickets_result.scalars().all()
+        ingresados = sum(1 for t in tickets if t.is_used)
+        return {
+            "event_id": event_id,
+            "event_name": event.name,
+            "ingresados": ingresados,
+            "boletas_vendidas": len(tickets),
+            "pendientes_ingreso": max(len(tickets) - ingresados, 0),
+            "attendees": [
+                {
+                    "ticket_id": t.id,
+                    "holder_name": t.holder_name,
+                    "is_used": t.is_used,
+                    "used_at": t.used_at.isoformat() if t.used_at else None,
+                }
+                for t in tickets
+            ],
         }

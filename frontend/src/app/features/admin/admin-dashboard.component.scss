@@ -48,9 +48,34 @@
   padding-top: 0.75rem;
   border-top: 1px dashed rgba(201, 162, 39, 0.25);
 
-  select[multiple] {
-    min-height: 6rem;
+  h4 {
+    margin: 0 0 0.5rem;
+    font-size: 0.9rem;
+    color: var(--tava-gold-glow);
   }
+}
+
+.staff-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+
+  @media (max-width: 640px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.staff-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  margin-bottom: 0.35rem;
+  cursor: pointer;
+}
+
+.staff-save {
+  margin-top: 0.75rem;
 }
 
 .kpi {

@@ -17,6 +17,8 @@ from tava.presentation.api.schemas import (
     EventMediaCreateRequest,
     EventMediaResponse,
     EventResponse,
+    EventStaffResponse,
+    EventStaffUpdateRequest,
     TheatricalDetailsSchema,
     TicketTypePublicResponse,
     TicketTypesSyncRequest,

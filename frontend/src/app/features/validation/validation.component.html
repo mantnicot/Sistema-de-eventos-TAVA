@@ -1,29 +1,82 @@
 <section class="validate">
-  <h1 class="tava-glow-text">Validación de boletas</h1>
-  <p>Escanea el QR de la boleta o ingresa el token manualmente</p>
-
-  <div class="scanner tava-card">
-    <div id="qr-reader" class="scanner__camera"></div>
-    @if (cameraError) {
-      <p class="scanner__warn">{{ cameraError }}</p>
+  <header class="validate__head">
+    <h1 class="tava-glow-text">Validar ingreso</h1>
+    @if (stats().event_name) {
+      <p class="validate__event">{{ stats().event_name }}</p>
     }
-    <button type="button" class="scanner__toggle" (click)="toggleCamera()">
-      {{ cameraActive ? 'Apagar cámara' : 'Activar cámara' }}
-    </button>
+  </header>
 
-    <div class="scanner__manual">
-      <input
-        type="text"
-        placeholder="Token QR..."
-        [(ngModel)]="qrToken"
-        (keyup.enter)="scan()"
-        autocomplete="off"
-      />
-      <button type="button" class="tava-btn-primary" (click)="scan()">Validar ingreso</button>
+  <div class="validate__stats">
+    <div class="stat tava-card stat--ok">
+      <span>Ingresados</span>
+      <strong>{{ stats().ingresados }}</strong>
+    </div>
+    <div class="stat tava-card">
+      <span>Vendidas</span>
+      <strong>{{ stats().boletas_vendidas }}</strong>
+    </div>
+    <div class="stat tava-card stat--pending">
+      <span>Pendientes</span>
+      <strong>{{ stats().pendientes_ingreso }}</strong>
     </div>
   </div>
 
-  @if (lastResult) {
-    <p class="result">{{ lastResult }}</p>
-  }
+  <label class="validate__pick">
+    Evento
+    <select [(ngModel)]="selectedEventId" (ngModelChange)="onEventChange()" name="eventPick">
+      <option value="">— Selecciona —</option>
+      @for (ev of events(); track ev.id) {
+        <option [value]="ev.id">{{ ev.name }} · {{ ev.event_date }}</option>
+      }
+    </select>
+  </label>
+
+  <div class="validate__layout">
+    <div class="validate__scanner tava-card">
+      <div id="qr-reader" class="validate__camera"></div>
+      @if (cameraError) {
+        <p class="validate__warn">{{ cameraError }}</p>
+      }
+      <button type="button" class="validate__toggle" (click)="toggleCamera()">
+        {{ cameraActive ? 'Apagar cámara' : 'Activar cámara' }}
+      </button>
+      <div class="validate__manual">
+        <input
+          type="text"
+          placeholder="Token QR manual..."
+          [(ngModel)]="qrToken"
+          (keyup.enter)="scan()"
+          autocomplete="off"
+        />
+        <button type="button" class="tava-btn-primary" (click)="scan()">Validar</button>
+      </div>
+    </div>
+
+    <div class="validate__result-panel">
+      @if (lastResult) {
+        <div class="result-banner tava-card" [class.result-banner--ok]="lastStatus === 'ok'" [class.result-banner--warn]="lastStatus === 'warn'" [class.result-banner--error]="lastStatus === 'error'">
+          <p class="result-banner__msg">{{ lastResult }}</p>
+          @if (lastHolderName) {
+            <p class="result-banner__name">{{ lastHolderName }}</p>
+          }
+        </div>
+      }
+
+      <div class="attendees tava-card">
+        <h2>Asistentes</h2>
+        <p class="muted">{{ stats().ingresados }} de {{ stats().boletas_vendidas }} han ingresado</p>
+        <ul class="attendees__list">
+          @for (a of attendees(); track a.ticket_id) {
+            <li class="attendees__item" [class.attendees__item--in]="a.is_used">
+              <span class="attendees__dot" aria-hidden="true"></span>
+              <span class="attendees__name">{{ a.holder_name || 'Sin nombre' }}</span>
+              <span class="attendees__status">{{ a.is_used ? 'Ingresó' : 'Pendiente' }}</span>
+            </li>
+          } @empty {
+            <li class="muted">No hay boletas vendidas para este evento.</li>
+          }
+        </ul>
+      </div>
+    </div>
+  </div>
 </section>

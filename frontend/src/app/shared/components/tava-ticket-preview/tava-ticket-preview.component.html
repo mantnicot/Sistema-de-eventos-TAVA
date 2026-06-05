@@ -1,36 +1,35 @@
 <article class="ticket-preview" [class.ticket-preview--vip]="kind() === 'vip'">
-  <header class="ticket-preview__head">
-    <span class="ticket-preview__brand">TAVA Teatro</span>
-    <span class="ticket-preview__kind">{{ kindLabel() }}</span>
+  <header class="ticket-preview__burgundy">
+    @if (imageUrl()) {
+      <div
+        class="ticket-preview__hero-img"
+        [style.backgroundImage]="'url(&quot;' + imageUrl() + '&quot;)'"
+      ></div>
+    }
+    <div class="ticket-preview__burgundy-content">
+      <span class="ticket-preview__brand">TAVA TEATRO · BOLETA OFICIAL</span>
+      <h3 class="ticket-preview__event">{{ eventName() || 'Nombre del evento' }}</h3>
+    </div>
   </header>
-  @if (imageUrl()) {
-    <div
-      class="ticket-preview__image"
-      [style.backgroundImage]="'url(&quot;' + imageUrl() + '&quot;)'"
-    ></div>
-  }
+
   <div class="ticket-preview__body">
-    <h3 class="ticket-preview__event">{{ eventName() || 'Nombre del evento' }}</h3>
+    <p class="ticket-preview__holder">{{ holderName() }}</p>
+    <p class="ticket-preview__type">{{ typeName() }} · <span class="ticket-preview__kind">{{ kindLabel() }}</span></p>
+    @if (benefits()) {
+      <p class="ticket-preview__benefits">{{ benefits() }}</p>
+    }
+    <p class="ticket-preview__price">${{ price() | number:'1.0-0' }} COP</p>
     <p class="ticket-preview__meta">
-      @if (eventDate()) {
-        <time>{{ eventDate() }}</time>
-      }
-      @if (eventTime()) {
-        · {{ eventTime() }}
-      }
+      @if (eventDate()) { <time>{{ eventDate() }}</time> }
+      @if (eventTime()) { · {{ eventTime() }} }
     </p>
     @if (city() || address()) {
       <p class="ticket-preview__venue">{{ city() }}@if (address()) { · {{ address() }} }</p>
     }
-    <p class="ticket-preview__type">{{ typeName() }}</p>
-    @if (benefits()) {
-      <p class="ticket-preview__benefits">{{ benefits() }}</p>
-    }
-    <p class="ticket-preview__holder">{{ holderName() }}</p>
-    <p class="ticket-preview__price">${{ price() | number:'1.0-0' }} COP</p>
   </div>
+
   <footer class="ticket-preview__foot">
     <div class="ticket-preview__qr" aria-hidden="true"></div>
-    <p class="ticket-preview__code">TAVA · PREVIEW</p>
+    <p class="ticket-preview__code">Presenta este QR en la entrada</p>
   </footer>
 </article>

@@ -99,24 +99,45 @@
           <label>Clasificación <input [(ngModel)]="theatrical.age_rating" name="age" /></label>
         </div>
 
-        @if (editingId(); as eidStaff) {
+        @if (editingId()) {
           <section class="staff-block">
             <h3>Personal por evento</h3>
-            <p class="muted">Solo los usuarios asignados pueden validar o vender boletas de esta obra.</p>
-            <label>Validadores (Ctrl+clic para varios)
-              <select multiple class="wide" [(ngModel)]="staffValidatorIds" name="staffValidators" size="4">
+            <p class="muted">Marca quién puede validar o vender boletas de esta obra.</p>
+            <div class="staff-grid">
+              <div>
+                <h4>Validadores</h4>
                 @for (u of validatorUsers(); track u.id) {
-                  <option [value]="u.id">{{ u.full_name }} — {{ u.email }}</option>
+                  <label class="staff-check">
+                    <input
+                      type="checkbox"
+                      [checked]="isStaffValidator(u.id)"
+                      (change)="toggleStaffValidator(u.id, $event)"
+                    />
+                    {{ u.full_name }} <span class="muted-inline">{{ u.email }}</span>
+                  </label>
+                } @empty {
+                  <p class="muted">No hay usuarios con rol validador.</p>
                 }
-              </select>
-            </label>
-            <label>Vendedores (Ctrl+clic para varios)
-              <select multiple class="wide" [(ngModel)]="staffSellerIds" name="staffSellers" size="4">
+              </div>
+              <div>
+                <h4>Vendedores</h4>
                 @for (u of sellerUsers(); track u.id) {
-                  <option [value]="u.id">{{ u.full_name }} — {{ u.email }}</option>
+                  <label class="staff-check">
+                    <input
+                      type="checkbox"
+                      [checked]="isStaffSeller(u.id)"
+                      (change)="toggleStaffSeller(u.id, $event)"
+                    />
+                    {{ u.full_name }} <span class="muted-inline">{{ u.email }}</span>
+                  </label>
+                } @empty {
+                  <p class="muted">No hay usuarios con rol vendedor.</p>
                 }
-              </select>
-            </label>
+              </div>
+            </div>
+            <button type="button" class="tava-btn-primary staff-save" (click)="saveStaffOnly()">
+              Guardar asignación de personal
+            </button>
           </section>
         }
 
