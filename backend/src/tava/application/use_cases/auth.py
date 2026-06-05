@@ -95,7 +95,7 @@ class AuthUseCase:
         matched.used_at = datetime.now(UTC)
         await self._session.flush()
 
-    async def resend_verification(self, email: str) -> tuple[str, bool]:
+    async def resend_verification(self, email: str) -> bool:
         model = await self._users.get_model_by_email(email)
         if not model:
             raise ValueError("Si el correo existe, recibirás un nuevo enlace")

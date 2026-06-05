@@ -8,7 +8,9 @@ from tava.application.use_cases.auth import AuthUseCase
 from tava.config import get_settings
 from tava.infrastructure.persistence.database import get_db
 from tava.infrastructure.services.captcha import verify_captcha
-from tava.presentation.api.dependencies import get_current_user
+from tava.domain.enums import UserRole
+from tava.infrastructure.services.email import email_status_summary, email_transport_ready
+from tava.presentation.api.dependencies import get_current_user, require_roles
 from tava.presentation.api.http_errors import raise_system_error, raise_user_error
 from tava.infrastructure.security.login_crypto import decrypt_password, get_public_key_pem
 from tava.presentation.api.schemas import (
@@ -22,6 +24,22 @@ from tava.presentation.api.schemas import (
 logger = logging.getLogger("tava.auth")
 
 router = APIRouter(prefix="/auth", tags=["Autenticación"])
+
+
+@router.get("/email-status")
+async def email_status(_user=Depends(require_roles(UserRole.ADMIN))):
+    """Diagnóstico admin: ¿está configurado el envío de correos en el servidor?"""
+    status = email_status_summary()
+    return {
+        "ready": email_transport_ready(),
+        **status,
+        "hint": (
+            "Configura SMTP_HOST, SMTP_USER (solo correo o Nombre <correo>), SMTP_PASSWORD "
+            "(contraseña de aplicación Google) o RESEND_API_KEY en Render."
+            if not email_transport_ready()
+            else "Transporte de correo configurado."
+        ),
+    }
 
 
 @router.get("/public-key")

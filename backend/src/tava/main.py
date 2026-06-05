@@ -45,6 +45,24 @@ limiter = Limiter(key_func=_rate_limit_key)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     try:
+        from tava.infrastructure.services.email import email_status_summary, email_transport_ready
+
+        mail = email_status_summary()
+        if email_transport_ready():
+            logger.info(
+                "Correo listo: smtp=%s resend=%s host=%s user=%s",
+                mail["smtp_configured"],
+                mail["resend_configured"],
+                mail["smtp_host"],
+                mail["smtp_user"],
+            )
+        elif app_settings.app_env == "production":
+            logger.warning(
+                "PRODUCCIÓN sin correo: define SMTP_* o RESEND_API_KEY en Render. Registro fallará."
+            )
+        else:
+            logger.warning("Correo no configurado (desarrollo). Registro sin envío real.")
+
         await bootstrap_application()
         logger.info("Aplicación inicializada (tablas + datos demo)")
     except Exception:
@@ -100,7 +118,15 @@ app.mount("/uploads", StaticFiles(directory=str(_uploads)), name="uploads")
 @app.get("/health")
 @limiter.exempt
 async def health():
-    return {"status": "ok", "service": "tava-api"}
+    from tava.infrastructure.services.email import email_status_summary, email_transport_ready
+
+    mail = email_status_summary()
+    return {
+        "status": "ok",
+        "service": "tava-api",
+        "email_ready": email_transport_ready(),
+        "smtp_login_email": mail.get("smtp_login_email"),
+    }
 
 
 @app.get("/health/db")
