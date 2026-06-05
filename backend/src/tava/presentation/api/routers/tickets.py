@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from tava.application.use_cases.tickets import TicketUseCase
 from tava.domain.enums import UserRole
 from tava.infrastructure.persistence.database import get_db
+from tava.infrastructure.persistence.event_staff import can_access_event
 from tava.infrastructure.persistence.models import TicketTypeModel
 from tava.infrastructure.services.captcha import verify_captcha
 from tava.presentation.api.dependencies import get_current_user, require_roles
@@ -98,6 +99,10 @@ async def sell_tickets(
         raise HTTPException(status_code=400, detail="Debe aceptar los términos legales")
     if not await verify_captcha(body.captcha_token):
         raise HTTPException(status_code=400, detail="Captcha inválido")
+    if user.role != UserRole.ADMIN and not await can_access_event(
+        db, user.id, user.role, body.event_id, "seller"
+    ):
+        raise HTTPException(status_code=403, detail="No autorizado para vender en este evento")
     uc = TicketUseCase(db)
     try:
         return await uc.sell_as_seller(

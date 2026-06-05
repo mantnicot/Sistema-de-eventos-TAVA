@@ -7,6 +7,7 @@ from sqlalchemy.orm import selectinload
 
 from tava.domain.enums import EventStatus, UserRole
 from tava.infrastructure.persistence.database import get_db
+from tava.infrastructure.persistence.event_staff import get_event_staff, list_assigned_event_ids, set_event_staff
 from tava.infrastructure.persistence.models import EventMediaModel, EventModel, TicketModel, TicketTypeModel
 from tava.infrastructure.persistence.repositories.sqlalchemy_event_repository import SQLAlchemyEventRepository
 from tava.presentation.api.dependencies import get_current_user, require_roles
@@ -116,6 +117,67 @@ async def list_events_admin(
         q = q.where(EventModel.status == status)
     result = await db.execute(q)
     return [_event_response(m) for m in result.scalars().all()]
+
+
+@router.get("/assigned/mine", response_model=list[EventResponse])
+async def my_assigned_events(
+    staff_role: str = Query(..., pattern="^(validator|seller)$"),
+    user=Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    if user.role == UserRole.ADMIN:
+        q = (
+            select(EventModel)
+            .where(EventModel.status.in_([EventStatus.PUBLISHED, EventStatus.IN_PROGRESS]))
+            .order_by(EventModel.event_date.desc())
+        )
+        result = await db.execute(q)
+        return [_event_response(m) for m in result.scalars().all()]
+    if staff_role == "validator" and user.role != UserRole.VALIDATOR:
+        raise HTTPException(status_code=403, detail="Rol no válido para esta consulta")
+    if staff_role == "seller" and user.role != UserRole.SELLER:
+        raise HTTPException(status_code=403, detail="Rol no válido para esta consulta")
+    ids = await list_assigned_event_ids(db, user.id, staff_role)
+    if not ids:
+        return []
+    result = await db.execute(
+        select(EventModel).where(EventModel.id.in_(ids)).order_by(EventModel.event_date.desc())
+    )
+    return [_event_response(m) for m in result.scalars().all()]
+
+
+@router.get("/{event_id}/staff", response_model=EventStaffResponse)
+async def get_event_staff_endpoint(
+    event_id: UUID,
+    _user=Depends(require_roles(UserRole.ADMIN)),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(select(EventModel.id).where(EventModel.id == event_id))
+    if not result.scalar_one_or_none():
+        raise HTTPException(status_code=404, detail="Evento no encontrado")
+    staff = await get_event_staff(db, event_id)
+    return EventStaffResponse(
+        validator_ids=[UUID(x) for x in staff["validator_ids"]],
+        seller_ids=[UUID(x) for x in staff["seller_ids"]],
+    )
+
+
+@router.put("/{event_id}/staff", response_model=EventStaffResponse)
+async def update_event_staff(
+    event_id: UUID,
+    body: EventStaffUpdateRequest,
+    _user=Depends(require_roles(UserRole.ADMIN)),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(select(EventModel.id).where(EventModel.id == event_id))
+    if not result.scalar_one_or_none():
+        raise HTTPException(status_code=404, detail="Evento no encontrado")
+    await set_event_staff(db, event_id, body.validator_ids, body.seller_ids)
+    staff = await get_event_staff(db, event_id)
+    return EventStaffResponse(
+        validator_ids=[UUID(x) for x in staff["validator_ids"]],
+        seller_ids=[UUID(x) for x in staff["seller_ids"]],
+    )
 
 
 @router.get("/{event_id}", response_model=EventDetailResponse)

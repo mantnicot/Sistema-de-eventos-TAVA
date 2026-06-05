@@ -1,33 +1,81 @@
 .validate {
-  padding: 2rem 1rem;
-  max-width: 480px;
+  padding: 1.5rem 1rem 3rem;
+  max-width: 520px;
   margin: 0 auto;
   text-align: center;
 
-  h1 { font-family: var(--tava-font-display); }
-  p { color: var(--tava-cream-muted); }
+  h1 {
+    font-family: var(--tava-font-display);
+    font-size: clamp(1.5rem, 5vw, 2rem);
+  }
+
+  p {
+    color: var(--tava-cream-muted);
+    font-size: 0.9rem;
+  }
 }
 
 .scanner {
-  padding: 2rem;
-  margin-top: 1.5rem;
+  padding: 1rem;
+  margin-top: 1rem;
+  text-align: left;
 
-  input {
+  &__camera {
     width: 100%;
-    padding: 1rem;
-    margin-bottom: 1rem;
+    min-height: 260px;
     border-radius: var(--tava-radius);
-    border: 1px solid var(--tava-gold);
-    background: var(--tava-stage-dark);
-    color: var(--tava-cream);
-    font-size: 1rem;
+    overflow: hidden;
+    background: #111;
+    margin-bottom: 0.75rem;
+
+    ::ng-deep video {
+      width: 100% !important;
+      border-radius: var(--tava-radius);
+    }
   }
 
-  button { width: 100%; }
+  &__warn {
+    color: #b42318;
+    font-size: 0.85rem;
+    margin: 0 0 0.75rem;
+  }
+
+  &__toggle {
+    width: 100%;
+    margin-bottom: 1rem;
+    padding: 0.55rem;
+    border-radius: var(--tava-radius);
+    border: 1px solid rgba(201, 162, 39, 0.4);
+    background: rgba(255, 255, 255, 0.7);
+    cursor: pointer;
+    font-family: inherit;
+  }
+
+  &__manual {
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+
+    input {
+      width: 100%;
+      padding: 0.85rem;
+      border-radius: var(--tava-radius);
+      border: 1px solid var(--tava-gold);
+      background: var(--tava-stage-dark);
+      color: var(--tava-cream);
+      font-size: 1rem;
+      box-sizing: border-box;
+    }
+
+    button {
+      width: 100%;
+    }
+  }
 }
 
 .result {
-  margin-top: 1.5rem;
-  font-size: 1.25rem;
+  margin-top: 1.25rem;
+  font-size: 1.1rem;
   color: var(--tava-gold-glow);
+  word-break: break-word;
 }

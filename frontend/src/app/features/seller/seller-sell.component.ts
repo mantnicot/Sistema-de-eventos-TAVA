@@ -28,9 +28,8 @@ export class SellerSellComponent implements OnInit {
   holderNames: string[] = [''];
 
   ngOnInit(): void {
-    this.api.get<TavaEvent[]>('/events').subscribe({
-      next: (e) =>
-        this.events.set(e.filter((ev) => ev.status === 'publicado' || ev.status === 'en_curso')),
+    this.api.get<TavaEvent[]>('/events/assigned/mine', { staff_role: 'seller' }).subscribe({
+      next: (e) => this.events.set(e),
       error: () => this.events.set([]),
     });
   }

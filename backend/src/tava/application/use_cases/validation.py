@@ -5,7 +5,8 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from tava.config import get_settings
-from tava.domain.enums import EventStatus, ValidationResult
+from tava.domain.enums import EventStatus, UserRole, ValidationResult
+from tava.infrastructure.persistence.event_staff import can_access_event
 from tava.infrastructure.persistence.models import CheckInModel, EventModel, TicketModel
 from tava.infrastructure.security.ticket_tokens import verify_security_hash
 
@@ -16,7 +17,9 @@ class ValidationUseCase:
     def __init__(self, session: AsyncSession):
         self._session = session
 
-    async def validate_qr(self, qr_token: str, validator_id: UUID) -> tuple[ValidationResult, TicketModel | None]:
+    async def validate_qr(
+        self, qr_token: str, validator_id: UUID, user_role: UserRole
+    ) -> tuple[ValidationResult, TicketModel | None]:
         result = await self._session.execute(select(TicketModel).where(TicketModel.qr_token == qr_token))
         ticket = result.scalar_one_or_none()
         if not ticket:
@@ -26,6 +29,11 @@ class ValidationUseCase:
             ticket.id, ticket.event_id, ticket.qr_token, ticket.security_hash, settings.jwt_secret_key
         ):
             return ValidationResult.INVALID, None
+
+        if not await can_access_event(
+            self._session, validator_id, user_role, ticket.event_id, "validator"
+        ):
+            return ValidationResult.NOT_AUTHORIZED, ticket
 
         event_result = await self._session.execute(select(EventModel).where(EventModel.id == ticket.event_id))
         event = event_result.scalar_one_or_none()

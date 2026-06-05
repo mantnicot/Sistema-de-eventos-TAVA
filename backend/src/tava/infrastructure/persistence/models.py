@@ -331,6 +331,23 @@ class SiteSettingModel(Base):
     )
 
 
+class EventStaffAssignmentModel(Base):
+    __tablename__ = "event_staff_assignments"
+    __table_args__ = (
+        UniqueConstraint("user_id", "event_id", "staff_role", name="uq_event_staff_role"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    event_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("events.id", ondelete="CASCADE"), index=True
+    )
+    staff_role: Mapped[str] = mapped_column(String(20))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
 class RefreshTokenModel(Base):
     __tablename__ = "refresh_tokens"
 

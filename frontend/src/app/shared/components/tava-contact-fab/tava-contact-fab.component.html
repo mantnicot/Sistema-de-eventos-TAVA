@@ -1,0 +1,27 @@
+<div class="contact-fab" [class.contact-fab--open]="open">
+  @if (open) {
+    <div class="contact-fab__menu">
+      <a
+        class="contact-fab__action contact-fab__action--wa"
+        [href]="whatsappUrl"
+        target="_blank"
+        rel="noopener noreferrer"
+        title="WhatsApp TAVA"
+      >
+        WhatsApp
+      </a>
+      <a
+        class="contact-fab__action contact-fab__action--ig"
+        [href]="instagramUrl"
+        target="_blank"
+        rel="noopener noreferrer"
+        title="@tavateatro"
+      >
+        Instagram
+      </a>
+    </div>
+  }
+  <button type="button" class="contact-fab__toggle" (click)="toggle()" [attr.aria-expanded]="open">
+    <img src="/logo-tava.png" alt="Contactar TAVA" width="44" height="44" />
+  </button>
+</div>

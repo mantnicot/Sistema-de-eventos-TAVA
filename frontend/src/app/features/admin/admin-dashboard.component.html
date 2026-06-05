@@ -18,6 +18,10 @@
         <div class="kpi tava-card"><span>Asistentes</span><strong>{{ k.asistentes }}</strong></div>
         <div class="kpi tava-card"><span>Conversión</span><strong>{{ k.conversion_porcentaje }}%</strong></div>
       </div>
+      <div class="report-actions">
+        <button type="button" class="tava-btn-primary" (click)="downloadReport('pdf')">Descargar PDF</button>
+        <button type="button" class="nav__btn-outline" (click)="downloadReport('xlsx')">Descargar Excel</button>
+      </div>
     } @else {
       <p>Cargando métricas…</p>
     }
@@ -94,6 +98,27 @@
           <label>Duración (min) <input type="number" [(ngModel)]="theatrical.duration_minutes" name="dur" /></label>
           <label>Clasificación <input [(ngModel)]="theatrical.age_rating" name="age" /></label>
         </div>
+
+        @if (editingId(); as eidStaff) {
+          <section class="staff-block">
+            <h3>Personal por evento</h3>
+            <p class="muted">Solo los usuarios asignados pueden validar o vender boletas de esta obra.</p>
+            <label>Validadores (Ctrl+clic para varios)
+              <select multiple class="wide" [(ngModel)]="staffValidatorIds" name="staffValidators" size="4">
+                @for (u of validatorUsers(); track u.id) {
+                  <option [value]="u.id">{{ u.full_name }} — {{ u.email }}</option>
+                }
+              </select>
+            </label>
+            <label>Vendedores (Ctrl+clic para varios)
+              <select multiple class="wide" [(ngModel)]="staffSellerIds" name="staffSellers" size="4">
+                @for (u of sellerUsers(); track u.id) {
+                  <option [value]="u.id">{{ u.full_name }} — {{ u.email }}</option>
+                }
+              </select>
+            </label>
+          </section>
+        }
 
         <section class="ticketing-block">
           <h3>Boletería</h3>
@@ -204,6 +229,7 @@
   @if (tab() === 'users') {
     <div class="tava-card admin-form">
       <h2>Asignar rol por correo</h2>
+      <p class="muted">Los validadores y vendedores se asignan a eventos específicos en la pestaña Eventos al editar cada obra.</p>
       <label>Correo del usuario <input [(ngModel)]="roleEmail" name="roleEmail" type="email" /></label>
       <label>Rol
         <select [(ngModel)]="rolePick" name="rolePick">

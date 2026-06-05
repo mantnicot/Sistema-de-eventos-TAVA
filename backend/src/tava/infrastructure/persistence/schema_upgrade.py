@@ -43,6 +43,16 @@ async def apply_schema_upgrades(conn: AsyncConnection) -> None:
             updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
         )
         """,
+        """
+        CREATE TABLE IF NOT EXISTS event_staff_assignments (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            event_id UUID NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+            staff_role VARCHAR(20) NOT NULL,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            CONSTRAINT uq_event_staff_role UNIQUE (user_id, event_id, staff_role)
+        )
+        """,
     ]
     for sql in statements:
         await conn.execute(text(sql.strip()))

@@ -1,6 +1,6 @@
 import { Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { parseHttpError } from '../../core/utils/http-error.util';
@@ -15,6 +15,7 @@ import { parseHttpError } from '../../core/utils/http-error.util';
 export class LoginComponent {
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
   private readonly notify = inject(NotificationService);
 
   email = '';
@@ -32,7 +33,8 @@ export class LoginComponent {
         this.submitting = false;
         this.notify.hide();
         this.notify.success('Bienvenido', 'Sesión iniciada correctamente');
-        this.router.navigate(['/perfil']);
+        const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl');
+        this.router.navigateByUrl(returnUrl && returnUrl.startsWith('/') ? returnUrl : '/perfil');
       },
       error: (err) => {
         this.submitting = false;

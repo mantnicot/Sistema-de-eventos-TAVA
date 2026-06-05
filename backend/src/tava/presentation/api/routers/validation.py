@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from tava.application.use_cases.validation import ValidationUseCase
 from tava.domain.enums import UserRole, ValidationResult
 from tava.infrastructure.persistence.database import get_db
+from tava.infrastructure.persistence.event_staff import can_access_event
 from tava.presentation.api.dependencies import require_roles
 from tava.presentation.api.schemas import ValidateQrRequest, ValidationResponse
 
@@ -16,6 +17,7 @@ MESSAGES = {
     ValidationResult.ALREADY_USED: "Boleta ya utilizada",
     ValidationResult.EVENT_DISABLED: "Evento no habilitado",
     ValidationResult.INVALID: "Boleta inválida",
+    ValidationResult.NOT_AUTHORIZED: "No estás autorizado para validar este evento",
 }
 
 
@@ -40,6 +42,8 @@ async def aforo(
     user=Depends(require_roles(UserRole.VALIDATOR, UserRole.ADMIN)),
     db: AsyncSession = Depends(get_db),
 ):
+    if not await can_access_event(db, user.id, user.role, event_id, "validator"):
+        raise HTTPException(status_code=403, detail="No autorizado para este evento")
     uc = ValidationUseCase(db)
     stats = await uc.get_capacity_stats(event_id)
     if not stats:

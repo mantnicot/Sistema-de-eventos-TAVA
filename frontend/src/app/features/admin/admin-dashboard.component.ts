@@ -1,7 +1,6 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
 import { ApiService } from '../../core/services/api.service';
 import { AuthService } from '../../core/services/auth.service';
 import { NotificationService } from '../../core/services/notification.service';
@@ -45,7 +44,6 @@ interface AdminUser {
 export class AdminDashboardComponent implements OnInit {
   private readonly api = inject(ApiService);
   private readonly auth = inject(AuthService);
-  private readonly router = inject(Router);
   private readonly notify = inject(NotificationService);
   private readonly site = inject(SiteSettingsService);
 
@@ -63,6 +61,8 @@ export class AdminDashboardComponent implements OnInit {
   roleEmail = '';
   rolePick = 'seller';
   castInput = '';
+  staffValidatorIds: string[] = [];
+  staffSellerIds: string[] = [];
 
   theatrical: TheatricalDetails = {};
   eventForm = {
@@ -93,10 +93,6 @@ export class AdminDashboardComponent implements OnInit {
   ];
 
   ngOnInit(): void {
-    if (!this.auth.isAdmin()) {
-      this.router.navigate(['/']);
-      return;
-    }
     this.loadKpis();
     this.loadAdminEvents();
     this.loadUsers();
@@ -114,6 +110,36 @@ export class AdminDashboardComponent implements OnInit {
 
   isCurrentUser(u: AdminUser): boolean {
     return u.id === this.auth.user()?.id;
+  }
+
+  validatorUsers(): AdminUser[] {
+    return this.users().filter((u) => u.role === 'validator' || u.role === 'admin');
+  }
+
+  sellerUsers(): AdminUser[] {
+    return this.users().filter((u) => u.role === 'seller' || u.role === 'admin');
+  }
+
+  downloadReport(format: 'pdf' | 'xlsx'): void {
+    const path = format === 'pdf' ? '/dashboard/report/pdf' : '/dashboard/report/xlsx';
+    const filename = format === 'pdf' ? 'tava-metricas.pdf' : 'tava-metricas.xlsx';
+    this.notify.loadingTheatrical('Generando reporte', 'admin');
+    this.api.downloadBlob(path).subscribe({
+      next: (blob) => {
+        this.notify.hide();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(url);
+        this.notify.success('Reporte', 'Descarga iniciada');
+      },
+      error: () => {
+        this.notify.hide();
+        this.notify.error('Reporte', 'No se pudo generar el archivo');
+      },
+    });
   }
 
   loadKpis(): void {
@@ -224,6 +250,8 @@ export class AdminDashboardComponent implements OnInit {
       main_image_url: '',
       trailer_url: '',
     };
+    this.staffValidatorIds = [];
+    this.staffSellerIds = [];
   }
 
   editEvent(ev: TavaEvent): void {
@@ -258,6 +286,16 @@ export class AdminDashboardComponent implements OnInit {
     };
     this.theatrical = { ...(ev.theatrical_details ?? {}) };
     this.castInput = (this.theatrical.cast ?? []).join(', ');
+    this.staffValidatorIds = [];
+    this.staffSellerIds = [];
+    this.api
+      .get<{ validator_ids: string[]; seller_ids: string[] }>(`/events/${ev.id}/staff`)
+      .subscribe({
+        next: (staff) => {
+          this.staffValidatorIds = staff.validator_ids ?? [];
+          this.staffSellerIds = staff.seller_ids ?? [];
+        },
+      });
   }
 
   saveEvent(): void {
@@ -285,10 +323,19 @@ export class AdminDashboardComponent implements OnInit {
       next: (saved) => {
         const eventId = id ?? saved.id;
         const finish = () => {
-          this.notify.hide();
-          this.notify.success('Eventos', id ? 'Evento actualizado' : 'Evento creado');
-          this.resetEventForm();
-          this.loadAdminEvents();
+          if (id) {
+            this.saveEventStaff(eventId, () => {
+              this.notify.hide();
+              this.notify.success('Eventos', 'Evento actualizado');
+              this.resetEventForm();
+              this.loadAdminEvents();
+            });
+          } else {
+            this.notify.hide();
+            this.notify.success('Eventos', 'Evento creado');
+            this.resetEventForm();
+            this.loadAdminEvents();
+          }
         };
         const shouldSync =
           this.ticketTypesDraft.length > 0 || (this.ticketTypesTouched && !!id);
@@ -303,6 +350,23 @@ export class AdminDashboardComponent implements OnInit {
         this.notify.error('Eventos', 'No se pudo guardar el evento');
       },
     });
+  }
+
+  private saveEventStaff(eventId: string, onDone: () => void): void {
+    this.api
+      .put(`/events/${eventId}/staff`, {
+        validator_ids: this.staffValidatorIds,
+        seller_ids: this.staffSellerIds,
+      })
+      .subscribe({
+        next: () => onDone(),
+        error: () => {
+          this.notify.hide();
+          this.notify.warning('Personal', 'Evento guardado pero no se pudo asignar el personal');
+          this.resetEventForm();
+          this.loadAdminEvents();
+        },
+      });
   }
 
   private syncTicketTypes(eventId: string, onDone: () => void): void {

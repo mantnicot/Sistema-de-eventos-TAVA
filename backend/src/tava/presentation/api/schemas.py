@@ -195,6 +195,16 @@ class TicketTypesSyncRequest(BaseModel):
     ticket_types: list[TicketTypeUpsertItem] = Field(default_factory=list)
 
 
+class EventStaffUpdateRequest(BaseModel):
+    validator_ids: list[UUID] = Field(default_factory=list)
+    seller_ids: list[UUID] = Field(default_factory=list)
+
+
+class EventStaffResponse(BaseModel):
+    validator_ids: list[UUID]
+    seller_ids: list[UUID]
+
+
 class ValidateQrRequest(BaseModel):
     qr_token: str
 

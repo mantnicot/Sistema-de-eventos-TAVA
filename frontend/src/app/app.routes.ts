@@ -1,4 +1,5 @@
 import { Routes } from '@angular/router';
+import { authGuard, roleGuard } from './core/guards/auth.guard';
 import { ShellComponent } from './layout/shell/shell.component';
 
 export const routes: Routes = [
@@ -39,23 +40,28 @@ export const routes: Routes = [
       },
       {
         path: 'perfil',
+        canActivate: [authGuard],
         loadComponent: () => import('./features/profile/profile.component').then((m) => m.ProfileComponent),
       },
       {
         path: 'validar',
+        canActivate: [authGuard, roleGuard(['validator', 'admin'])],
         loadComponent: () => import('./features/validation/validation.component').then((m) => m.ValidationComponent),
       },
       {
         path: 'admin',
+        canActivate: [authGuard, roleGuard(['admin'])],
         loadComponent: () =>
           import('./features/admin/admin-dashboard.component').then((m) => m.AdminDashboardComponent),
       },
       {
         path: 'coleccion',
+        canActivate: [authGuard],
         loadComponent: () => import('./features/loyalty/collectibles.component').then((m) => m.CollectiblesComponent),
       },
       {
         path: 'vender',
+        canActivate: [authGuard, roleGuard(['seller', 'admin'])],
         loadComponent: () => import('./features/seller/seller-sell.component').then((m) => m.SellerSellComponent),
       },
     ],

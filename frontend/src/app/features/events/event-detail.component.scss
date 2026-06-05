@@ -1,5 +1,10 @@
 .detail__hero {
-  min-height: 320px;
+  min-height: 280px;
+
+  @media (max-width: 640px) {
+    min-height: 220px;
+    margin-bottom: 1rem;
+  }
   background-size: cover;
   background-position: center;
   display: flex;
@@ -43,11 +48,17 @@
 
   @media (max-width: 900px) {
     grid-template-columns: 1fr;
+    padding: 0 1rem 1.5rem;
+    gap: 1rem;
   }
 }
 
 .detail__main {
   min-width: 0;
+
+  @media (max-width: 900px) {
+    order: 1;
+  }
 }
 
 .detail__buy {
@@ -55,6 +66,13 @@
   top: 1rem;
   padding: 1.5rem;
   text-align: left;
+  z-index: 1;
+
+  @media (max-width: 900px) {
+    position: static;
+    order: 2;
+    margin-top: 0;
+  }
 
   &-title {
     margin: 0 0 1rem;

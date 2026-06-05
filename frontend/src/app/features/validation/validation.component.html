@@ -1,16 +1,26 @@
 <section class="validate">
   <h1 class="tava-glow-text">Validación de boletas</h1>
-  <p>Vista optimizada para móvil — escanea QR o pega el token</p>
+  <p>Escanea el QR de la boleta o ingresa el token manualmente</p>
 
   <div class="scanner tava-card">
-    <input
-      type="text"
-      placeholder="Token QR..."
-      [(ngModel)]="qrToken"
-      (keyup.enter)="scan()"
-      autocomplete="off"
-    />
-    <button type="button" class="tava-btn-primary" (click)="scan()">Validar ingreso</button>
+    <div id="qr-reader" class="scanner__camera"></div>
+    @if (cameraError) {
+      <p class="scanner__warn">{{ cameraError }}</p>
+    }
+    <button type="button" class="scanner__toggle" (click)="toggleCamera()">
+      {{ cameraActive ? 'Apagar cámara' : 'Activar cámara' }}
+    </button>
+
+    <div class="scanner__manual">
+      <input
+        type="text"
+        placeholder="Token QR..."
+        [(ngModel)]="qrToken"
+        (keyup.enter)="scan()"
+        autocomplete="off"
+      />
+      <button type="button" class="tava-btn-primary" (click)="scan()">Validar ingreso</button>
+    </div>
   </div>
 
   @if (lastResult) {

@@ -1,20 +1,18 @@
 from fastapi import APIRouter, Depends
+from fastapi.responses import Response
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from tava.domain.enums import EventStatus, PaymentStatus, UserRole
 from tava.infrastructure.persistence.database import get_db
 from tava.infrastructure.persistence.models import EventModel, OrderModel, TicketModel
+from tava.infrastructure.services.dashboard_report import build_kpis_pdf, build_kpis_xlsx
 from tava.presentation.api.dependencies import require_roles
 
 router = APIRouter(prefix="/dashboard", tags=["Dashboard Administrativo"])
 
 
-@router.get("/kpis")
-async def kpis(
-    user=Depends(require_roles(UserRole.ADMIN)),
-    db: AsyncSession = Depends(get_db),
-):
+async def _collect_kpis(db: AsyncSession) -> dict:
     active_events = await db.execute(
         select(func.count()).select_from(EventModel).where(
             EventModel.status.in_([EventStatus.PUBLISHED, EventStatus.IN_PROGRESS])
@@ -44,3 +42,39 @@ async def kpis(
         "asistentes": attendees.scalar() or 0,
         "conversion_porcentaje": round(conversion, 2),
     }
+
+
+@router.get("/kpis")
+async def kpis(
+    user=Depends(require_roles(UserRole.ADMIN)),
+    db: AsyncSession = Depends(get_db),
+):
+    return await _collect_kpis(db)
+
+
+@router.get("/report/pdf")
+async def report_pdf(
+    user=Depends(require_roles(UserRole.ADMIN)),
+    db: AsyncSession = Depends(get_db),
+):
+    data = await _collect_kpis(db)
+    pdf = build_kpis_pdf(data)
+    return Response(
+        content=pdf,
+        media_type="application/pdf",
+        headers={"Content-Disposition": 'attachment; filename="tava-metricas.pdf"'},
+    )
+
+
+@router.get("/report/xlsx")
+async def report_xlsx(
+    user=Depends(require_roles(UserRole.ADMIN)),
+    db: AsyncSession = Depends(get_db),
+):
+    data = await _collect_kpis(db)
+    xlsx = build_kpis_xlsx(data)
+    return Response(
+        content=xlsx,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": 'attachment; filename="tava-metricas.xlsx"'},
+    )

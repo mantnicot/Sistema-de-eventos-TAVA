@@ -60,3 +60,4 @@ class ValidationResult(str, enum.Enum):
     ALREADY_USED = "boleta_ya_utilizada"
     EVENT_DISABLED = "evento_no_habilitado"
     INVALID = "boleta_invalida"
+    NOT_AUTHORIZED = "no_autorizado"
