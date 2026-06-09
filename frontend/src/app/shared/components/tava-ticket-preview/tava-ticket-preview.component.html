@@ -1,30 +1,37 @@
 <article class="ticket-preview" [class.ticket-preview--vip]="kind() === 'vip'">
-  <div class="ticket-preview__body">
-    <div class="ticket-preview__left">
-      @if (imageUrl()) {
-        <div
-          class="ticket-preview__bg"
-          [style.backgroundImage]="'url(&quot;' + imageUrl() + '&quot;)'"
-        ></div>
-      }
-      <div class="ticket-preview__info">
-        <span class="ticket-preview__brand">TAVA TEATRO</span>
-        <h3 class="ticket-preview__event">{{ eventName() || 'Nombre del evento' }}</h3>
-        <p class="ticket-preview__holder">{{ holderName() }}</p>
-        <p class="ticket-preview__type">{{ typeName() }} · ${{ price() | number:'1.0-0' }} COP</p>
-        <p class="ticket-preview__meta">
-          @if (eventDate()) { <time>{{ eventDate() }}</time> }
-          @if (eventTime()) { · {{ eventTime() }} }
-        </p>
-        @if (city() || address()) {
-          <p class="ticket-preview__venue">{{ city() }}@if (address()) { · {{ address() }} }</p>
-        }
-      </div>
+  <div class="ticket-preview__header">
+    @if (imageUrl()) {
+      <div
+        class="ticket-preview__bg"
+        [style.backgroundImage]="'url(&quot;' + imageUrl() + '&quot;)'"
+      ></div>
+    }
+    <div class="ticket-preview__header-text">
+      <span class="ticket-preview__brand">TAVA TEATRO · BOLETA OFICIAL</span>
+      <h3 class="ticket-preview__event">{{ eventName() || 'Nombre del evento' }}</h3>
     </div>
-    <div class="ticket-preview__right">
-      <span class="ticket-preview__scan">ESCANEA EL CÓDIGO</span>
-      <div class="ticket-preview__qr" aria-hidden="true"></div>
-      <span class="ticket-preview__code">Presenta este QR en la entrada</span>
-    </div>
+  </div>
+
+  <div class="ticket-preview__info">
+    <p class="ticket-preview__holder">Asistente: {{ holderName() }}</p>
+    <p class="ticket-preview__type">{{ typeName() }} · ${{ price() | number:'1.0-0' }} COP</p>
+    <p class="ticket-preview__meta">
+      @if (eventDate()) { <time>{{ eventDate() }}</time> }
+      @if (eventTime()) { · {{ eventTime() }} }
+    </p>
+    @if (city() || address()) {
+      <p class="ticket-preview__venue">{{ city() }}@if (address()) { · {{ address() }} }</p>
+    }
+  </div>
+
+  <div class="ticket-preview__qr-zone">
+    <span class="ticket-preview__scan">ESCANEA EL CÓDIGO EN LA ENTRADA</span>
+    <div class="ticket-preview__qr" aria-hidden="true"></div>
+    <span class="ticket-preview__code">Presenta este código QR al validador</span>
+  </div>
+
+  <div class="ticket-preview__terms">
+    <strong>Términos y condiciones — TAVA Teatro</strong>
+    <p>Al adquirir esta boleta aceptas las políticas de ingreso, horarios, devoluciones y uso de imagen del Grupo TAVA.</p>
   </div>
 </article>

@@ -1,19 +1,16 @@
 .ticket-preview {
-  max-width: 420px;
+  max-width: 320px;
   margin: 0 auto;
   border-radius: 12px;
   overflow: hidden;
   background: #fff;
   box-shadow: 0 12px 36px rgba(0, 0, 0, 0.14), 0 0 0 2px rgba(201, 162, 39, 0.45);
+  display: flex;
+  flex-direction: column;
 
-  &__body {
-    display: grid;
-    grid-template-columns: 1.6fr 1fr;
-    min-height: 180px;
-  }
-
-  &__left {
+  &__header {
     position: relative;
+    min-height: 110px;
     overflow: hidden;
     background: #2a1520;
   }
@@ -28,68 +25,78 @@
     opacity: 0.9;
   }
 
-  &__info {
+  &__header-text {
     position: relative;
     z-index: 1;
-    padding: 0.85rem;
+    padding: 0.85rem 0.75rem;
     color: #fff;
     background: rgba(20, 12, 16, 0.55);
-    height: 100%;
+    text-align: center;
+    min-height: 110px;
     display: flex;
     flex-direction: column;
     justify-content: center;
-    text-align: center;
   }
 
   &__brand {
-    font-size: 0.55rem;
-    letter-spacing: 0.12em;
+    font-size: 0.5rem;
+    letter-spacing: 0.1em;
     color: #c9a227;
     font-weight: 700;
-    margin-bottom: 0.3rem;
+    margin-bottom: 0.35rem;
   }
 
   &__event {
-    margin: 0 0 0.35rem;
+    margin: 0;
     font-family: var(--tava-font-display, Georgia, serif);
-    font-size: 1.05rem;
+    font-size: 1rem;
     line-height: 1.15;
+  }
+
+  &__info {
+    padding: 0.65rem 0.75rem;
+    text-align: center;
+    border-bottom: 2px dashed rgba(201, 162, 39, 0.35);
   }
 
   &__holder,
   &__type,
   &__meta,
   &__venue {
-    margin: 0.12rem 0 0;
-    font-size: 0.72rem;
+    margin: 0.1rem 0 0;
+    font-size: 0.68rem;
+    color: #1a1410;
   }
 
   &__type {
     font-weight: 700;
-    color: #e8d49b;
+    color: #8b6914;
   }
 
-  &__right {
+  &__venue {
+    color: #555;
+  }
+
+  &__qr-zone {
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 0.35rem;
-    padding: 0.65rem 0.5rem;
-    background: #fff;
-    border-left: 2px dashed rgba(201, 162, 39, 0.45);
+    gap: 0.4rem;
+    padding: 0.75rem 0.5rem;
+    border-bottom: 2px dashed rgba(201, 162, 39, 0.35);
   }
 
   &__scan {
-    font-size: 0.55rem;
+    font-size: 0.52rem;
     font-weight: 700;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.06em;
     color: #8b6914;
   }
 
   &__qr {
-    width: 72px;
-    height: 72px;
+    width: 88px;
+    height: 88px;
     border: 2px solid rgba(201, 162, 39, 0.55);
     border-radius: 6px;
     background:
@@ -98,8 +105,28 @@
   }
 
   &__code {
-    font-size: 0.55rem;
+    font-size: 0.52rem;
     color: #8b6914;
     text-align: center;
+  }
+
+  &__terms {
+    padding: 0.55rem 0.65rem 0.7rem;
+    font-size: 0.48rem;
+    line-height: 1.35;
+    color: #666;
+    text-align: justify;
+
+    strong {
+      display: block;
+      text-align: center;
+      font-size: 0.52rem;
+      color: #8b6914;
+      margin-bottom: 0.25rem;
+    }
+
+    p {
+      margin: 0;
+    }
   }
 }
