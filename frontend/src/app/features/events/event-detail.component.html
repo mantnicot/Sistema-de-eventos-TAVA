@@ -52,13 +52,34 @@
         </section>
 
         @if (ev.theatrical_details; as td) {
+          @if (td.cast_members?.length) {
+            <section class="tava-card block artists">
+              <h2>Artistas</h2>
+              <div class="artists__grid">
+                @for (member of td.cast_members; track member.name) {
+                  <article class="artists__card">
+                    @if (member.photo_url) {
+                      <img [src]="mediaUrl(member.photo_url)" [alt]="member.name" loading="lazy" (error)="onImgError($event)" />
+                    } @else {
+                      <div class="artists__placeholder" aria-hidden="true">{{ member.name.charAt(0) }}</div>
+                    }
+                    <h3>{{ member.name }}</h3>
+                    @if (member.role) {
+                      <p>{{ member.role }}</p>
+                    }
+                  </article>
+                }
+              </div>
+            </section>
+          }
+
           @if (td.director || (td.cast && td.cast.length > 0)) {
             <section class="tava-card block">
               <h2>Ficha artística</h2>
               @if (td.director) {
                 <p><strong>Dirección:</strong> {{ td.director }}</p>
               }
-              @if (td.cast && td.cast.length) {
+              @if (td.cast && td.cast.length && !td.cast_members?.length) {
                 <p><strong>Elenco:</strong> {{ td.cast.join(', ') }}</p>
               }
               @if (td.language) {

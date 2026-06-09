@@ -4,4 +4,6 @@ export const environment = {
   apiUrl: 'https://tava-api-1.onrender.com/api/v1',
   /** Base del API para archivos /uploads (sin /api/v1) */
   mediaBaseUrl: 'https://tava-api-1.onrender.com',
+  /** Configura HCAPTCHA_SITE_KEY en Vercel; vacío = checkbox de verificación */
+  hcaptchaSiteKey: '',
 };

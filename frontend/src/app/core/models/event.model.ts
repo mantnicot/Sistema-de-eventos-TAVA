@@ -1,6 +1,13 @@
+export interface CastMember {
+  name: string;
+  photo_url?: string;
+  role?: string;
+}
+
 export interface TheatricalDetails {
   synopsis?: string;
   cast?: string[];
+  cast_members?: CastMember[];
   director?: string;
   duration_minutes?: number;
   age_rating?: string;

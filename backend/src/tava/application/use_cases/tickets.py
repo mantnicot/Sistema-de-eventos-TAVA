@@ -10,6 +10,7 @@ from tava.config import get_settings
 from tava.domain.enums import PaymentProvider, PaymentStatus
 from tava.infrastructure.persistence.models import EventModel, OrderModel, TicketModel, TicketTypeModel, UserModel
 from tava.infrastructure.persistence.repositories.sqlalchemy_user_repository import SQLAlchemyUserRepository
+from tava.infrastructure.security.ticket_codes import assign_unique_ticket_code, backfill_missing_ticket_codes
 from tava.infrastructure.security.ticket_tokens import generate_qr_token, generate_security_hash
 from tava.infrastructure.services.email import last_email_failure, send_tickets_confirmation_email
 from tava.infrastructure.services.ticket_pdf import build_tickets_pdf
@@ -88,6 +89,7 @@ class TicketUseCase:
                 event_id=event_id,
                 holder_name=name,
                 qr_token=qr,
+                ticket_code=await assign_unique_ticket_code(self._session),
                 security_hash="",
             )
             self._session.add(ticket)
@@ -125,7 +127,7 @@ class TicketUseCase:
             main_image_url=event.main_image_url,
             ticket_type_name=ticket_type.name,
             price=ticket_type.price,
-            tickets=[(t.qr_token, t.holder_name or buyer.full_name) for t in tickets],
+            tickets=[(t.qr_token, t.holder_name or buyer.full_name, t.ticket_code or "") for t in tickets],
         )
         ok_buyer = await send_tickets_confirmation_email(
             buyer.email,
@@ -264,7 +266,7 @@ class TicketUseCase:
             main_image_url=event.main_image_url,
             ticket_type_name=tt.name,
             price=tt.price,
-            tickets=[(t.qr_token, t.holder_name or "") for t in order.tickets],
+            tickets=[(t.qr_token, t.holder_name or "", t.ticket_code or "") for t in order.tickets],
         )
 
     async def list_my_tickets(self, user_id: UUID) -> list[dict]:
@@ -291,6 +293,7 @@ class TicketUseCase:
                 "ticket_type": tt.name,
                 "price": float(tt.price),
                 "qr_token": t.qr_token,
+                "ticket_code": t.ticket_code,
                 "is_used": t.is_used,
                 "main_image_url": ev.main_image_url,
                 "pdf_url": f"/tickets/orders/{t.order_id}/pdf",

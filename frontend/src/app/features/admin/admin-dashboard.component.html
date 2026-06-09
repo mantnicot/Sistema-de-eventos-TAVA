@@ -94,7 +94,35 @@
         <h3>Ficha teatral</h3>
         <label>Sinopsis <textarea [(ngModel)]="theatrical.synopsis" name="syn" rows="2"></textarea></label>
         <label>Director <input [(ngModel)]="theatrical.director" name="dir" /></label>
-        <label>Elenco (separado por comas) <input [(ngModel)]="castInput" name="cast" /></label>
+        <div class="artists-block">
+          <div class="artists-block__head">
+            <h4>Artistas del evento</h4>
+            <button type="button" class="link-btn" (click)="addArtist()">+ Añadir artista</button>
+          </div>
+          @for (artist of castMembers; track $index; let i = $index) {
+            <div class="artist-row">
+              <label>
+                Nombre
+                <input [(ngModel)]="artist.name" [name]="'artistName' + i" />
+              </label>
+              <label>
+                Rol
+                <input [(ngModel)]="artist.role" [name]="'artistRole' + i" placeholder="Actor, directora..." />
+              </label>
+              @if (artist.photo_url) {
+                <img [src]="artistPhotoUrl(artist.photo_url)" alt="" class="artist-row__photo" />
+              }
+              <tava-file-upload
+                label="Foto del artista"
+                kind="image"
+                accept="image/jpeg,image/png,image/webp"
+                [specs]="galleryImageSpec"
+                (uploaded)="onArtistPhoto(i, $event)"
+              />
+              <button type="button" class="link-btn warn" (click)="removeArtist(i)">Quitar</button>
+            </div>
+          }
+        </div>
         <div class="row">
           <label>Duración (min) <input type="number" [(ngModel)]="theatrical.duration_minutes" name="dur" /></label>
           <label>Clasificación <input [(ngModel)]="theatrical.age_rating" name="age" /></label>

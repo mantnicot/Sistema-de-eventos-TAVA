@@ -82,9 +82,16 @@ class UserAdminResponse(UserResponse):
     is_active: bool = True
 
 
+class CastMemberSchema(BaseModel):
+    name: str
+    photo_url: str | None = None
+    role: str | None = None
+
+
 class TheatricalDetailsSchema(BaseModel):
     synopsis: str | None = None
     cast: list[str] = Field(default_factory=list)
+    cast_members: list[CastMemberSchema] = Field(default_factory=list)
     director: str | None = None
     duration_minutes: int | None = None
     age_rating: str | None = None
@@ -224,6 +231,7 @@ class ValidationResponse(BaseModel):
 class AttendeeItem(BaseModel):
     ticket_id: UUID
     holder_name: str | None = None
+    ticket_code: str | None = None
     is_used: bool
     used_at: str | None = None
 

@@ -19,6 +19,7 @@ interface ScanResponse {
 interface Attendee {
   ticket_id: string;
   holder_name: string | null;
+  ticket_code?: string | null;
   is_used: boolean;
   used_at: string | null;
 }

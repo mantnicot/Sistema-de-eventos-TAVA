@@ -1,0 +1,10 @@
+<div class="tava-captcha">
+  @if (useHcaptcha) {
+    <div #hcaptchaHost class="tava-captcha__widget"></div>
+  } @else {
+    <label class="tava-captcha__dev">
+      <input type="checkbox" [checked]="devConfirmed" (change)="onDevConfirm($any($event.target).checked)" />
+      Confirmo que soy humano
+    </label>
+  }
+</div>

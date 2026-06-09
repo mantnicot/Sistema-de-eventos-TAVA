@@ -225,6 +225,18 @@
     }
   }
 
+  &__name {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+  }
+
+  &__code {
+    font-size: 0.75rem;
+    color: var(--tava-gold-glow);
+    font-weight: 600;
+  }
+
   &__dot {
     width: 10px;
     height: 10px;

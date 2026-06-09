@@ -1,5 +1,6 @@
-import { Component, inject, OnInit } from '@angular/core';
-import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { Component, inject, OnDestroy, OnInit, signal } from '@angular/core';
+import { Router, RouterLink, RouterLinkActive, RouterOutlet, NavigationEnd } from '@angular/router';
+import { filter, Subscription } from 'rxjs';
 import { AuthService } from '../../core/services/auth.service';
 import { SiteSettingsService } from '../../core/services/site-settings.service';
 import { HeroVideoComponent } from '../hero-video/hero-video.component';
@@ -20,12 +21,31 @@ import { TavaPopupComponent } from '../../shared/components/tava-popup/tava-popu
   templateUrl: './shell.component.html',
   styleUrl: './shell.component.scss',
 })
-export class ShellComponent implements OnInit {
+export class ShellComponent implements OnInit, OnDestroy {
   readonly auth = inject(AuthService);
   private readonly site = inject(SiteSettingsService);
+  private readonly router = inject(Router);
+  private navSub?: Subscription;
+
   menuOpen = false;
 
   ngOnInit(): void {
     this.site.loadAppearance();
+    this.navSub = this.router.events
+      .pipe(filter((e) => e instanceof NavigationEnd))
+      .subscribe(() => this.closeMenu());
+  }
+
+  ngOnDestroy(): void {
+    this.navSub?.unsubscribe();
+  }
+
+  closeMenu(): void {
+    this.menuOpen = false;
+  }
+
+  logout(): void {
+    this.closeMenu();
+    this.auth.logout();
   }
 }

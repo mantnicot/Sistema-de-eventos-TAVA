@@ -43,7 +43,7 @@
       <div class="validate__manual">
         <input
           type="text"
-          placeholder="Token QR manual..."
+          placeholder="Token QR o código numérico..."
           [(ngModel)]="qrToken"
           (keyup.enter)="scan()"
           autocomplete="off"
@@ -69,7 +69,12 @@
           @for (a of attendees(); track a.ticket_id) {
             <li class="attendees__item" [class.attendees__item--in]="a.is_used">
               <span class="attendees__dot" aria-hidden="true"></span>
-              <span class="attendees__name">{{ a.holder_name || 'Sin nombre' }}</span>
+              <span class="attendees__name">
+                {{ a.holder_name || 'Sin nombre' }}
+                @if (a.ticket_code) {
+                  <small class="attendees__code">#{{ a.ticket_code }}</small>
+                }
+              </span>
               <span class="attendees__status">{{ a.is_used ? 'Ingresó' : 'Pendiente' }}</span>
             </li>
           } @empty {

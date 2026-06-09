@@ -1,14 +1,15 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { parseHttpError } from '../../core/utils/http-error.util';
+import { TavaCaptchaComponent } from '../../shared/components/tava-captcha/tava-captcha.component';
 
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [FormsModule, RouterLink],
+  imports: [FormsModule, RouterLink, TavaCaptchaComponent],
   templateUrl: './login.component.html',
   styleUrl: './auth-form.scss',
 })
@@ -18,17 +19,28 @@ export class LoginComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly notify = inject(NotificationService);
 
+  @ViewChild(TavaCaptchaComponent) captcha?: TavaCaptchaComponent;
+
   email = '';
   password = '';
+  captchaToken = '';
   submitting = false;
   needsVerification = false;
   resending = false;
 
+  onCaptchaToken(token: string): void {
+    this.captchaToken = token;
+  }
+
   submit(): void {
     if (this.submitting) return;
+    if (!this.captchaToken) {
+      this.notify.warning('Verificación', 'Completa el captcha antes de ingresar');
+      return;
+    }
     this.submitting = true;
     this.notify.loadingTheatrical('Ingresando', 'login');
-    this.auth.login(this.email, this.password, 'dev-captcha').subscribe({
+    this.auth.login(this.email, this.password, this.captchaToken).subscribe({
       next: () => {
         this.submitting = false;
         this.notify.hide();
@@ -39,6 +51,8 @@ export class LoginComponent {
       error: (err) => {
         this.submitting = false;
         this.notify.hide();
+        this.captcha?.reset();
+        this.captchaToken = '';
         const parsed = parseHttpError(err, 'login');
         this.needsVerification = parsed.code === 'EMAIL_NOT_VERIFIED';
         console[parsed.kind === 'user' ? 'warn' : 'error'](parsed.logLine);

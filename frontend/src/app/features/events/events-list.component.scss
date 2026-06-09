@@ -42,16 +42,23 @@
 
 .show-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 1.35rem;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 1.75rem;
   padding: 0 1.75rem 3rem;
-  max-width: 1200px;
+  max-width: 1280px;
   margin: 0 auto;
 }
 
 .show-card {
   overflow: hidden;
   padding: 0;
+  border: 2px solid rgba(201, 162, 39, 0.25);
+  transition: transform var(--tava-transition), box-shadow var(--tava-transition);
+
+  &:hover {
+    transform: translateY(-8px) scale(1.02);
+    box-shadow: 0 20px 48px rgba(0, 0, 0, 0.35), 0 0 0 2px rgba(201, 162, 39, 0.55);
+  }
 
   &__link {
     text-decoration: none;
@@ -62,7 +69,7 @@
   }
 
   &__img {
-    height: 220px;
+    height: 300px;
     background-color: var(--tava-velvet);
     overflow: hidden;
 
@@ -83,7 +90,7 @@
     h2 {
       font-family: var(--tava-font-display);
       margin: 0.35rem 0;
-      font-size: 1.2rem;
+      font-size: 1.45rem;
     }
   }
 
@@ -103,8 +110,8 @@
 
   &__cta {
     align-self: flex-start;
-    font-size: 0.85rem !important;
-    padding: 0.55rem 1.25rem !important;
+    font-size: 0.95rem !important;
+    padding: 0.65rem 1.35rem !important;
   }
 }
 

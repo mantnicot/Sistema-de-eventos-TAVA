@@ -53,6 +53,8 @@ async def apply_schema_upgrades(conn: AsyncConnection) -> None:
             CONSTRAINT uq_event_staff_role UNIQUE (user_id, event_id, staff_role)
         )
         """,
+        "ALTER TABLE tickets ADD COLUMN IF NOT EXISTS ticket_code VARCHAR(12)",
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_tickets_ticket_code ON tickets(ticket_code) WHERE ticket_code IS NOT NULL",
     ]
     for sql in statements:
         await conn.execute(text(sql.strip()))

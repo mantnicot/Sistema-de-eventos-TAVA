@@ -374,6 +374,58 @@
   color: var(--tava-burgundy);
   cursor: pointer;
   text-decoration: underline;
+
+  &.warn {
+    color: #a33;
+  }
+}
+
+.artists-block {
+  margin: 0.75rem 0 1rem;
+
+  &__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+
+    h4 {
+      margin: 0;
+      font-size: 0.95rem;
+    }
+  }
+}
+
+.artist-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.65rem;
+  padding: 0.75rem;
+  margin-bottom: 0.65rem;
+  border: 1px dashed rgba(201, 162, 39, 0.35);
+  border-radius: var(--tava-radius);
+
+  label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    font-size: 0.85rem;
+  }
+
+  &__photo {
+    width: 72px;
+    height: 72px;
+    object-fit: cover;
+    border-radius: 50%;
+    border: 2px solid rgba(201, 162, 39, 0.45);
+    grid-column: 1 / -1;
+    justify-self: center;
+  }
+
+  .link-btn {
+    grid-column: 1 / -1;
+    justify-self: start;
+  }
 }
 
 @media (max-width: 800px) {

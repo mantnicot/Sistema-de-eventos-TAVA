@@ -10,6 +10,7 @@
       Contraseña
       <input type="password" [(ngModel)]="password" name="password" required />
     </label>
+    <tava-captcha (tokenChange)="onCaptchaToken($event)" />
     <button type="submit" class="tava-btn-primary" [disabled]="submitting">Entrar</button>
     <p class="hint"><a routerLink="/olvide-contrasena">¿Olvidaste tu contraseña?</a></p>
     @if (needsVerification) {

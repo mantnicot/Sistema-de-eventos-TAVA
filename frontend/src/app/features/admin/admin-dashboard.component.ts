@@ -14,8 +14,9 @@ import {
 } from '../../core/constants/media-upload-specs.const';
 import { TavaFileUploadComponent } from '../../shared/components/tava-file-upload/tava-file-upload.component';
 import { TavaTicketPreviewComponent } from '../../shared/components/tava-ticket-preview/tava-ticket-preview.component';
-import { TavaEvent, TavaEventDetail, TheatricalDetails } from '../../core/models/event.model';
+import { TavaEvent, TavaEventDetail, TheatricalDetails, CastMember } from '../../core/models/event.model';
 import { TicketKind, TicketTypeDraft } from '../../core/models/ticket-type.model';
+import { resolveMediaUrl } from '../../core/utils/media-url.util';
 
 interface Kpis {
   eventos_activos: number;
@@ -60,7 +61,7 @@ export class AdminDashboardComponent implements OnInit {
 
   roleEmail = '';
   rolePick = 'seller';
-  castInput = '';
+  castMembers: CastMember[] = [{ name: '', photo_url: '', role: '' }];
   staffValidatorIds: string[] = [];
   staffSellerIds: string[] = [];
   staffSearch = '';
@@ -288,9 +289,30 @@ export class AdminDashboardComponent implements OnInit {
     this.ticketTypesTouched = true;
   }
 
+  artistPhotoUrl(url: string | undefined): string {
+    return url ? resolveMediaUrl(url) : '';
+  }
+
+  addArtist(): void {
+    this.castMembers.push({ name: '', photo_url: '', role: '' });
+  }
+
+  removeArtist(index: number): void {
+    this.castMembers.splice(index, 1);
+    if (!this.castMembers.length) {
+      this.castMembers.push({ name: '', photo_url: '', role: '' });
+    }
+  }
+
+  onArtistPhoto(index: number, url: string): void {
+    if (this.castMembers[index]) {
+      this.castMembers[index].photo_url = url;
+    }
+  }
+
   resetEventForm(): void {
     this.editingId.set(null);
-    this.castInput = '';
+    this.castMembers = [{ name: '', photo_url: '', role: '' }];
     this.ticketTypesDraft = [];
     this.ticketTypesTouched = false;
     this.previewTypeIndex = 0;
@@ -343,7 +365,14 @@ export class AdminDashboardComponent implements OnInit {
       trailer_url: ev.trailer_url ?? '',
     };
     this.theatrical = { ...(ev.theatrical_details ?? {}) };
-    this.castInput = (this.theatrical.cast ?? []).join(', ');
+    const td = ev.theatrical_details;
+    if (td?.cast_members?.length) {
+      this.castMembers = td.cast_members.map((m) => ({ ...m }));
+    } else if (td?.cast?.length) {
+      this.castMembers = td.cast.map((name) => ({ name, photo_url: '', role: '' }));
+    } else {
+      this.castMembers = [{ name: '', photo_url: '', role: '' }];
+    }
     this.staffValidatorIds = [];
     this.staffSellerIds = [];
     this.api
@@ -365,13 +394,20 @@ export class AdminDashboardComponent implements OnInit {
       return;
     }
     this.notify.loadingTheatrical('Guardando obra', 'admin');
-    const cast = this.castInput
-      .split(',')
-      .map((s) => s.trim())
-      .filter(Boolean);
+    const members = this.castMembers
+      .map((m) => ({
+        name: m.name.trim(),
+        photo_url: m.photo_url?.trim() || undefined,
+        role: m.role?.trim() || undefined,
+      }))
+      .filter((m) => m.name);
     const body = {
       ...this.eventForm,
-      theatrical_details: { ...this.theatrical, cast },
+      theatrical_details: {
+        ...this.theatrical,
+        cast: members.map((m) => m.name),
+        cast_members: members,
+      },
     };
     const id = this.editingId();
     const req = id

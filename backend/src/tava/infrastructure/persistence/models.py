@@ -201,6 +201,7 @@ class TicketModel(Base):
     seat_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("seats.id"), nullable=True)
     holder_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
     qr_token: Mapped[str] = mapped_column(String(128), unique=True, index=True)
+    ticket_code: Mapped[str | None] = mapped_column(String(12), unique=True, index=True, nullable=True)
     security_hash: Mapped[str] = mapped_column(String(128))
     is_used: Mapped[bool] = mapped_column(Boolean, default=False)
     used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

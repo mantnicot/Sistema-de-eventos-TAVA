@@ -17,14 +17,28 @@ class ValidationUseCase:
     def __init__(self, session: AsyncSession):
         self._session = session
 
-    async def validate_qr(
-        self, qr_token: str, validator_id: UUID, user_role: UserRole
-    ) -> tuple[ValidationResult, TicketModel | None]:
-        result = await self._session.execute(select(TicketModel).where(TicketModel.qr_token == qr_token))
-        ticket = result.scalar_one_or_none()
-        if not ticket:
-            return ValidationResult.INVALID, None
+    async def _find_ticket(self, scan_value: str) -> TicketModel | None:
+        scan_value = scan_value.strip()
+        if not scan_value:
+            return None
 
+        if scan_value.isdigit() and 6 <= len(scan_value) <= 12:
+            code = scan_value.zfill(8) if len(scan_value) <= 8 else scan_value
+            result = await self._session.execute(
+                select(TicketModel).where(TicketModel.ticket_code == code)
+            )
+            ticket = result.scalar_one_or_none()
+            if ticket:
+                return ticket
+
+        result = await self._session.execute(
+            select(TicketModel).where(TicketModel.qr_token == scan_value)
+        )
+        return result.scalar_one_or_none()
+
+    async def _authorize_ticket(
+        self, ticket: TicketModel, validator_id: UUID, user_role: UserRole
+    ) -> tuple[ValidationResult, TicketModel | None]:
         if not verify_security_hash(
             ticket.id, ticket.event_id, ticket.qr_token, ticket.security_hash, settings.jwt_secret_key
         ):
@@ -35,7 +49,9 @@ class ValidationUseCase:
         ):
             return ValidationResult.NOT_AUTHORIZED, ticket
 
-        event_result = await self._session.execute(select(EventModel).where(EventModel.id == ticket.event_id))
+        event_result = await self._session.execute(
+            select(EventModel).where(EventModel.id == ticket.event_id)
+        )
         event = event_result.scalar_one_or_none()
         if not event or event.status not in (EventStatus.PUBLISHED, EventStatus.IN_PROGRESS):
             return ValidationResult.EVENT_DISABLED, ticket
@@ -56,6 +72,14 @@ class ValidationUseCase:
         )
         await self._session.flush()
         return ValidationResult.AUTHORIZED, ticket
+
+    async def validate_qr(
+        self, qr_token: str, validator_id: UUID, user_role: UserRole
+    ) -> tuple[ValidationResult, TicketModel | None]:
+        ticket = await self._find_ticket(qr_token)
+        if not ticket:
+            return ValidationResult.INVALID, None
+        return await self._authorize_ticket(ticket, validator_id, user_role)
 
     async def get_capacity_stats(self, event_id: UUID) -> dict:
         event_result = await self._session.execute(select(EventModel).where(EventModel.id == event_id))
@@ -104,6 +128,7 @@ class ValidationUseCase:
                 {
                     "ticket_id": t.id,
                     "holder_name": t.holder_name,
+                    "ticket_code": t.ticket_code,
                     "is_used": t.is_used,
                     "used_at": t.used_at.isoformat() if t.used_at else None,
                 }

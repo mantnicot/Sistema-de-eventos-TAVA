@@ -57,6 +57,11 @@ async def bootstrap_application() -> None:
                 )
 
             await ensure_default_settings(session)
+            from tava.infrastructure.security.ticket_codes import backfill_missing_ticket_codes
+
+            filled = await backfill_missing_ticket_codes(session)
+            if filled:
+                logger.info("Códigos numéricos asignados a %s boletas existentes", filled)
             await session.commit()
             logger.info("Bootstrap completado (modo pruebas, sin eventos demo)")
         except Exception:

@@ -73,7 +73,7 @@
 
 .section--shows {
   padding: 2rem 1.75rem 3rem;
-  max-width: 1200px;
+  max-width: 1280px;
   margin: 0 auto;
 
   .section__head {
@@ -97,8 +97,8 @@
 
 .show-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 1.25rem;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 1.75rem;
 }
 
 .show-card {
@@ -108,14 +108,15 @@
   color: inherit;
   overflow: hidden;
   transition: transform var(--tava-transition), box-shadow var(--tava-transition);
+  border: 2px solid rgba(201, 162, 39, 0.25);
 
   &:hover {
-    transform: translateY(-8px);
-    box-shadow: var(--tava-shadow-glow);
+    transform: translateY(-10px) scale(1.02);
+    box-shadow: 0 20px 48px rgba(0, 0, 0, 0.35), 0 0 0 2px rgba(201, 162, 39, 0.55);
   }
 
   &__img {
-    height: 200px;
+    height: 300px;
     background-color: var(--tava-velvet);
     overflow: hidden;
 
@@ -128,25 +129,27 @@
   }
 
   &__body {
-    padding: 1.1rem 1.25rem 1.25rem;
+    padding: 1.35rem 1.4rem 1.5rem;
     flex: 1;
     display: flex;
     flex-direction: column;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent);
 
     h3 {
       font-family: var(--tava-font-display);
-      margin: 0.35rem 0;
-      font-size: 1.15rem;
+      margin: 0.4rem 0;
+      font-size: 1.5rem;
+      line-height: 1.2;
     }
 
     time {
-      font-size: 0.85rem;
+      font-size: 0.95rem;
       color: var(--tava-cream-muted);
     }
   }
 
   &__cat {
-    font-size: 0.7rem;
+    font-size: 0.75rem;
     text-transform: uppercase;
     letter-spacing: 0.12em;
     color: var(--tava-burgundy);
@@ -155,10 +158,14 @@
 
   &__cta {
     margin-top: auto;
-    padding-top: 0.75rem;
+    padding: 0.65rem 1.1rem;
     font-weight: 700;
-    color: var(--tava-gold-glow);
-    font-size: 0.88rem;
+    color: var(--tava-stage-dark, #1a1410);
+    font-size: 0.95rem;
+    background: linear-gradient(135deg, var(--tava-gold), var(--tava-gold-glow));
+    border-radius: 999px;
+    text-align: center;
+    align-self: flex-start;
   }
 }
 
