@@ -13,7 +13,7 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.units import cm
 from reportlab.pdfgen import canvas
-from reportlab.platypus import KeepInFrame, Paragraph
+from reportlab.platypus import Paragraph
 from reportlab.lib.enums import TA_JUSTIFY
 from reportlab.lib.utils import ImageReader
 
@@ -125,6 +125,45 @@ def _wrap_text(c: canvas.Canvas, text: str, font: str, size: int, max_w: float) 
     if line:
         lines.append(line)
     return lines
+
+
+def _draw_terms_paragraph(
+    c: canvas.Canvas,
+    *,
+    event_name: str,
+    event_date: date,
+    event_time: time,
+    age_rating: str | None,
+    x: float,
+    y: float,
+    width: float,
+    max_height: float,
+) -> None:
+    """Dibuja términos en el canvas; reduce la fuente si hace falta para caber."""
+    html = _terms_text(event_name, event_date, event_time, age_rating or "")
+    font_size = 5.2
+    leading = 6.2
+    paragraph: Paragraph | None = None
+    _, used_h = width, max_height + 1
+
+    while font_size >= 4.0:
+        style = ParagraphStyle(
+            "Terms",
+            fontName="Helvetica",
+            fontSize=font_size,
+            leading=leading,
+            textColor=colors.HexColor("#555555"),
+            alignment=TA_JUSTIFY,
+        )
+        paragraph = Paragraph(html, style)
+        _, used_h = paragraph.wrap(width, max_height)
+        if used_h <= max_height:
+            break
+        font_size -= 0.2
+        leading = font_size + 1.0
+
+    if paragraph is not None:
+        paragraph.drawOn(c, x, y)
 
 
 def _draw_ticket_page(
@@ -265,21 +304,20 @@ def _draw_ticket_page(
     c.setFont("Helvetica-Bold", 7)
     c.drawCentredString(cx, terms_bottom + terms_h - 0.35 * cm, "Términos y condiciones — TAVA Teatro")
 
-    terms_style = ParagraphStyle(
-        "Terms",
-        fontName="Helvetica",
-        fontSize=5.2,
-        leading=6.2,
-        textColor=colors.HexColor("#555555"),
-        alignment=TA_JUSTIFY,
-    )
-    terms = Paragraph(_terms_text(event_name, event_date, event_time, age_rating or ""), terms_style)
     terms_x = inner_x + 0.15 * cm
     terms_w = inner_w - 0.3 * cm
     terms_avail_h = terms_h - 0.85 * cm
-    terms_box = KeepInFrame(terms_w, terms_avail_h, [terms], mode="shrink", hAlign="LEFT")
-    terms_box.wrap(terms_w, terms_avail_h)
-    terms_box.drawOn(c, terms_x, terms_bottom + 0.15 * cm)
+    _draw_terms_paragraph(
+        c,
+        event_name=event_name,
+        event_date=event_date,
+        event_time=event_time,
+        age_rating=age_rating,
+        x=terms_x,
+        y=terms_bottom + 0.15 * cm,
+        width=terms_w,
+        max_height=terms_avail_h,
+    )
 
     c.showPage()
 
