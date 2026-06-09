@@ -143,10 +143,20 @@ async def forgot_password(body: ForgotPasswordRequest, db: AsyncSession = Depend
         raise_user_error(400, "CAPTCHA_INVALID", "Verificación captcha inválida")
     try:
         uc = AuthUseCase(db)
-        await uc.request_password_reset(body.email)
+        sent = await uc.request_password_reset(body.email)
+        if sent:
+            return {
+                "message": "Te enviamos un enlace a tu correo. Revisa también la carpeta de spam.",
+                "success": True,
+                "email_sent": True,
+            }
         return {
-            "message": "Si el correo está registrado, recibirás un enlace para restablecer tu contraseña.",
+            "message": (
+                "Si el correo está registrado en TAVA, recibirás el enlace en unos minutos. "
+                "Si no llega, verifica que sea el mismo correo con el que te registraste."
+            ),
             "success": True,
+            "email_sent": False,
         }
     except ValueError as e:
         raise_user_error(400, "RESET_REQUEST_FAILED", str(e))

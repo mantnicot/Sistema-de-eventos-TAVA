@@ -78,3 +78,22 @@ async def report_xlsx(
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={"Content-Disposition": 'attachment; filename="tava-metricas.xlsx"'},
     )
+
+
+@router.post("/test-email")
+async def test_email(
+    user=Depends(require_roles(UserRole.ADMIN)),
+):
+    from tava.infrastructure.services.email import last_email_failure, send_password_reset_email
+
+    ok = await send_password_reset_email(
+        user.email,
+        user.full_name,
+        "https://sistema-de-eventos-tava.vercel.app/restablecer-contrasena?token=test",
+    )
+    if ok:
+        return {"success": True, "message": f"Correo de prueba enviado a {user.email}"}
+    return {
+        "success": False,
+        "message": last_email_failure() or "No se pudo enviar el correo de prueba",
+    }

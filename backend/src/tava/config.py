@@ -1,5 +1,9 @@
 from functools import lru_cache
+
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+PRODUCTION_FRONTEND_URL = "https://sistema-de-eventos-tava.vercel.app"
 
 
 class Settings(BaseSettings):
@@ -36,7 +40,18 @@ class Settings(BaseSettings):
     privacy_policy_version: str = "1.0-2026"
     resend_api_key: str = ""  # https://resend.com (API HTTPS, funciona en Render)
     brevo_api_key: str = ""  # https://www.brevo.com — recomendado en Render (gratis ~300/día)
+    """Correo verificado en Brevo (Senders). Debe coincidir con un remitente validado en el panel."""
+    brevo_sender_email: str = ""
+    brevo_sender_name: str = "TAVA Teatro"
     email_enable_smtp: bool = False  # True solo en local; Render bloquea puertos 25/465/587
+
+    @model_validator(mode="after")
+    def _apply_production_defaults(self) -> "Settings":
+        if self.app_env.strip().lower() == "production":
+            fu = self.frontend_url.strip().rstrip("/")
+            if not fu or fu.startswith("http://localhost"):
+                self.frontend_url = PRODUCTION_FRONTEND_URL
+        return self
 
     @property
     def cors_origin_list(self) -> list[str]:

@@ -141,17 +141,26 @@ class AuthUseCase:
         await self._session.flush()
         return raw
 
-    async def request_password_reset(self, email: str) -> None:
-        """Siempre responde igual al cliente; solo envía correo si el usuario existe."""
-        model = await self._users.get_model_by_email(email)
+    async def request_password_reset(self, email: str) -> bool:
+        """Envía correo si el usuario existe. Retorna True si se envió, False si el correo no está registrado."""
+        normalized = email.strip().lower()
+        if not normalized:
+            return False
+        model = await self._users.get_model_by_email(normalized)
         if not model or not model.is_active:
-            return
+            return False
+        frontend = settings.frontend_url.strip().rstrip("/")
+        if not frontend or frontend.startswith("http://localhost"):
+            raise ValueError(
+                "FRONTEND_URL no está configurada en el servidor. Contacta al administrador del sistema."
+            )
         raw_token = await self._create_password_reset_token(model.id)
-        reset_url = f"{settings.frontend_url.rstrip('/')}/restablecer-contrasena?token={raw_token}"
+        reset_url = f"{frontend}/restablecer-contrasena?token={raw_token}"
         email_sent = await send_password_reset_email(model.email, model.full_name, reset_url)
         if not email_sent:
             detail = last_email_failure() or "No se pudo enviar el correo de recuperación"
             raise ValueError(detail)
+        return True
 
     async def reset_password(self, token: str, new_password: str) -> None:
         if not token or len(token) < 20:

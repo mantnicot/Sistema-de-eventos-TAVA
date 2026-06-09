@@ -89,10 +89,14 @@ export class AuthService {
   }
 
   forgotPassword(email: string) {
-    return this.api.post<{ message: string; success: boolean }>('/auth/forgot-password', {
-      email,
-      captcha_token: 'dev-captcha',
-    });
+    const normalized = email.trim().toLowerCase();
+    return this.api.post<{ message: string; success: boolean; email_sent?: boolean }>(
+      '/auth/forgot-password',
+      {
+        email: normalized,
+        captcha_token: 'dev-captcha',
+      }
+    );
   }
 
   resetPassword(token: string, password: string) {

@@ -133,6 +133,8 @@ async def health():
         "resend_configured": mail.get("resend_configured"),
         "smtp_blocked_on_render": mail.get("smtp_blocked_on_render"),
         "sender_email": mail.get("sender_email"),
+        "frontend_url": mail.get("frontend_url"),
+        "last_email_failure": mail.get("last_failure"),
         "cloudinary_configured": cloudinary_configured(),
     }
 

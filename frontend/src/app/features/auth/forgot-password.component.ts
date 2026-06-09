@@ -18,14 +18,30 @@ export class ForgotPasswordComponent {
 
   email = '';
   sent = false;
+  sentMessage = '';
+  notRegisteredHint = false;
 
   submit(): void {
+    const email = this.email.trim().toLowerCase();
+    if (!email) {
+      this.notify.warning('Correo', 'Escribe tu correo registrado');
+      return;
+    }
     this.notify.loadingTheatrical('Recuperación', 'forgot');
-    this.auth.forgotPassword(this.email).subscribe({
-      next: () => {
+    this.auth.forgotPassword(email).subscribe({
+      next: (res) => {
         this.notify.hide();
         this.sent = true;
-        this.notify.success('Correo enviado', 'Si el correo existe, recibirás el enlace en unos minutos.');
+        this.sentMessage = res.message;
+        this.notRegisteredHint = res.email_sent === false;
+        if (res.email_sent) {
+          this.notify.success('Correo enviado', 'Revisa tu bandeja y la carpeta de spam.');
+        } else {
+          this.notify.warning(
+            'Revisa el correo',
+            'Ese correo podría no estar registrado en TAVA. Usa el mismo email con el que creaste la cuenta.'
+          );
+        }
       },
       error: (err) => {
         this.notify.hide();

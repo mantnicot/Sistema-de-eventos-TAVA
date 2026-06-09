@@ -51,6 +51,11 @@ def _smtp_login_email() -> str:
 
 
 def _sender_parts() -> tuple[str, str]:
+    if settings.brevo_sender_email.strip():
+        return (
+            settings.brevo_sender_name.strip() or "TAVA Teatro",
+            settings.brevo_sender_email.strip().lower(),
+        )
     raw = (settings.email_from or "").strip()
     angle = _EMAIL_IN_ANGLE.search(raw)
     if angle:
@@ -61,6 +66,15 @@ def _sender_parts() -> tuple[str, str]:
     if login:
         return "TAVA Teatro", login
     return "TAVA Teatro", "no-reply@tavateatro.com"
+
+
+def _reply_to_email() -> str | None:
+    raw = (settings.email_from or "").strip()
+    angle = _EMAIL_IN_ANGLE.search(raw)
+    if angle:
+        return angle.group(1).strip().lower()
+    login = _smtp_login_email()
+    return login or None
 
 
 def smtp_configured() -> bool:
@@ -105,6 +119,7 @@ def email_status_summary() -> dict:
         "smtp_blocked_on_render": settings.app_env == "production" and not settings.email_enable_smtp,
         "resend_configured": resend_configured(),
         "brevo_configured": brevo_configured(),
+        "brevo_sender_email": settings.brevo_sender_email.strip() or None,
         "http_ready": http_email_configured(),
         "smtp_host": settings.smtp_host.strip() or None,
         "smtp_port": settings.smtp_port,
@@ -180,6 +195,21 @@ async def _send_brevo(
     if not api_key:
         return False
     name, sender_email = _sender_parts()
+    payload: dict = {
+        "sender": {"name": name, "email": sender_email},
+        "to": [{"email": to_email.lower().strip()}],
+        "subject": subject,
+        "htmlContent": html,
+        "textContent": text,
+        "tags": ["tava-transactional"],
+    }
+    reply_to = _reply_to_email()
+    if reply_to and reply_to != sender_email:
+        payload["replyTo"] = {"email": reply_to, "name": name}
+    if attachment:
+        payload["attachment"] = [
+            {"content": base64.b64encode(attachment[1]).decode(), "name": attachment[0]}
+        ]
     try:
         async with httpx.AsyncClient(timeout=30) as client:
             response = await client.post(
@@ -189,29 +219,24 @@ async def _send_brevo(
                     "accept": "application/json",
                     "content-type": "application/json",
                 },
-                json={
-                    "sender": {"name": name, "email": sender_email},
-                    "to": [{"email": to_email}],
-                    "subject": subject,
-                    "htmlContent": html,
-                    "textContent": text,
-                    **(
-                        {
-                            "attachment": [
-                                {
-                                    "content": base64.b64encode(attachment[1]).decode(),
-                                    "name": attachment[0],
-                                }
-                            ]
-                        }
-                        if attachment
-                        else {}
-                    ),
-                },
+                json=payload,
             )
         if response.is_success:
+            try:
+                body = response.json()
+                msg_id = body.get("messageId") or body.get("messageIds")
+                logger.info("Brevo OK → %s (messageId=%s, from=%s)", to_email, msg_id, sender_email)
+            except Exception:
+                logger.info("Brevo OK → %s (from=%s)", to_email, sender_email)
             return True
-        _set_failure(f"Brevo HTTP {response.status_code}: {response.text[:400]}")
+        detail = response.text[:500]
+        if response.status_code == 400 and "sender" in detail.lower():
+            _set_failure(
+                "Brevo rechazó el remitente. En Render define BREVO_SENDER_EMAIL con un correo "
+                "verificado en Brevo → Senders & IP."
+            )
+        else:
+            _set_failure(f"Brevo HTTP {response.status_code}: {detail}")
         return False
     except Exception as exc:
         _set_failure(f"Brevo error: {exc}")
