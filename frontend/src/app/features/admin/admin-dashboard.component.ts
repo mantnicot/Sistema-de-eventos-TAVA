@@ -35,6 +35,37 @@ interface AdminUser {
   is_active: boolean;
 }
 
+interface AttendeeItem {
+  ticket_id: string;
+  holder_name: string | null;
+  ticket_code: string | null;
+  is_used: boolean;
+  is_cancelled: boolean;
+  used_at: string | null;
+}
+
+interface AttendeesResponse {
+  event_id: string;
+  event_name: string;
+  ingresados: number;
+  boletas_vendidas: number;
+  pendientes_ingreso: number;
+  attendees: AttendeeItem[];
+}
+
+interface AttendeeNotification {
+  notified?: boolean;
+  reason?: string;
+  changes?: string[];
+  emails_sent?: number;
+  tickets_regenerated?: number;
+  tickets_affected?: number;
+}
+
+interface EventUpdateResponse extends TavaEvent {
+  attendee_notification?: AttendeeNotification;
+}
+
 @Component({
   selector: 'app-admin-dashboard',
   standalone: true,
@@ -65,6 +96,11 @@ export class AdminDashboardComponent implements OnInit {
   staffValidatorIds: string[] = [];
   staffSellerIds: string[] = [];
   staffSearch = '';
+  readonly attendeesData = signal<AttendeesResponse | null>(null);
+  readonly attendeesLoading = signal(false);
+  broadcastSubject = '';
+  broadcastMessage = '';
+  cancelNotifyHolder = true;
 
   theatrical: TheatricalDetails = {};
   eventForm = {
@@ -332,6 +368,109 @@ export class AdminDashboardComponent implements OnInit {
     };
     this.staffValidatorIds = [];
     this.staffSellerIds = [];
+    this.attendeesData.set(null);
+    this.broadcastSubject = '';
+    this.broadcastMessage = '';
+  }
+
+  loadAttendees(eventId: string): void {
+    this.attendeesLoading.set(true);
+    this.api.get<AttendeesResponse>(`/validation/attendees/${eventId}`).subscribe({
+      next: (data) => {
+        this.attendeesData.set(data);
+        this.attendeesLoading.set(false);
+      },
+      error: () => {
+        this.attendeesData.set(null);
+        this.attendeesLoading.set(false);
+      },
+    });
+  }
+
+  attendeeStatusLabel(a: AttendeeItem): string {
+    if (a.is_cancelled) return 'Cancelada';
+    if (a.is_used) return 'Usada';
+    return 'Válida';
+  }
+
+  cancelAttendeeTicket(ticketId: string): void {
+    this.notify.confirm(
+      'Cancelar boleta',
+      'La boleta quedará invalidada y se liberará el cupo si aplica. ¿Continuar?',
+      () => {
+        this.notify.loadingTheatrical('Cancelando boleta', 'admin');
+        this.api
+          .post<{ email_sent: boolean }>(`/tickets/admin/${ticketId}/cancel`, {
+            notify_holder: this.cancelNotifyHolder,
+          })
+          .subscribe({
+            next: (res) => {
+              this.notify.hide();
+              const extra = res.email_sent ? ' Se avisó al titular por correo.' : '';
+              this.notify.success('Boletas', `Boleta cancelada.${extra}`);
+              const id = this.editingId();
+              if (id) this.loadAttendees(id);
+            },
+            error: (err) => {
+              this.notify.hide();
+              this.notify.error('Boletas', err.error?.detail ?? 'No se pudo cancelar');
+            },
+          });
+      }
+    );
+  }
+
+  sendBroadcastEmail(): void {
+    const id = this.editingId();
+    if (!id) return;
+    const subject = this.broadcastSubject.trim();
+    const message = this.broadcastMessage.trim();
+    if (subject.length < 3 || message.length < 10) {
+      this.notify.warning('Correo', 'Escribe un asunto (mín. 3) y un mensaje (mín. 10 caracteres).');
+      return;
+    }
+    this.notify.confirm(
+      'Enviar correo',
+      'Se enviará a todos los compradores con boletas pagadas de este evento. ¿Continuar?',
+      () => {
+        this.notify.loadingTheatrical('Enviando correos', 'admin');
+        this.api
+          .post<{ sent: number; recipients: number }>(`/events/${id}/broadcast-email`, {
+            subject,
+            message,
+          })
+          .subscribe({
+            next: (res) => {
+              this.notify.hide();
+              this.notify.success('Correo', `Enviados ${res.sent} de ${res.recipients} destinatarios.`);
+              this.broadcastSubject = '';
+              this.broadcastMessage = '';
+            },
+            error: (err) => {
+              this.notify.hide();
+              this.notify.error('Correo', err.error?.detail ?? 'No se pudo enviar');
+            },
+          });
+      }
+    );
+  }
+
+  private showAttendeeNotification(n: AttendeeNotification): void {
+    if (n.notified) {
+      this.notify.success(
+        'Asistentes avisados',
+        `Cambios en el evento: ${n.emails_sent ?? 0} correo(s), ${n.tickets_regenerated ?? 0} boleta(s) regenerada(s).`
+      );
+      return;
+    }
+    if (n.reason === 'sin_cambios_relevantes') return;
+    if (n.reason === 'sin_boletas_vendidas') return;
+    if (n.reason === 'correo_no_configurado') {
+      this.notify.warning(
+        'Correo no configurado',
+        `Hubo cambios pero no se pudo avisar a ${n.tickets_affected ?? 0} boleta(s). Configura Brevo en el servidor.`
+      );
+    }
   }
 
   editEvent(ev: TavaEvent): void {
@@ -383,6 +522,7 @@ export class AdminDashboardComponent implements OnInit {
           this.staffSellerIds = (staff.seller_ids ?? []).map(String);
         },
       });
+    this.loadAttendees(ev.id);
   }
 
   saveEvent(): void {
@@ -411,16 +551,22 @@ export class AdminDashboardComponent implements OnInit {
     };
     const id = this.editingId();
     const req = id
-      ? this.api.patch<TavaEvent>(`/events/${id}`, body)
+      ? this.api.patch<EventUpdateResponse>(`/events/${id}`, body)
       : this.api.post<TavaEvent>('/events', body);
     req.subscribe({
       next: (saved) => {
         const eventId = id ?? saved.id;
+        const attendeeNotification = id
+          ? (saved as EventUpdateResponse).attendee_notification
+          : undefined;
         const finish = () => {
           if (id) {
             this.saveEventStaff(eventId, () => {
               this.notify.hide();
               this.notify.success('Eventos', 'Evento actualizado');
+              if (attendeeNotification) {
+                this.showAttendeeNotification(attendeeNotification);
+              }
               this.resetEventForm();
               this.loadAdminEvents();
             });

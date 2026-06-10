@@ -59,6 +59,7 @@ async def apply_schema_upgrades(conn: AsyncConnection) -> None:
         "ALTER TABLE orders ADD COLUMN IF NOT EXISTS wompi_transaction_id VARCHAR(128)",
         "ALTER TABLE orders ADD COLUMN IF NOT EXISTS pending_payload JSONB",
         "CREATE UNIQUE INDEX IF NOT EXISTS uq_orders_payment_reference ON orders(payment_reference) WHERE payment_reference IS NOT NULL",
+        "ALTER TABLE tickets ADD COLUMN IF NOT EXISTS is_cancelled BOOLEAN NOT NULL DEFAULT FALSE",
     ]
     for sql in statements:
         await conn.execute(text(sql.strip()))

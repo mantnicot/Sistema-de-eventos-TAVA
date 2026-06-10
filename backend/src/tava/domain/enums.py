@@ -58,6 +58,7 @@ class PaymentProvider(str, enum.Enum):
 class ValidationResult(str, enum.Enum):
     AUTHORIZED = "acceso_autorizado"
     ALREADY_USED = "boleta_ya_utilizada"
+    CANCELLED = "boleta_cancelada"
     EVENT_DISABLED = "evento_no_habilitado"
     INVALID = "boleta_invalida"
     NOT_AUTHORIZED = "no_autorizado"

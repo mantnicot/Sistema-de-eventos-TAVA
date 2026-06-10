@@ -192,6 +192,85 @@
               Guardar asignación de personal
             </button>
           </section>
+
+          <section class="attendees-block">
+            <h3>Asistentes y boletas</h3>
+            <p class="muted">
+              Al guardar cambios de fecha, hora o lugar se avisa por correo y se regeneran los QR de boletas no usadas.
+            </p>
+            @if (attendeesLoading()) {
+              <p class="muted">Cargando asistentes…</p>
+            } @else if (attendeesData()) {
+              @let data = attendeesData()!;
+              <p class="muted">
+                Vendidas: <strong>{{ data.boletas_vendidas }}</strong> ·
+                Ingresados: <strong>{{ data.ingresados }}</strong> ·
+                Pendientes: <strong>{{ data.pendientes_ingreso }}</strong>
+              </p>
+              <label class="attendees-notify">
+                <input type="checkbox" [(ngModel)]="cancelNotifyHolder" name="cancelNotify" />
+                Avisar por correo al cancelar una boleta
+              </label>
+              <div class="staff-table-wrap">
+                <table class="staff-table attendees-table">
+                  <thead>
+                    <tr>
+                      <th>Titular</th>
+                      <th>Código</th>
+                      <th>Estado</th>
+                      <th>Acción</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (a of data.attendees; track a.ticket_id) {
+                      <tr [class.attendees-row--cancelled]="a.is_cancelled">
+                        <td>{{ a.holder_name || '—' }}</td>
+                        <td>{{ a.ticket_code || '—' }}</td>
+                        <td>{{ attendeeStatusLabel(a) }}</td>
+                        <td>
+                          @if (!a.is_cancelled && !a.is_used) {
+                            <button type="button" class="btn-danger btn-sm" (click)="cancelAttendeeTicket(a.ticket_id)">
+                              Cancelar
+                            </button>
+                          } @else {
+                            <span class="muted-inline">—</span>
+                          }
+                        </td>
+                      </tr>
+                    } @empty {
+                      <tr>
+                        <td colspan="4" class="muted">Aún no hay boletas vendidas.</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+
+              <div class="broadcast-block">
+                <h4>Enviar correo a asistentes</h4>
+                <p class="muted">Mensaje personalizado a quienes compraron boletas pagadas de este evento.</p>
+                <label>
+                  Asunto
+                  <input [(ngModel)]="broadcastSubject" name="broadcastSubject" maxlength="120" />
+                </label>
+                <label>
+                  Mensaje
+                  <textarea
+                    [(ngModel)]="broadcastMessage"
+                    name="broadcastMessage"
+                    rows="4"
+                    maxlength="4000"
+                    placeholder="Escribe el aviso para los asistentes…"
+                  ></textarea>
+                </label>
+                <button type="button" class="tava-btn-primary" (click)="sendBroadcastEmail()">
+                  Enviar correo
+                </button>
+              </div>
+            } @else {
+              <p class="muted">No se pudo cargar la lista de asistentes.</p>
+            }
+          </section>
         }
 
         <section class="ticketing-block">

@@ -22,6 +22,7 @@ router = APIRouter(prefix="/validation", tags=["Validación"])
 MESSAGES = {
     ValidationResult.AUTHORIZED: "Acceso autorizado",
     ValidationResult.ALREADY_USED: "Boleta ya utilizada",
+    ValidationResult.CANCELLED: "Boleta cancelada",
     ValidationResult.EVENT_DISABLED: "Evento no habilitado",
     ValidationResult.INVALID: "Boleta inválida",
     ValidationResult.NOT_AUTHORIZED: "No estás autorizado para validar este evento",

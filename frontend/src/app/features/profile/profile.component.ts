@@ -19,6 +19,7 @@ interface MyTicket {
   price: number;
   ticket_code?: string | null;
   is_used: boolean;
+  is_cancelled?: boolean;
   pdf_url: string;
 }
 
@@ -92,6 +93,12 @@ export class ProfileComponent implements OnInit {
         error: () => this.sellerSales.set([]),
       });
     }
+  }
+
+  ticketStatus(t: MyTicket): string {
+    if (t.is_cancelled) return 'Cancelada';
+    if (t.is_used) return 'Usada';
+    return 'Válida';
   }
 
   downloadPdf(pdfUrl: string, label: string): void {

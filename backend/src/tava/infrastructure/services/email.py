@@ -478,3 +478,123 @@ async def send_tickets_confirmation_email(
     text = f"Hola {full_name},\n\nAdjuntamos tu {role} de {quantity} boleta(s) para {event_name}.\n"
     filename = f"boletas-{event_name.replace(' ', '-')[:40]}.pdf"
     return await _deliver_email(to_email, subject, html, text, (filename, pdf_bytes))
+
+
+def _event_change_email_html(
+    full_name: str,
+    event_name: str,
+    changes: list[str],
+    *,
+    event_date: str = "",
+    event_time: str = "",
+    frontend_url: str = "",
+) -> str:
+    changes_html = "".join(f"<li>{c}</li>" for c in changes)
+    when = f"{event_date} · {event_time}" if event_date else "Revisa el PDF adjunto"
+    profile_link = f'{frontend_url}/perfil' if frontend_url else "/perfil"
+    return f"""
+<!DOCTYPE html>
+<html lang="es">
+<body style="margin:0;padding:0;background:#1a1410;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#1a1410;padding:32px 16px;">
+    <tr><td align="center">
+      <table role="presentation" width="560" cellspacing="0" cellpadding="0" style="max-width:560px;background:#fffefb;border-radius:16px;overflow:hidden;">
+        <tr>
+          <td style="background:linear-gradient(135deg,#6b1a2a,#3d0f18);padding:24px;text-align:center;">
+            <h1 style="margin:0;font-family:Georgia,serif;font-size:24px;color:#c9a227;">Actualización de evento</h1>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:28px 32px;font-family:Georgia,serif;color:#3d2a14;line-height:1.6;">
+            <p>Hola <strong>{full_name}</strong>,</p>
+            <p>Hubo cambios en el evento <strong>{event_name}</strong> para el que tienes boleta(s):</p>
+            <ul style="padding-left:1.2rem;">{changes_html}</ul>
+            <p><strong>Nueva función:</strong> {when}</p>
+            <p>Tus boletas fueron <strong>regeneradas</strong> con nuevos códigos QR. Descarga el PDF adjunto o entra a
+            <a href="{profile_link}">Mis boletas</a> en TAVA.</p>
+            <p style="font-size:13px;color:#6b5344;">Los QR anteriores ya no son válidos para ingresar.</p>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>"""
+
+
+async def send_event_change_email(
+    to_email: str,
+    full_name: str,
+    event_name: str,
+    changes: list[str],
+    *,
+    pdf_bytes: bytes | None = None,
+    event_date: str = "",
+    event_time: str = "",
+    frontend_url: str = "",
+) -> bool:
+    subject = f"⚠️ Cambio en «{event_name}» — nuevas boletas TAVA"
+    html = _event_change_email_html(
+        full_name,
+        event_name,
+        changes,
+        event_date=event_date,
+        event_time=event_time,
+        frontend_url=frontend_url,
+    )
+    text = (
+        f"Hola {full_name},\n\n"
+        f"Hubo cambios en {event_name}:\n"
+        + "\n".join(f"- {c}" for c in changes)
+        + "\n\nDescarga tus boletas actualizadas en TAVA.\n"
+    )
+    attachment = None
+    if pdf_bytes:
+        filename = f"boletas-actualizadas-{event_name.replace(' ', '-')[:30]}.pdf"
+        attachment = (filename, pdf_bytes)
+    return await _deliver_email(to_email, subject, html, text, attachment)
+
+
+async def send_ticket_cancelled_email(
+    to_email: str,
+    full_name: str,
+    event_name: str,
+    holder_name: str,
+    ticket_code: str | None,
+) -> bool:
+    code_line = f" (código #{ticket_code})" if ticket_code else ""
+    subject = f"Boleta cancelada — {event_name}"
+    html = f"""
+    <div style="font-family:Georgia,serif;max-width:520px;margin:0 auto;color:#3d2a14;">
+      <h1 style="color:#b8860b;">TAVA Teatro</h1>
+      <p>Hola <strong>{full_name}</strong>,</p>
+      <p>Te informamos que la boleta de <strong>{holder_name}</strong>{code_line} para
+      <strong>{event_name}</strong> fue <strong>cancelada</strong> por el organizador.</p>
+      <p>Si tienes dudas, contáctanos por nuestros canales oficiales.</p>
+    </div>
+    """
+    text = f"Hola {full_name},\n\nTu boleta para {event_name} fue cancelada.\n"
+    return await _deliver_email(to_email, subject, html, text)
+
+
+async def send_event_broadcast_email(
+    to_email: str,
+    full_name: str,
+    event_name: str,
+    subject: str,
+    message: str,
+) -> bool:
+    full_subject = subject if subject else f"Mensaje de TAVA — {event_name}"
+    html = f"""
+    <div style="font-family:Georgia,serif;max-width:520px;margin:0 auto;color:#3d2a14;">
+      <h1 style="color:#b8860b;">TAVA Teatro</h1>
+      <p>Hola <strong>{full_name}</strong>,</p>
+      <p>Mensaje sobre el evento <strong>{event_name}</strong>:</p>
+      <div style="background:#f8f0e4;border-left:4px solid #c9a227;padding:16px 20px;margin:16px 0;">
+        {message.replace(chr(10), '<br>')}
+      </div>
+      <p style="font-size:12px;color:#666;">Equipo TAVA Teatro</p>
+    </div>
+    """
+    text = f"Hola {full_name},\n\n{message}\n\n— TAVA Teatro ({event_name})\n"
+    return await _deliver_email(to_email, full_subject, html, text)

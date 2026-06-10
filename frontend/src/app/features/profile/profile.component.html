@@ -23,21 +23,27 @@
             </header>
             <ul class="ticket-rows">
               @for (t of group.tickets; track t.id) {
-                <li class="ticket-row" [class.ticket-row--used]="t.is_used">
+                <li
+                  class="ticket-row"
+                  [class.ticket-row--used]="t.is_used"
+                  [class.ticket-row--cancelled]="t.is_cancelled"
+                >
                   <span class="ticket-row__type">{{ t.ticket_type }}</span>
                   <span class="ticket-row__holder">{{ t.holder_name || 'Sin nombre' }}</span>
                   @if (t.ticket_code) {
                     <span class="ticket-row__code">#{{ t.ticket_code }}</span>
                   }
                   <span class="ticket-row__price">${{ t.price | number:'1.0-0' }}</span>
-                  <span class="ticket-row__status">{{ t.is_used ? 'Usada' : 'Válida' }}</span>
-                  <button
-                    type="button"
-                    class="ticket-row__pdf tava-btn-primary"
-                    (click)="downloadPdf(t.pdf_url, 'boleta-' + (t.ticket_code || t.id))"
-                  >
-                    PDF
-                  </button>
+                  <span class="ticket-row__status">{{ ticketStatus(t) }}</span>
+                  @if (!t.is_cancelled) {
+                    <button
+                      type="button"
+                      class="ticket-row__pdf tava-btn-primary"
+                      (click)="downloadPdf(t.pdf_url, 'boleta-' + (t.ticket_code || t.id))"
+                    >
+                      PDF
+                    </button>
+                  }
                 </li>
               }
             </ul>

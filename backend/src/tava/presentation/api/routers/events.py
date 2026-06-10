@@ -22,6 +22,7 @@ from tava.presentation.api.schemas import (
     TheatricalDetailsSchema,
     TicketTypePublicResponse,
     TicketTypesSyncRequest,
+    BroadcastEmailRequest,
 )
 
 router = APIRouter(prefix="/events", tags=["Eventos"])
@@ -228,13 +229,20 @@ async def create_event(
     return _event_response(result.scalar_one())
 
 
-@router.patch("/{event_id}", response_model=EventResponse)
+@router.patch("/{event_id}")
 async def update_event(
     event_id: UUID,
     body: EventCreateRequest,
     user=Depends(require_roles(UserRole.ADMIN)),
     db: AsyncSession = Depends(get_db),
 ):
+    from tava.application.use_cases.event_notifications import EventNotificationUseCase
+
+    before_result = await db.execute(select(EventModel).where(EventModel.id == event_id))
+    before_model = before_result.scalar_one_or_none()
+    if not before_model:
+        raise HTTPException(status_code=404, detail="Evento no encontrado")
+
     repo = SQLAlchemyEventRepository(db)
     data = body.model_dump(exclude_unset=True)
     if body.theatrical_details is not None:
@@ -243,7 +251,16 @@ async def update_event(
     if not event:
         raise HTTPException(status_code=404, detail="Evento no encontrado")
     result = await db.execute(select(EventModel).where(EventModel.id == event_id))
-    return _event_response(result.scalar_one())
+    after_model = result.scalar_one()
+
+    notify_uc = EventNotificationUseCase(db)
+    notification = await notify_uc.on_event_updated(before_model, after_model)
+    await db.commit()
+
+    response = _event_response(after_model)
+    payload = response.model_dump()
+    payload["attendee_notification"] = notification
+    return payload
 
 
 async def _sold_counts_by_type(db: AsyncSession, event_id: UUID) -> dict[UUID, int]:
@@ -358,6 +375,26 @@ async def add_event_media(
     return EventMediaResponse(
         id=media.id, media_type=media.media_type, url=media.url, sort_order=media.sort_order
     )
+
+
+@router.post("/{event_id}/broadcast-email")
+async def broadcast_event_email(
+    event_id: UUID,
+    body: BroadcastEmailRequest,
+    _user=Depends(require_roles(UserRole.ADMIN)),
+    db: AsyncSession = Depends(get_db),
+):
+    from tava.application.use_cases.event_notifications import EventNotificationUseCase
+
+    uc = EventNotificationUseCase(db)
+    try:
+        result = await uc.broadcast_custom_email(
+            event_id, subject=body.subject, message=body.message
+        )
+        await db.commit()
+        return result
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.delete("/{event_id}")

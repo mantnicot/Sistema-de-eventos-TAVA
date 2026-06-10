@@ -95,6 +95,12 @@
     opacity: 0.65;
   }
 
+  &--cancelled {
+    opacity: 0.5;
+    text-decoration: line-through;
+    text-decoration-color: rgba(229, 115, 115, 0.45);
+  }
+
   &__type {
     font-weight: 600;
     color: var(--tava-gold-glow);
@@ -126,6 +132,11 @@
 
   &--used .ticket-row__status {
     color: #e57373;
+  }
+
+  &--cancelled .ticket-row__status {
+    color: #ef5350;
+    text-decoration: none;
   }
 
   &__pdf {

@@ -564,6 +564,8 @@ class TicketUseCase:
         ticket, event, tt, order = row
         if not is_admin and ticket.owner_id != user_id and order.buyer_id != user_id:
             raise ValueError("No autorizado")
+        if ticket.is_cancelled:
+            raise ValueError("Boleta cancelada")
         age = None
         if event.theatrical_details and isinstance(event.theatrical_details, dict):
             age = event.theatrical_details.get("age_rating")
@@ -606,6 +608,7 @@ class TicketUseCase:
                 "qr_token": t.qr_token,
                 "ticket_code": t.ticket_code,
                 "is_used": t.is_used,
+                "is_cancelled": t.is_cancelled,
                 "main_image_url": ev.main_image_url,
                 "pdf_url": f"/tickets/{t.id}/pdf",
             }

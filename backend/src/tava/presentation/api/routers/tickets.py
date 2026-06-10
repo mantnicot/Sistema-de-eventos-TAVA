@@ -11,7 +11,7 @@ from tava.infrastructure.persistence.event_staff import can_access_event
 from tava.infrastructure.persistence.models import TicketTypeModel
 from tava.infrastructure.services.captcha import verify_captcha
 from tava.presentation.api.dependencies import get_current_user, require_roles
-from tava.presentation.api.schemas import PurchaseRequest, SellTicketRequest, TicketTypeCreateRequest
+from tava.presentation.api.schemas import PurchaseRequest, SellTicketRequest, TicketTypeCreateRequest, CancelTicketRequest
 
 router = APIRouter(prefix="/tickets", tags=["Boletería"])
 
@@ -42,6 +42,26 @@ async def seller_sales(
 ):
     uc = TicketUseCase(db)
     return await uc.list_seller_sales(user.id)
+
+
+@router.post("/admin/{ticket_id}/cancel")
+async def admin_cancel_ticket(
+    ticket_id: UUID,
+    body: CancelTicketRequest | None = None,
+    _user=Depends(require_roles(UserRole.ADMIN)),
+    db: AsyncSession = Depends(get_db),
+):
+    from tava.application.use_cases.event_notifications import EventNotificationUseCase
+
+    notify = body.notify_holder if body else True
+    uc = EventNotificationUseCase(db)
+    try:
+        result = await uc.cancel_ticket(ticket_id, notify=notify)
+        await db.commit()
+        return result
+    except ValueError as e:
+        await db.rollback()
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.get("/{ticket_id}/pdf")

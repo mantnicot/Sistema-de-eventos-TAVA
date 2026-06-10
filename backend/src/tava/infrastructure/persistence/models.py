@@ -207,6 +207,7 @@ class TicketModel(Base):
     ticket_code: Mapped[str | None] = mapped_column(String(12), unique=True, index=True, nullable=True)
     security_hash: Mapped[str] = mapped_column(String(128))
     is_used: Mapped[bool] = mapped_column(Boolean, default=False)
+    is_cancelled: Mapped[bool] = mapped_column(Boolean, default=False)
     used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     validated_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
 

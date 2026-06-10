@@ -56,6 +56,9 @@ class ValidationUseCase:
         if not event or event.status not in (EventStatus.PUBLISHED, EventStatus.IN_PROGRESS):
             return ValidationResult.EVENT_DISABLED, ticket
 
+        if ticket.is_cancelled:
+            return ValidationResult.CANCELLED, ticket
+
         if ticket.is_used:
             return ValidationResult.ALREADY_USED, ticket
 
@@ -130,6 +133,7 @@ class ValidationUseCase:
                     "holder_name": t.holder_name,
                     "ticket_code": t.ticket_code,
                     "is_used": t.is_used,
+                    "is_cancelled": t.is_cancelled,
                     "used_at": t.used_at.isoformat() if t.used_at else None,
                 }
                 for t in tickets

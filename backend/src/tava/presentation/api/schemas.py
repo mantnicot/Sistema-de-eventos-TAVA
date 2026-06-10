@@ -234,7 +234,17 @@ class AttendeeItem(BaseModel):
     holder_name: str | None = None
     ticket_code: str | None = None
     is_used: bool
+    is_cancelled: bool = False
     used_at: str | None = None
+
+
+class BroadcastEmailRequest(BaseModel):
+    subject: str = Field(min_length=3, max_length=120)
+    message: str = Field(min_length=10, max_length=4000)
+
+
+class CancelTicketRequest(BaseModel):
+    notify_holder: bool = True
 
 
 class AttendeesListResponse(BaseModel):
