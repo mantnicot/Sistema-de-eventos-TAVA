@@ -17,7 +17,7 @@ import { resolveMediaUrl } from '../../core/utils/media-url.util';
             muted
             loop
             playsinline
-            preload="auto"
+            preload="none"
             (loadeddata)="onVideoReady()"
           ></video>
           <div class="hero-video__veil"></div>

@@ -51,12 +51,14 @@ async def lifespan(app: FastAPI):
         mail = email_status_summary()
         if email_transport_ready():
             logger.info(
-                "Correo listo: smtp=%s resend=%s host=%s user=%s",
-                mail["smtp_configured"],
+                "Correo listo: brevo=%s resend=%s sender=%s",
+                mail["brevo_configured"],
                 mail["resend_configured"],
-                mail["smtp_host"],
-                mail["smtp_user"],
+                mail["sender_email"],
             )
+            hint = mail.get("email_config_hint")
+            if hint:
+                logger.warning("Correo — revisar configuración: %s", hint)
         elif app_settings.app_env == "production":
             logger.warning(
                 "PRODUCCIÓN sin correo HTTP: define BREVO_API_KEY o RESEND_API_KEY en Render "
@@ -131,6 +133,8 @@ async def health():
         "status": "ok",
         "service": "tava-api",
         "email_ready": email_transport_ready(),
+        "sender_ready": mail.get("sender_ready"),
+        "email_config_hint": mail.get("email_config_hint"),
         "http_email_ready": mail.get("http_ready"),
         "brevo_configured": mail.get("brevo_configured"),
         "resend_configured": mail.get("resend_configured"),

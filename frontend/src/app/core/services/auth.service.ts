@@ -1,6 +1,8 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { from, switchMap, tap } from 'rxjs';
+import { HttpBackend, HttpClient } from '@angular/common/http';
+import { firstValueFrom, from, switchMap, tap } from 'rxjs';
+import { environment } from '../../../environments/environment';
 import { ApiService } from './api.service';
 import { encryptPasswordForTransport } from '../utils/password-crypto.util';
 
@@ -20,6 +22,7 @@ interface AuthResponse {
 export class AuthService {
   private readonly api = inject(ApiService);
   private readonly router = inject(Router);
+  private readonly httpBackend = inject(HttpBackend);
 
   private readonly _user = signal<TavaUser | null>(this.loadUser());
   readonly user = this._user.asReadonly();
@@ -125,6 +128,25 @@ export class AuthService {
 
   getAccessToken(): string | null {
     return localStorage.getItem('tava_access');
+  }
+
+  getRefreshToken(): string | null {
+    return localStorage.getItem('tava_refresh');
+  }
+
+  /** Renueva el access token si hay refresh guardado (p. ej. al volver a la app). */
+  tryRefreshSession(): Promise<boolean> {
+    const refresh = this.getRefreshToken();
+    if (!refresh) return Promise.resolve(false);
+    const raw = new HttpClient(this.httpBackend);
+    const url = `${environment.apiUrl}/auth/refresh?refresh_token=${encodeURIComponent(refresh)}`;
+    return firstValueFrom(raw.post<AuthResponse['tokens']>(url, {}))
+      .then((tokens) => {
+        localStorage.setItem('tava_access', tokens.access_token);
+        localStorage.setItem('tava_refresh', tokens.refresh_token);
+        return true;
+      })
+      .catch(() => false);
   }
 
   private persist(res: AuthResponse): void {

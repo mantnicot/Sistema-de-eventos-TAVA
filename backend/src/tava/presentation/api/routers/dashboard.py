@@ -84,8 +84,19 @@ async def report_xlsx(
 async def test_email(
     user=Depends(require_roles(UserRole.ADMIN)),
 ):
-    from tava.infrastructure.services.email import last_email_failure, send_password_reset_email
+    from tava.infrastructure.services.email import (
+        email_config_hint,
+        email_transport_ready,
+        last_email_failure,
+        send_password_reset_email,
+    )
 
+    if not email_transport_ready():
+        hint = email_config_hint() or last_email_failure()
+        return {
+            "success": False,
+            "message": hint or "Correo no configurado en el servidor",
+        }
     ok = await send_password_reset_email(
         user.email,
         user.full_name,

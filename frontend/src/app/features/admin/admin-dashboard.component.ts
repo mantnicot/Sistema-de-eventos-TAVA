@@ -60,6 +60,7 @@ interface AttendeeNotification {
   emails_sent?: number;
   tickets_regenerated?: number;
   tickets_affected?: number;
+  email_error?: string | null;
 }
 
 interface EventUpdateResponse extends TavaEvent {
@@ -442,7 +443,15 @@ export class AdminDashboardComponent implements OnInit {
           .subscribe({
             next: (res) => {
               this.notify.hide();
-              this.notify.success('Correo', `Enviados ${res.sent} de ${res.recipients} destinatarios.`);
+              if (res.sent > 0) {
+                this.notify.success('Correo', `Enviados ${res.sent} de ${res.recipients} destinatarios.`);
+              } else {
+                const err = (res as { email_error?: string }).email_error;
+                this.notify.error(
+                  'Correo',
+                  err ?? 'No se envió ningún correo. Verifica BREVO_SENDER_EMAIL en Render.'
+                );
+              }
               this.broadcastSubject = '';
               this.broadcastMessage = '';
             },
@@ -465,12 +474,31 @@ export class AdminDashboardComponent implements OnInit {
     }
     if (n.reason === 'sin_cambios_relevantes') return;
     if (n.reason === 'sin_boletas_vendidas') return;
-    if (n.reason === 'correo_no_configurado') {
+    const detail = n.email_error ? ` ${n.email_error}` : '';
+    if (n.reason === 'correo_no_configurado' || n.reason === 'envio_fallido') {
       this.notify.warning(
-        'Correo no configurado',
-        `Hubo cambios pero no se pudo avisar a ${n.tickets_affected ?? 0} boleta(s). Configura Brevo en el servidor.`
+        'Correo no enviado',
+        `Hubo cambios pero no se pudo avisar a los asistentes.${detail || ' Revisa BREVO_SENDER_EMAIL en Render.'}`
       );
     }
+  }
+
+  testAdminEmail(): void {
+    this.notify.loadingTheatrical('Enviando prueba', 'admin');
+    this.api.post<{ success: boolean; message: string }>('/dashboard/test-email', {}).subscribe({
+      next: (res) => {
+        this.notify.hide();
+        if (res.success) {
+          this.notify.success('Correo', res.message);
+        } else {
+          this.notify.error('Correo', res.message);
+        }
+      },
+      error: (err) => {
+        this.notify.hide();
+        this.notify.error('Correo', err.error?.message ?? err.error?.detail ?? 'No se pudo enviar');
+      },
+    });
   }
 
   editEvent(ev: TavaEvent): void {

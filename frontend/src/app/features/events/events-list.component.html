@@ -92,6 +92,13 @@
   </section>
 }
 
-@if (!liveEvents().length && !upcomingEvents().length && !finishedEvents().length) {
+@if (loading()) {
+  <p class="empty loading-msg">Cargando cartelera…</p>
+} @else if (loadError()) {
+  <div class="empty load-error">
+    <p>{{ loadError() }}</p>
+    <button type="button" class="tava-btn-primary" (click)="load()">Reintentar</button>
+  </div>
+} @else if (!liveEvents().length && !upcomingEvents().length && !finishedEvents().length) {
   <p class="empty">No hay funciones publicadas. Vuelve pronto.</p>
 }

@@ -20,6 +20,7 @@ from tava.infrastructure.persistence.models import (
 from tava.infrastructure.security.ticket_tokens import generate_qr_token, generate_security_hash
 from tava.infrastructure.services.email import (
     email_transport_ready,
+    last_email_failure,
     send_event_broadcast_email,
     send_event_change_email,
     send_ticket_cancelled_email,
@@ -75,17 +76,21 @@ class EventNotificationUseCase:
                 "reason": "correo_no_configurado",
                 "changes": changes,
                 "tickets_affected": sold,
+                "email_error": last_email_failure() or None,
             }
 
         regenerated = await self._regenerate_unused_tickets(after.id)
         emails_sent = await self._email_all_orders(after, changes, include_pdf=True)
         await self._session.flush()
+        failure = last_email_failure() if emails_sent == 0 else None
         return {
-            "notified": True,
+            "notified": emails_sent > 0,
+            "reason": "envio_fallido" if emails_sent == 0 and sold > 0 else None,
             "changes": changes,
             "tickets_regenerated": regenerated,
             "emails_sent": emails_sent,
             "tickets_affected": sold,
+            "email_error": failure,
         }
 
     async def broadcast_custom_email(
@@ -98,6 +103,7 @@ class EventNotificationUseCase:
         if not buyers:
             return {"sent": 0, "message": "No hay asistentes con boletas pagadas"}
         sent = 0
+        last_err: str | None = None
         for user in buyers:
             ok = await send_event_broadcast_email(
                 user.email,
@@ -108,7 +114,9 @@ class EventNotificationUseCase:
             )
             if ok:
                 sent += 1
-        return {"sent": sent, "recipients": len(buyers)}
+            else:
+                last_err = last_email_failure() or last_err
+        return {"sent": sent, "recipients": len(buyers), "email_error": last_err}
 
     async def cancel_ticket(self, ticket_id: UUID, *, notify: bool = True) -> dict:
         result = await self._session.execute(

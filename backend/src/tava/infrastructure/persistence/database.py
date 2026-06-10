@@ -37,7 +37,11 @@ _db_url, _connect_args = _prepare_asyncpg_url(settings.database_url)
 engine = create_async_engine(
     _db_url,
     echo=settings.app_env == "development",
-    connect_args=_connect_args,
+    connect_args={**_connect_args, "command_timeout": 60},
+    pool_pre_ping=True,
+    pool_recycle=300,
+    pool_size=5,
+    max_overflow=10,
 )
 AsyncSessionLocal = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 

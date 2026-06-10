@@ -93,6 +93,42 @@ def brevo_configured() -> bool:
     return bool(settings.brevo_api_key.strip())
 
 
+def sender_ready() -> bool:
+    """Remitente explícito requerido para APIs HTTP (Brevo/Resend)."""
+    if not http_email_configured():
+        return True
+    if settings.brevo_sender_email.strip():
+        return True
+    if resend_configured() and settings.email_from.strip():
+        return True
+    if brevo_configured() and settings.email_from.strip():
+        return True
+    return False
+
+
+def email_config_hint() -> str | None:
+    if not http_email_configured():
+        return (
+            "Define BREVO_API_KEY o RESEND_API_KEY en Render. "
+            "SMTP no funciona en Render."
+        )
+    if not sender_ready():
+        return (
+            "Define BREVO_SENDER_EMAIL con un correo verificado en Brevo → Senders & IP."
+        )
+    _, sender = _sender_parts()
+    if brevo_configured() and not settings.brevo_sender_email.strip():
+        return (
+            f"Usando remitente «{sender}» desde EMAIL_FROM. "
+            "Recomendado: BREVO_SENDER_EMAIL verificado en Brevo."
+        )
+    if sender.endswith("@gmail.com") and brevo_configured():
+        return (
+            f"Remitente Gmail ({sender}): debe estar verificado en Brevo → Senders & IP."
+        )
+    return None
+
+
 def smtp_allowed() -> bool:
     """Render y la mayoría de PaaS bloquean puertos SMTP 25/465/587."""
     if settings.email_enable_smtp:
@@ -107,7 +143,7 @@ def http_email_configured() -> bool:
 
 
 def email_transport_ready() -> bool:
-    return http_email_configured() or smtp_allowed()
+    return (http_email_configured() and sender_ready()) or smtp_allowed()
 
 
 def email_status_summary() -> dict:
@@ -128,6 +164,8 @@ def email_status_summary() -> dict:
         "sender_name": name,
         "email_from": (settings.email_from or "").strip() or None,
         "frontend_url": settings.frontend_url.strip() or None,
+        "sender_ready": sender_ready(),
+        "email_config_hint": email_config_hint(),
         "last_failure": last_email_failure() or None,
     }
 
@@ -329,10 +367,11 @@ async def _deliver_email(
     _last_failure = ""
 
     if not email_transport_ready():
-        _set_failure(
+        hint = email_config_hint() or (
             "Correo no configurado. En Render define BREVO_API_KEY (recomendado) o RESEND_API_KEY. "
             "SMTP Gmail no funciona en Render (puertos bloqueados)."
         )
+        _set_failure(hint)
         return False
 
     if brevo_configured():
