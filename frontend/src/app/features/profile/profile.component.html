@@ -7,31 +7,43 @@
 
     <section class="section">
       <h2>Mis boletas</h2>
-      <p class="section__hint">Boletas compradas o asignadas a tu cuenta. Descarga el PDF con QR para validar en taquilla.</p>
-      <div class="ticket-grid">
-        @for (t of tickets(); track t.id) {
-          <article class="ticket tava-card">
-            <div class="ticket__visual">
-              <img [src]="mediaUrl(t.main_image_url)" [alt]="t.event_name" loading="lazy" (error)="onImgError($event)" />
-            </div>
-            <div class="ticket__body">
-              <h3>{{ t.event_name }}</h3>
-              <p class="ticket__meta">
-                {{ t.event_date | date:'mediumDate' }} · {{ t.event_time }}
-                <br />{{ t.city }}
-              </p>
-              <p><strong>{{ t.ticket_type }}</strong> · ${{ t.price | number }}</p>
-              @if (t.holder_name) {
-                <p class="holder">A nombre de: <strong>{{ t.holder_name }}</strong></p>
+      <p class="section__hint">Agrupadas por evento. Descarga el PDF con todos los QR de esa compra.</p>
+
+      <div class="event-groups">
+        @for (group of groupedTickets(); track group.event_id) {
+          <article class="event-group tava-card">
+            <header class="event-group__head">
+              <div>
+                <h3>{{ group.event_name }}</h3>
+                <p class="event-group__meta">
+                  {{ group.event_date | date:'mediumDate' }} · {{ group.event_time }}
+                  · {{ group.city }}
+                </p>
+              </div>
+              <button
+                type="button"
+                class="tava-btn-primary event-group__pdf"
+                (click)="downloadPdf(group.pdf_url, 'boletas-' + group.event_name)"
+              >
+                PDF
+              </button>
+            </header>
+            <ul class="ticket-rows">
+              @for (t of group.tickets; track t.id) {
+                <li class="ticket-row" [class.ticket-row--used]="t.is_used">
+                  <span class="ticket-row__type">{{ t.ticket_type }}</span>
+                  <span class="ticket-row__holder">{{ t.holder_name || 'Sin nombre' }}</span>
+                  @if (t.ticket_code) {
+                    <span class="ticket-row__code">#{{ t.ticket_code }}</span>
+                  }
+                  <span class="ticket-row__price">${{ t.price | number:'1.0-0' }}</span>
+                  <span class="ticket-row__status">{{ t.is_used ? 'Usada' : 'Válida' }}</span>
+                </li>
               }
-              <span class="status" [class.used]="t.is_used">{{ t.is_used ? 'Utilizada' : 'Válida' }}</span>
-            </div>
-            <button type="button" class="tava-btn-primary ticket__pdf" (click)="downloadPdf(t.pdf_url, 'boleta-' + t.event_name)">
-              Descargar PDF
-            </button>
+            </ul>
           </article>
         } @empty {
-          <p class="muted ticket-grid__empty">Aún no tienes boletas. <a routerLink="/eventos">Explorar eventos</a></p>
+          <p class="muted">Aún no tienes boletas. <a routerLink="/eventos">Explorar eventos</a></p>
         }
       </div>
     </section>
@@ -39,16 +51,15 @@
     @if (auth.isSeller() && sellerSales().length) {
       <section class="section">
         <h2>Ventas realizadas</h2>
-        <div class="sale-grid">
+        <div class="sale-list">
           @for (s of sellerSales(); track s.order_id) {
-            <article class="sale tava-card">
-              <h3>{{ s.event_name }}</h3>
-              <p>{{ s.quantity }} boleta(s) · ${{ s.total | number }}</p>
-              @if (s.holders.length) {
-                <p class="muted">Asistentes: {{ s.holders.join(', ') }}</p>
-              }
+            <article class="sale-row tava-card">
+              <div>
+                <strong>{{ s.event_name }}</strong>
+                <p class="muted">{{ s.quantity }} boleta(s) · ${{ s.total | number:'1.0-0' }}</p>
+              </div>
               <button type="button" class="tava-btn-primary" (click)="downloadPdf(s.pdf_url, 'venta-' + s.event_name)">
-                Descargar PDF
+                PDF
               </button>
             </article>
           }

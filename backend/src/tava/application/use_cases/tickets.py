@@ -1,5 +1,5 @@
 from decimal import Decimal
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,6 +14,11 @@ from tava.infrastructure.security.ticket_codes import assign_unique_ticket_code,
 from tava.infrastructure.security.ticket_tokens import generate_qr_token, generate_security_hash
 from tava.infrastructure.services.email import last_email_failure, send_tickets_confirmation_email
 from tava.infrastructure.services.ticket_pdf import build_tickets_pdf
+from tava.infrastructure.services.wompi import (
+    amount_in_cents,
+    build_checkout_url,
+    wompi_configured,
+)
 
 settings = get_settings()
 
@@ -57,6 +62,9 @@ class TicketUseCase:
         holder_names: list[str] | None,
         buyer_display_name: str,
         mark_paid: bool,
+        issue_tickets: bool = True,
+        payment_provider: PaymentProvider | None = None,
+        payment_reference: str | None = None,
     ) -> tuple[OrderModel, list[TicketModel], EventModel, TicketTypeModel]:
         if quantity < 1 or quantity > 20:
             raise ValueError("Cantidad inválida (1-20)")
@@ -67,18 +75,55 @@ class TicketUseCase:
 
         names = self._normalize_holder_names(quantity, holder_names, buyer_display_name)
         total = ticket_type.price * quantity
+        provider = payment_provider or (PaymentProvider.MANUAL if seller_id else PaymentProvider.MANUAL)
         order = OrderModel(
             buyer_id=buyer_id,
             seller_id=seller_id,
             event_id=event_id,
             total_amount=total,
             payment_status=PaymentStatus.PAID if mark_paid else PaymentStatus.PENDING,
-            payment_provider=PaymentProvider.MANUAL if seller_id else PaymentProvider.MANUAL,
+            payment_provider=provider,
+            payment_reference=payment_reference,
+            pending_payload=(
+                None
+                if issue_tickets
+                else {
+                    "ticket_type_id": str(ticket_type_id),
+                    "quantity": quantity,
+                    "holder_names": names,
+                }
+            ),
             legal_accepted=True,
         )
         self._session.add(order)
         await self._session.flush()
 
+        ticket_type.quantity_available -= quantity
+
+        created: list[TicketModel] = []
+        if issue_tickets:
+            created = await self._issue_tickets_for_order(
+                order=order,
+                event=event,
+                ticket_type=ticket_type,
+                buyer_id=buyer_id,
+                names=names,
+            )
+            lamina = event.main_image_url or f"/uploads/laminas/{event_id}.png"
+            await LoyaltyUseCase(self._session).grant_collectible(buyer_id, event_id, lamina)
+
+        await self._session.flush()
+        return order, created, event, ticket_type
+
+    async def _issue_tickets_for_order(
+        self,
+        *,
+        order: OrderModel,
+        event: EventModel,
+        ticket_type: TicketTypeModel,
+        buyer_id: UUID,
+        names: list[str],
+    ) -> list[TicketModel]:
         created: list[TicketModel] = []
         for name in names:
             qr = generate_qr_token()
@@ -86,7 +131,7 @@ class TicketUseCase:
                 order_id=order.id,
                 ticket_type_id=ticket_type.id,
                 owner_id=buyer_id,
-                event_id=event_id,
+                event_id=event.id,
                 holder_name=name,
                 qr_token=qr,
                 ticket_code=await assign_unique_ticket_code(self._session),
@@ -98,12 +143,187 @@ class TicketUseCase:
                 ticket.id, ticket.event_id, ticket.qr_token, settings.jwt_secret_key
             )
             created.append(ticket)
+        return created
 
-        ticket_type.quantity_available -= quantity
-        lamina = event.main_image_url or f"/uploads/laminas/{event_id}.png"
-        await LoyaltyUseCase(self._session).grant_collectible(buyer_id, event_id, lamina)
+    async def _restore_stock(self, order: OrderModel) -> None:
+        payload = order.pending_payload or {}
+        ticket_type_id = payload.get("ticket_type_id")
+        quantity = payload.get("quantity")
+        if not ticket_type_id or not quantity:
+            return
+        result = await self._session.execute(
+            select(TicketTypeModel).where(TicketTypeModel.id == UUID(str(ticket_type_id)))
+        )
+        tt = result.scalar_one_or_none()
+        if tt:
+            tt.quantity_available += int(quantity)
+
+    async def fulfill_paid_order(
+        self, order: OrderModel, *, wompi_transaction_id: str | None = None
+    ) -> tuple[list[TicketModel], EventModel, TicketTypeModel]:
+        if order.payment_status == PaymentStatus.PAID:
+            result = await self._session.execute(
+                select(OrderModel)
+                .where(OrderModel.id == order.id)
+                .options(selectinload(OrderModel.tickets))
+            )
+            order = result.scalar_one()
+            if order.tickets:
+                event = await self._load_event(order.event_id)
+                tt = await self._load_ticket_type(order.tickets[0].ticket_type_id, order.event_id)
+                return order.tickets, event, tt
+
+        payload = order.pending_payload
+        if not payload:
+            raise ValueError("Orden sin datos pendientes para emitir boletas")
+
+        ticket_type_id = UUID(str(payload["ticket_type_id"]))
+        quantity = int(payload["quantity"])
+        names = list(payload.get("holder_names") or [])
+        event = await self._load_event(order.event_id)
+        ticket_type = await self._load_ticket_type(ticket_type_id, order.event_id)
+
+        order.payment_status = PaymentStatus.PAID
+        order.payment_provider = PaymentProvider.WOMPI
+        if wompi_transaction_id:
+            order.wompi_transaction_id = wompi_transaction_id
+        order.pending_payload = None
+
+        tickets = await self._issue_tickets_for_order(
+            order=order,
+            event=event,
+            ticket_type=ticket_type,
+            buyer_id=order.buyer_id,
+            names=names[:quantity] if names else [""] * quantity,
+        )
+        lamina = event.main_image_url or f"/uploads/laminas/{event.id}.png"
+        await LoyaltyUseCase(self._session).grant_collectible(order.buyer_id, event.id, lamina)
         await self._session.flush()
-        return order, created, event, ticket_type
+        return tickets, event, ticket_type
+
+    async def reject_pending_order(self, order: OrderModel) -> None:
+        if order.payment_status != PaymentStatus.PENDING:
+            return
+        order.payment_status = PaymentStatus.REJECTED
+        await self._restore_stock(order)
+        order.pending_payload = None
+        await self._session.flush()
+
+    async def create_wompi_checkout(
+        self,
+        *,
+        user_id: UUID,
+        user_name: str,
+        user_email: str,
+        event_id: UUID,
+        ticket_type_id: UUID,
+        quantity: int,
+        holder_names: list[str] | None,
+    ) -> dict:
+        payment_reference = f"TAVA-{uuid4().hex[:12].upper()}"
+        order, _, event, tt = await self.create_order(
+            event_id=event_id,
+            ticket_type_id=ticket_type_id,
+            quantity=quantity,
+            buyer_id=user_id,
+            seller_id=None,
+            holder_names=holder_names,
+            buyer_display_name=user_name,
+            mark_paid=False,
+            issue_tickets=False,
+            payment_provider=PaymentProvider.WOMPI,
+            payment_reference=payment_reference,
+        )
+        redirect_url = f"{settings.frontend_url.rstrip('/')}/compra/resultado?order_id={order.id}"
+        cents = amount_in_cents(order.total_amount)
+        checkout_url = build_checkout_url(
+            reference=payment_reference,
+            amount_cents=cents,
+            redirect_url=redirect_url,
+            customer_email=user_email,
+            customer_name=user_name,
+        )
+        return {
+            "payment_required": True,
+            "order_id": str(order.id),
+            "payment_reference": payment_reference,
+            "checkout_url": checkout_url,
+            "total": float(order.total_amount),
+            "amount_in_cents": cents,
+            "event_name": event.name,
+            "ticket_type": tt.name,
+            "payment_status": order.payment_status.value,
+            "message": "Redirigiendo a Wompi para completar el pago.",
+        }
+
+    async def get_order_status(self, order_id: UUID, user_id: UUID, is_admin: bool) -> dict:
+        result = await self._session.execute(
+            select(OrderModel)
+            .where(OrderModel.id == order_id)
+            .options(selectinload(OrderModel.tickets))
+        )
+        order = result.scalar_one_or_none()
+        if not order:
+            raise ValueError("Orden no encontrada")
+        if not is_admin and order.buyer_id != user_id:
+            raise ValueError("No autorizado")
+        event = await self._load_event(order.event_id)
+        ticket_type_name = None
+        if order.tickets:
+            tt = await self._load_ticket_type(order.tickets[0].ticket_type_id, order.event_id)
+            ticket_type_name = tt.name
+        elif order.pending_payload:
+            tt = await self._load_ticket_type(
+                UUID(str(order.pending_payload["ticket_type_id"])), order.event_id
+            )
+            ticket_type_name = tt.name
+        return {
+            "order_id": str(order.id),
+            "payment_status": order.payment_status.value,
+            "payment_reference": order.payment_reference,
+            "wompi_transaction_id": order.wompi_transaction_id,
+            "total": float(order.total_amount),
+            "event_name": event.name,
+            "ticket_type": ticket_type_name,
+            "tickets_ready": order.payment_status == PaymentStatus.PAID and bool(order.tickets),
+            "pdf_url": f"/tickets/orders/{order.id}/pdf" if order.tickets else None,
+        }
+
+    async def handle_wompi_transaction_update(
+        self, reference: str, status: str, transaction_id: str | None
+    ) -> dict:
+        result = await self._session.execute(
+            select(OrderModel)
+            .where(OrderModel.payment_reference == reference)
+            .options(selectinload(OrderModel.tickets))
+        )
+        order = result.scalar_one_or_none()
+        if not order:
+            return {"handled": False, "reason": "order_not_found"}
+
+        if status == "APPROVED":
+            already_fulfilled = order.payment_status == PaymentStatus.PAID and bool(order.tickets)
+            tickets, event, tt = await self.fulfill_paid_order(
+                order, wompi_transaction_id=transaction_id
+            )
+            if not already_fulfilled:
+                buyer_result = await self._session.execute(
+                    select(UserModel).where(UserModel.id == order.buyer_id)
+                )
+                buyer = buyer_result.scalar_one_or_none()
+                if buyer:
+                    try:
+                        await self._send_pdf_emails(order, tickets, event, tt, buyer, None)
+                    except ValueError:
+                        await self._session.rollback()
+                        raise
+            return {"handled": True, "payment_status": "pagado", "order_id": str(order.id)}
+
+        if status in ("DECLINED", "VOIDED", "ERROR"):
+            await self.reject_pending_order(order)
+            return {"handled": True, "payment_status": "rechazado", "order_id": str(order.id)}
+
+        return {"handled": True, "payment_status": order.payment_status.value, "order_id": str(order.id)}
 
     async def _send_pdf_emails(
         self,
@@ -163,6 +383,45 @@ class TicketUseCase:
         quantity: int,
         holder_names: list[str] | None,
     ) -> dict:
+        event = await self._load_event(event_id)
+        tt = await self._load_ticket_type(ticket_type_id, event_id)
+        total = tt.price * quantity
+
+        if total <= 0:
+            order, tickets, event, tt = await self.create_order(
+                event_id=event_id,
+                ticket_type_id=ticket_type_id,
+                quantity=quantity,
+                buyer_id=user_id,
+                seller_id=None,
+                holder_names=holder_names,
+                buyer_display_name=user_name,
+                mark_paid=True,
+                issue_tickets=True,
+                payment_provider=PaymentProvider.MANUAL,
+            )
+            buyer_model = await self._users.get_model_by_email(user_email)
+            if buyer_model:
+                try:
+                    await self._send_pdf_emails(order, tickets, event, tt, buyer_model, None)
+                except ValueError:
+                    await self._session.rollback()
+                    raise
+            response = self._order_response(order, tickets, event, tt)
+            response["payment_required"] = False
+            return response
+
+        if wompi_configured():
+            return await self.create_wompi_checkout(
+                user_id=user_id,
+                user_name=user_name,
+                user_email=user_email,
+                event_id=event_id,
+                ticket_type_id=ticket_type_id,
+                quantity=quantity,
+                holder_names=holder_names,
+            )
+
         order, tickets, event, tt = await self.create_order(
             event_id=event_id,
             ticket_type_id=ticket_type_id,
@@ -172,6 +431,8 @@ class TicketUseCase:
             holder_names=holder_names,
             buyer_display_name=user_name,
             mark_paid=True,
+            issue_tickets=True,
+            payment_provider=PaymentProvider.MANUAL,
         )
         buyer_model = await self._users.get_model_by_email(user_email)
         if buyer_model:
@@ -180,7 +441,9 @@ class TicketUseCase:
             except ValueError:
                 await self._session.rollback()
                 raise
-        return self._order_response(order, tickets, event, tt)
+        response = self._order_response(order, tickets, event, tt)
+        response["payment_required"] = False
+        return response
 
     async def sell_as_seller(
         self,
@@ -224,6 +487,7 @@ class TicketUseCase:
             "order_id": str(order.id),
             "total": float(order.total_amount),
             "payment_status": order.payment_status.value,
+            "payment_required": False,
             "event_name": event.name,
             "ticket_type": tt.name,
             "tickets": [

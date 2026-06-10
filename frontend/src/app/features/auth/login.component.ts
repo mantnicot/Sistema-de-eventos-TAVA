@@ -46,7 +46,7 @@ export class LoginComponent {
         this.notify.hide();
         this.notify.success('Bienvenido', 'Sesión iniciada correctamente');
         const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl');
-        this.router.navigateByUrl(returnUrl && returnUrl.startsWith('/') ? returnUrl : '/perfil');
+        this.router.navigateByUrl(returnUrl && returnUrl.startsWith('/') ? returnUrl : '/eventos');
       },
       error: (err) => {
         this.submitting = false;

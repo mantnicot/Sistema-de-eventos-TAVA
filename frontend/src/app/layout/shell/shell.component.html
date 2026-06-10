@@ -1,7 +1,7 @@
 <tava-hero-video />
 
 <header class="header">
-  <a routerLink="/" class="brand" title="TAVA Teatro — Inicio" (click)="closeMenu()">
+  <a routerLink="/eventos" class="brand" title="TAVA Teatro — Eventos" (click)="closeMenu()">
     <img src="/logo-tava.png" alt="TAVA Teatro" class="brand__logo" width="52" height="52" />
     <span class="brand__text">
       <span class="brand__mark">TAVA</span>
@@ -19,7 +19,7 @@
     <div class="nav__cluster">
       <span class="nav__heading">Cartelera</span>
       <div class="nav__links">
-        <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" (click)="closeMenu()">Inicio</a>
+        <a routerLink="/inicio" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" (click)="closeMenu()">Inicio</a>
         <a routerLink="/eventos" routerLinkActive="active" (click)="closeMenu()">Todos los eventos</a>
       </div>
     </div>

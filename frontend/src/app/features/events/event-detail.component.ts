@@ -153,7 +153,12 @@ export class EventDetailComponent implements OnInit {
       this.purchasing = true;
       this.notify.loadingTheatrical('Enviando boletas', 'purchase');
       this.api
-        .post<{ message?: string }>('/tickets/purchase', {
+        .post<{
+          message?: string;
+          payment_required?: boolean;
+          checkout_url?: string;
+          order_id?: string;
+        }>('/tickets/purchase', {
           event_id: ev.id,
           ticket_type_id: typeId,
           quantity: this.quantity,
@@ -164,6 +169,11 @@ export class EventDetailComponent implements OnInit {
         .subscribe({
           next: (res) => {
             this.purchasing = false;
+            this.notify.hide();
+            if (res.payment_required && res.checkout_url) {
+              window.location.href = res.checkout_url;
+              return;
+            }
             this.notify.celebration(
               '¡Compra exitosa!',
               res.message ?? 'Tus boletas fueron generadas y enviadas a tu correo electrónico.'

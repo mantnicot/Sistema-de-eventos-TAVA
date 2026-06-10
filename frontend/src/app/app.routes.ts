@@ -7,7 +7,8 @@ export const routes: Routes = [
     path: '',
     component: ShellComponent,
     children: [
-      { path: '', loadComponent: () => import('./features/home/home.component').then((m) => m.HomeComponent) },
+      { path: '', redirectTo: 'eventos', pathMatch: 'full' },
+      { path: 'inicio', loadComponent: () => import('./features/home/home.component').then((m) => m.HomeComponent) },
       {
         path: 'eventos',
         loadComponent: () => import('./features/events/events-list.component').then((m) => m.EventsListComponent),
@@ -37,6 +38,12 @@ export const routes: Routes = [
         path: 'restablecer-contrasena',
         loadComponent: () =>
           import('./features/auth/reset-password.component').then((m) => m.ResetPasswordComponent),
+      },
+      {
+        path: 'compra/resultado',
+        canActivate: [authGuard],
+        loadComponent: () =>
+          import('./features/payments/purchase-result.component').then((m) => m.PurchaseResultComponent),
       },
       {
         path: 'perfil',

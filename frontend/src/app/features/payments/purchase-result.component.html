@@ -1,0 +1,25 @@
+<section class="result tava-card">
+  <h1 class="tava-glow-text">Resultado del pago</h1>
+
+  @if (loading && !status) {
+    <p>Verificando pago con Wompi…</p>
+  } @else if (error) {
+    <p class="err">{{ error }}</p>
+    <a routerLink="/eventos" class="tava-btn-primary">Volver a eventos</a>
+  } @else if (status) {
+    @if (status.tickets_ready || status.payment_status === 'pagado') {
+      <p class="ok">¡Pago exitoso! Tus boletas para <strong>{{ status.event_name }}</strong> están listas.</p>
+      <p class="hint">Revisa tu correo con el PDF o descárgalo desde Mis boletas.</p>
+      <div class="actions">
+        <a routerLink="/perfil" class="tava-btn-primary">Ver mis boletas</a>
+        <a routerLink="/eventos" class="link">Seguir explorando</a>
+      </div>
+    } @else if (status.payment_status === 'rechazado') {
+      <p class="err">El pago no fue aprobado. Puedes intentar comprar de nuevo.</p>
+      <a routerLink="/eventos" class="tava-btn-primary">Volver a eventos</a>
+    } @else {
+      <p>Procesando pago… Si acabas de pagar, espera unos segundos.</p>
+      <p class="hint">Orden: {{ status.order_id }} · Total: ${{ status.total | number:'1.0-0' }} COP</p>
+    }
+  }
+</section>

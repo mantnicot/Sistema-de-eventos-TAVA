@@ -25,6 +25,7 @@ from tava.presentation.api.routers import (
     users,
     validation,
     venues,
+    payments,
 )
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
@@ -103,6 +104,7 @@ app.include_router(auth.router, prefix="/api/v1")
 app.include_router(events.router, prefix="/api/v1")
 app.include_router(venues.router, prefix="/api/v1")
 app.include_router(tickets.router, prefix="/api/v1")
+app.include_router(payments.router, prefix="/api/v1")
 app.include_router(validation.router, prefix="/api/v1")
 app.include_router(loyalty.router, prefix="/api/v1")
 app.include_router(dashboard.router, prefix="/api/v1")
@@ -123,6 +125,7 @@ async def health():
 
     mail = email_status_summary()
     from tava.infrastructure.services.cloudinary_storage import cloudinary_configured
+    from tava.infrastructure.services.wompi import wompi_configured
 
     return {
         "status": "ok",
@@ -136,6 +139,7 @@ async def health():
         "frontend_url": mail.get("frontend_url"),
         "last_email_failure": mail.get("last_failure"),
         "cloudinary_configured": cloudinary_configured(),
+        "wompi_configured": wompi_configured(),
     }
 
 

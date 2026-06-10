@@ -184,6 +184,9 @@ class OrderModel(Base):
     total_amount: Mapped[Decimal] = mapped_column(Numeric(12, 2))
     payment_status: Mapped[PaymentStatus] = mapped_column(Enum(PaymentStatus), default=PaymentStatus.PENDING)
     payment_provider: Mapped[PaymentProvider | None] = mapped_column(Enum(PaymentProvider), nullable=True)
+    payment_reference: Mapped[str | None] = mapped_column(String(64), unique=True, index=True, nullable=True)
+    wompi_transaction_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    pending_payload: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     legal_accepted: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 

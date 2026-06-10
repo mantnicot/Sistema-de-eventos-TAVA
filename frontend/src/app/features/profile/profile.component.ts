@@ -1,10 +1,9 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { DatePipe, DecimalPipe } from '@angular/common';
 import { AuthService } from '../../core/services/auth.service';
 import { ApiService } from '../../core/services/api.service';
 import { NotificationService } from '../../core/services/notification.service';
-import { onEventImageError } from '../../core/utils/event-image.util';
 import { resolveMediaUrl } from '../../core/utils/media-url.util';
 
 interface MyTicket {
@@ -15,14 +14,23 @@ interface MyTicket {
   event_date: string;
   event_time: string;
   city: string;
-  address: string;
   holder_name: string | null;
   ticket_type: string;
   price: number;
-  qr_token: string;
+  ticket_code?: string | null;
   is_used: boolean;
-  main_image_url?: string;
   pdf_url: string;
+}
+
+interface TicketEventGroup {
+  event_id: string;
+  event_name: string;
+  event_date: string;
+  event_time: string;
+  city: string;
+  order_id: string;
+  pdf_url: string;
+  tickets: MyTicket[];
 }
 
 interface SellerSale {
@@ -48,7 +56,28 @@ export class ProfileComponent implements OnInit {
   private readonly notify = inject(NotificationService);
   readonly tickets = signal<MyTicket[]>([]);
   readonly sellerSales = signal<SellerSale[]>([]);
-  readonly mediaUrl = resolveMediaUrl;
+
+  readonly groupedTickets = computed(() => {
+    const map = new Map<string, TicketEventGroup>();
+    for (const t of this.tickets()) {
+      let group = map.get(t.event_id);
+      if (!group) {
+        group = {
+          event_id: t.event_id,
+          event_name: t.event_name,
+          event_date: t.event_date,
+          event_time: t.event_time,
+          city: t.city,
+          order_id: t.order_id,
+          pdf_url: t.pdf_url,
+          tickets: [],
+        };
+        map.set(t.event_id, group);
+      }
+      group.tickets.push(t);
+    }
+    return Array.from(map.values()).sort((a, b) => b.event_date.localeCompare(a.event_date));
+  });
 
   ngOnInit(): void {
     if (!this.auth.isLoggedIn()) return;
@@ -63,8 +92,6 @@ export class ProfileComponent implements OnInit {
       });
     }
   }
-
-  readonly onImgError = onEventImageError;
 
   downloadPdf(pdfUrl: string, label: string): void {
     this.api.downloadBlob(pdfUrl).subscribe({

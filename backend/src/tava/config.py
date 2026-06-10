@@ -44,6 +44,12 @@ class Settings(BaseSettings):
     brevo_sender_email: str = ""
     brevo_sender_name: str = "TAVA Teatro"
     email_enable_smtp: bool = False  # True solo en local; Render bloquea puertos 25/465/587
+    # Wompi (Colombia) — sandbox: llaves pub_test_ / test_integrity_ / test_events_
+    wompi_public_key: str = ""
+    wompi_integrity_secret: str = ""
+    wompi_events_secret: str = ""
+    wompi_checkout_url: str = "https://checkout.wompi.co/p/"
+    wompi_api_base_url: str = "https://production.wompi.co/v1"
 
     @model_validator(mode="after")
     def _apply_production_defaults(self) -> "Settings":
