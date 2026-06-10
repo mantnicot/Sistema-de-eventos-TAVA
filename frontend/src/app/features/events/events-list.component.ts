@@ -4,6 +4,15 @@ import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../core/services/api.service';
 import { TavaEvent } from '../../core/models/event.model';
 import { onEventImageError } from '../../core/utils/event-image.util';
+import {
+  formatEventDateTime,
+  formatEventTime,
+  funnyCtaForEvent,
+  getEventPhase,
+  liveBannerMessage,
+  splitEventsByPhase,
+  totalTicketsAvailable,
+} from '../../core/utils/event-timing.util';
 import { resolveMediaUrl } from '../../core/utils/media-url.util';
 
 @Component({
@@ -17,11 +26,19 @@ export class EventsListComponent implements OnInit {
   private readonly api = inject(ApiService);
   private readonly route = inject(ActivatedRoute);
   readonly events = signal<TavaEvent[]>([]);
+  readonly liveEvents = signal<TavaEvent[]>([]);
+  readonly upcomingEvents = signal<TavaEvent[]>([]);
+  readonly finishedEvents = signal<TavaEvent[]>([]);
   search = '';
   category = '';
   readonly mediaUrl = resolveMediaUrl;
-
   readonly onImgError = onEventImageError;
+  readonly formatEventDateTime = formatEventDateTime;
+  readonly formatEventTime = formatEventTime;
+  readonly funnyCta = funnyCtaForEvent;
+  readonly liveMessage = liveBannerMessage;
+  readonly getPhase = getEventPhase;
+  readonly ticketsLeft = totalTicketsAvailable;
 
   ngOnInit(): void {
     this.route.queryParamMap.subscribe((q) => {
@@ -35,8 +52,19 @@ export class EventsListComponent implements OnInit {
     if (this.search) params['search'] = this.search;
     if (this.category) params['category'] = this.category;
     this.api.get<TavaEvent[]>('/events', params).subscribe({
-      next: (e) => this.events.set(e),
-      error: () => this.events.set([]),
+      next: (e) => {
+        this.events.set(e);
+        const split = splitEventsByPhase(e);
+        this.liveEvents.set(split.live);
+        this.upcomingEvents.set(split.upcoming);
+        this.finishedEvents.set(split.finished);
+      },
+      error: () => {
+        this.events.set([]);
+        this.liveEvents.set([]);
+        this.upcomingEvents.set([]);
+        this.finishedEvents.set([]);
+      },
     });
   }
 }

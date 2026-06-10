@@ -4,7 +4,7 @@ import { DatePipe, DecimalPipe } from '@angular/common';
 import { AuthService } from '../../core/services/auth.service';
 import { ApiService } from '../../core/services/api.service';
 import { NotificationService } from '../../core/services/notification.service';
-import { resolveMediaUrl } from '../../core/utils/media-url.util';
+import { formatEventTime } from '../../core/utils/event-timing.util';
 
 interface MyTicket {
   id: string;
@@ -56,6 +56,7 @@ export class ProfileComponent implements OnInit {
   private readonly notify = inject(NotificationService);
   readonly tickets = signal<MyTicket[]>([]);
   readonly sellerSales = signal<SellerSale[]>([]);
+  readonly formatTime = formatEventTime;
 
   readonly groupedTickets = computed(() => {
     const map = new Map<string, TicketEventGroup>();

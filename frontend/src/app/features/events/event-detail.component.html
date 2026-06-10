@@ -6,7 +6,9 @@
         <span class="badge">{{ ev.category }}</span>
         <h1 class="tava-glow-text">{{ ev.name }}</h1>
         <p>{{ ev.city }} · {{ ev.address }}</p>
-        <p><time>{{ ev.event_date }}</time> · {{ ev.event_time }}</p>
+        <p class="detail__datetime">
+          <time>{{ formatEventDateTime(ev.event_date, ev.event_time) }}</time>
+        </p>
         @if (ev.theatrical_details; as td) {
           @if (td.duration_minutes) {
             <p class="meta">Duración: {{ td.duration_minutes }} min</p>
@@ -17,6 +19,16 @@
         }
       </div>
     </div>
+
+    @if (getPhase(ev) === 'live') {
+      <section class="detail__live-banner tava-card">
+        <span class="detail__live-pulse" aria-hidden="true"></span>
+        <div>
+          <strong>¡Evento en curso!</strong>
+          <p>{{ liveMessage(ev.id) }}</p>
+        </div>
+      </section>
+    }
 
     <div class="detail__layout">
       <div class="detail__main">
@@ -109,7 +121,21 @@
 
       <aside class="detail__buy tava-card">
         <h2 class="detail__buy-title">Boletas</h2>
-        @if (ev.ticket_types.length) {
+
+        @if (!canBuy(ev)) {
+          <div class="detail__missed">
+            <p class="detail__missed-title">Te perdiste este evento</p>
+            <p>Pero tenemos otros para ti. Explora la cartelera y reserva tu próxima función.</p>
+            <a routerLink="/eventos" class="tava-btn-primary">Ver otros eventos</a>
+          </div>
+        } @else if (ev.ticket_types.length) {
+          <p class="detail__funny-cta">{{ funnyCta(ev.id) }}</p>
+
+          <div class="detail__tickets-meter" aria-label="Boletas disponibles">
+            <span class="detail__tickets-num">{{ ticketsLeft(ev) }}</span>
+            <span class="detail__tickets-label">boletas disponibles</span>
+          </div>
+
           @for (tt of ev.ticket_types; track tt.id) {
             <label class="ticket-opt">
               <input
@@ -192,6 +218,9 @@
             <p class="hint hint--warn">Debes aceptar los términos y condiciones para poder comprar.</p>
           }
 
+          <tava-captcha (tokenChange)="onCaptchaToken($event)" />
+          <p class="hint">Resuelve el puzzle para confirmar que eres humano.</p>
+
           @if (selectedTicketType(); as st) {
             <p class="hint hint--total">
               Total estimado: <strong>${{ totalPrice() | number:'1.0-0' }} COP</strong>
@@ -203,7 +232,7 @@
             type="button"
             class="tava-btn-primary detail__buy-btn"
             (click)="comprar()"
-            [disabled]="!selectedTypeId() || !legalAccepted || purchasing"
+            [disabled]="!selectedTypeId() || !legalAccepted || !captchaToken || purchasing"
           >
             {{ purchasing ? 'Procesando…' : 'Comprar boletas' }}
           </button>

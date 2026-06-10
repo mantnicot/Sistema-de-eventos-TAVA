@@ -33,7 +33,7 @@ def _theatrical(details: dict | None) -> TheatricalDetailsSchema | None:
     return TheatricalDetailsSchema.model_validate(details)
 
 
-def _event_response(model: EventModel) -> EventResponse:
+def _event_response(model: EventModel, *, tickets_available: int = 0) -> EventResponse:
     return EventResponse(
         id=model.id,
         name=model.name,
@@ -48,7 +48,19 @@ def _event_response(model: EventModel) -> EventResponse:
         main_image_url=model.main_image_url,
         trailer_url=model.trailer_url,
         theatrical_details=_theatrical(model.theatrical_details),
+        tickets_available=tickets_available,
     )
+
+
+async def _tickets_available_by_event(db: AsyncSession, event_ids: list[UUID]) -> dict[UUID, int]:
+    if not event_ids:
+        return {}
+    result = await db.execute(
+        select(TicketTypeModel.event_id, func.coalesce(func.sum(TicketTypeModel.quantity_available), 0))
+        .where(TicketTypeModel.event_id.in_(event_ids))
+        .group_by(TicketTypeModel.event_id)
+    )
+    return {row[0]: int(row[1]) for row in result.all()}
 
 
 def _event_detail(model: EventModel) -> EventDetailResponse:
@@ -86,6 +98,8 @@ async def list_events(
 ):
     repo = SQLAlchemyEventRepository(db)
     events = await repo.list_public(search=search, category=category, status=status, limit=limit, offset=offset)
+    ids = [e.id for e in events]
+    avail = await _tickets_available_by_event(db, ids)
     return [
         EventResponse(
             id=e.id,
@@ -101,6 +115,7 @@ async def list_events(
             main_image_url=e.main_image_url,
             trailer_url=e.trailer_url,
             theatrical_details=_theatrical(e.theatrical_details),
+            tickets_available=avail.get(e.id, 0),
         )
         for e in events
     ]

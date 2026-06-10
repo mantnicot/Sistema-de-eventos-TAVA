@@ -40,13 +40,146 @@
   }
 }
 
+.live-section {
+  max-width: 1280px;
+  margin: 0 auto 2.5rem;
+  padding: 0 1.75rem;
+
+  &__head {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+
+    h2 {
+      font-family: var(--tava-font-display);
+      margin: 0;
+      font-size: 2rem;
+      color: #ff6b6b;
+    }
+
+    p {
+      margin: 0.25rem 0 0;
+      color: var(--tava-cream-muted);
+    }
+  }
+
+  &__pulse {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #ff4444;
+    box-shadow: 0 0 0 0 rgba(255, 68, 68, 0.7);
+    animation: live-pulse 1.5s infinite;
+    flex-shrink: 0;
+  }
+}
+
+@keyframes live-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 68, 68, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 14px rgba(255, 68, 68, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 68, 68, 0);
+  }
+}
+
+.live-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 1.5rem;
+}
+
+.live-card {
+  border: 2px solid rgba(255, 80, 80, 0.55);
+  overflow: hidden;
+  padding: 0;
+  background: linear-gradient(145deg, rgba(80, 10, 20, 0.95), rgba(30, 8, 18, 0.98));
+
+  &__link {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+  }
+
+  &__img {
+    position: relative;
+    height: 220px;
+    overflow: hidden;
+
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+  }
+
+  &__badge {
+    position: absolute;
+    top: 1rem;
+    left: 1rem;
+    background: #ff3333;
+    color: #fff;
+    font-weight: 800;
+    font-size: 0.85rem;
+    letter-spacing: 0.08em;
+    padding: 0.45rem 0.85rem;
+    border-radius: 999px;
+    animation: live-pulse 1.5s infinite;
+  }
+
+  &__body {
+    padding: 1.25rem 1.35rem 1.5rem;
+
+    h3 {
+      font-family: var(--tava-font-display);
+      font-size: 1.65rem;
+      margin: 0 0 0.5rem;
+    }
+  }
+
+  &__msg {
+    color: var(--tava-gold);
+    font-weight: 600;
+    margin: 0 0 0.65rem;
+    line-height: 1.4;
+  }
+
+  &__meta {
+    color: var(--tava-cream-muted);
+    margin: 0;
+    font-size: 0.9rem;
+  }
+}
+
+.show-section {
+  max-width: 1280px;
+  margin: 0 auto 2.5rem;
+  padding: 0 1.75rem;
+
+  &__title {
+    font-family: var(--tava-font-display);
+    font-size: 1.5rem;
+    margin: 0 0 1.25rem;
+    color: var(--tava-gold);
+  }
+
+  &--past .show-section__title {
+    color: var(--tava-cream-muted);
+  }
+}
+
 .show-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
   gap: 1.75rem;
-  padding: 0 1.75rem 3rem;
-  max-width: 1280px;
-  margin: 0 auto;
+
+  &--past {
+    opacity: 0.85;
+  }
 }
 
 .show-card {
@@ -55,9 +188,14 @@
   border: 2px solid rgba(201, 162, 39, 0.25);
   transition: transform var(--tava-transition), box-shadow var(--tava-transition);
 
-  &:hover {
+  &:hover:not(.show-card--past) {
     transform: translateY(-8px) scale(1.02);
     box-shadow: 0 20px 48px rgba(0, 0, 0, 0.35), 0 0 0 2px rgba(201, 162, 39, 0.55);
+  }
+
+  &--past {
+    border-color: rgba(120, 120, 120, 0.35);
+    filter: grayscale(0.35);
   }
 
   &__link {
@@ -69,6 +207,7 @@
   }
 
   &__img {
+    position: relative;
     height: 300px;
     background-color: var(--tava-velvet);
     overflow: hidden;
@@ -79,6 +218,35 @@
       object-fit: cover;
       display: block;
     }
+  }
+
+  &__cta-chip {
+    position: absolute;
+    bottom: 0.85rem;
+    left: 0.85rem;
+    right: 0.85rem;
+    background: linear-gradient(90deg, var(--tava-burgundy), #8b1538);
+    color: #fff;
+    font-weight: 800;
+    font-size: 0.82rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 0.55rem 0.75rem;
+    border-radius: 8px;
+    text-align: center;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  }
+
+  &__past-badge {
+    position: absolute;
+    top: 0.85rem;
+    right: 0.85rem;
+    background: rgba(0, 0, 0, 0.65);
+    color: var(--tava-cream-muted);
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 0.35rem 0.65rem;
+    border-radius: 6px;
   }
 
   &__body {
@@ -105,7 +273,42 @@
   &__meta {
     font-size: 0.88rem;
     color: var(--tava-cream-muted);
+    margin: 0 0 0.85rem;
+  }
+
+  &__tickets {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
     margin: 0 0 1rem;
+    padding: 0.65rem 0.85rem;
+    border-radius: 12px;
+    background: rgba(201, 162, 39, 0.12);
+    border: 1px solid rgba(201, 162, 39, 0.35);
+    width: fit-content;
+  }
+
+  &__tickets-num {
+    font-family: var(--tava-font-display);
+    font-size: 2.25rem;
+    font-weight: 700;
+    line-height: 1;
+    color: var(--tava-gold);
+  }
+
+  &__tickets-label {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--tava-cream-muted);
+    line-height: 1.25;
+  }
+
+  &__missed {
+    font-size: 0.88rem;
+    color: var(--tava-cream-muted);
+    font-style: italic;
+    margin: 0;
   }
 
   &__cta {
@@ -116,7 +319,6 @@
 }
 
 .empty {
-  grid-column: 1 / -1;
   text-align: center;
   color: var(--tava-cream-muted);
   padding: 2rem;

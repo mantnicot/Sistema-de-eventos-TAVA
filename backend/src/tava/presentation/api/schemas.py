@@ -158,6 +158,7 @@ class EventResponse(BaseModel):
     main_image_url: str | None = None
     trailer_url: str | None = None
     theatrical_details: TheatricalDetailsSchema | None = None
+    tickets_available: int = 0
 
 
 class EventDetailResponse(EventResponse):

@@ -16,6 +16,8 @@ declare global {
         container: HTMLElement | string,
         options: {
           sitekey: string;
+          size?: string;
+          theme?: string;
           callback: (token: string) => void;
           'expired-callback'?: () => void;
           'error-callback'?: () => void;
@@ -79,6 +81,8 @@ export class TavaCaptchaComponent implements AfterViewInit, OnDestroy {
     if (!host || !window.hcaptcha || !environment.hcaptchaSiteKey) return;
     this.widgetId = window.hcaptcha.render(host, {
       sitekey: environment.hcaptchaSiteKey,
+      size: 'normal',
+      theme: 'dark',
       callback: (token) => this.tokenChange.emit(token),
       'expired-callback': () => this.tokenChange.emit(''),
       'error-callback': () => this.tokenChange.emit(''),

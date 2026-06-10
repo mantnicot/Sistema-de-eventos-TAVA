@@ -84,7 +84,7 @@
 
 .ticket-row {
   display: grid;
-  grid-template-columns: 1fr 1.2fr auto auto auto;
+  grid-template-columns: 1fr 1.2fr auto auto auto auto;
   gap: 0.5rem;
   align-items: center;
   padding: 0.45rem 0;
@@ -126,6 +126,12 @@
 
   &--used .ticket-row__status {
     color: #e57373;
+  }
+
+  &__pdf {
+    font-size: 0.68rem !important;
+    padding: 0.3rem 0.55rem !important;
+    white-space: nowrap;
   }
 }
 

@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { TAVA_PRIVACY_CLAUSES, TAVA_PRIVACY_SUMMARY } from '../../core/constants/privacy-policy.const';
@@ -6,15 +6,17 @@ import { AuthService } from '../../core/services/auth.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { parseHttpError } from '../../core/utils/http-error.util';
 import { randomTheatricalMessage } from '../../core/utils/theatrical-messages.util';
+import { TavaCaptchaComponent } from '../../shared/components/tava-captcha/tava-captcha.component';
 
 @Component({
   selector: 'app-register',
   standalone: true,
-  imports: [FormsModule, RouterLink],
+  imports: [FormsModule, RouterLink, TavaCaptchaComponent],
   templateUrl: './register.component.html',
   styleUrl: './auth-form.scss',
 })
 export class RegisterComponent {
+  @ViewChild(TavaCaptchaComponent) captcha?: TavaCaptchaComponent;
   private readonly auth = inject(AuthService);
   private readonly notify = inject(NotificationService);
 
@@ -30,10 +32,19 @@ export class RegisterComponent {
   acceptMarketing = false;
   pendingVerify = false;
   theatricalLine = '';
+  captchaToken = '';
+
+  onCaptchaToken(token: string): void {
+    this.captchaToken = token;
+  }
 
   submit(): void {
     if (!this.acceptPrivacy) {
       this.notify.warning('Datos personales', 'Debes aceptar el tratamiento de datos personales para registrarte.');
+      return;
+    }
+    if (!this.captchaToken) {
+      this.notify.warning('Verificación', 'Completa el puzzle de verificación antes de registrarte');
       return;
     }
     this.notify.loadingTheatrical('Registro', 'register');
@@ -45,17 +56,21 @@ export class RegisterComponent {
         phone: this.phone,
         accept_privacy_policy: this.acceptPrivacy,
         accept_marketing: this.acceptMarketing,
-        captcha_token: 'dev-captcha',
+        captcha_token: this.captchaToken,
       })
       .subscribe({
         next: () => {
           this.notify.hide();
+          this.captcha?.reset();
+          this.captchaToken = '';
           this.pendingVerify = true;
           this.theatricalLine = randomTheatricalMessage('resend');
           this.notify.success('Correo enviado', 'Revisa tu bandeja: ahí está el enlace para activar tu cuenta.');
         },
         error: (err) => {
           this.notify.hide();
+          this.captcha?.reset();
+          this.captchaToken = '';
           const parsed = parseHttpError(err, 'register');
           this.notify.showHttpError(parsed);
         },

@@ -1,7 +1,9 @@
 <div class="tava-captcha">
   @if (useHcaptcha) {
+    <p class="tava-captcha__hint">Resuelve el puzzle para verificar que eres humano</p>
     <div #hcaptchaHost class="tava-captcha__widget"></div>
   } @else {
+    <p class="tava-captcha__hint">Modo desarrollo — marca la casilla (en producción verás un puzzle)</p>
     <label class="tava-captcha__dev">
       <input type="checkbox" [checked]="devConfirmed" (change)="onDevConfirm($any($event.target).checked)" />
       Confirmo que soy humano

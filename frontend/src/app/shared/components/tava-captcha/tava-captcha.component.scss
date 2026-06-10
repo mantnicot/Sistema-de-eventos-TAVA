@@ -1,6 +1,13 @@
 .tava-captcha {
   margin: 0.75rem 0 1rem;
 
+  &__hint {
+    font-size: 0.82rem;
+    color: var(--tava-cream-muted);
+    margin: 0 0 0.5rem;
+    text-align: center;
+  }
+
   &__widget {
     display: flex;
     justify-content: center;

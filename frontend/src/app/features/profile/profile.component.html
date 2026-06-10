@@ -7,7 +7,7 @@
 
     <section class="section">
       <h2>Mis boletas</h2>
-      <p class="section__hint">Agrupadas por evento. Descarga el PDF con todos los QR de esa compra.</p>
+      <p class="section__hint">Agrupadas por evento. Descarga cada boleta en PDF individual.</p>
 
       <div class="event-groups">
         @for (group of groupedTickets(); track group.event_id) {
@@ -16,17 +16,10 @@
               <div>
                 <h3>{{ group.event_name }}</h3>
                 <p class="event-group__meta">
-                  {{ group.event_date | date:'mediumDate' }} · {{ group.event_time }}
+                  {{ group.event_date | date:'mediumDate' }} · {{ formatTime(group.event_time) }}
                   · {{ group.city }}
                 </p>
               </div>
-              <button
-                type="button"
-                class="tava-btn-primary event-group__pdf"
-                (click)="downloadPdf(group.pdf_url, 'boletas-' + group.event_name)"
-              >
-                PDF
-              </button>
             </header>
             <ul class="ticket-rows">
               @for (t of group.tickets; track t.id) {
@@ -38,6 +31,13 @@
                   }
                   <span class="ticket-row__price">${{ t.price | number:'1.0-0' }}</span>
                   <span class="ticket-row__status">{{ t.is_used ? 'Usada' : 'Válida' }}</span>
+                  <button
+                    type="button"
+                    class="ticket-row__pdf tava-btn-primary"
+                    (click)="downloadPdf(t.pdf_url, 'boleta-' + (t.ticket_code || t.id))"
+                  >
+                    PDF
+                  </button>
                 </li>
               }
             </ul>

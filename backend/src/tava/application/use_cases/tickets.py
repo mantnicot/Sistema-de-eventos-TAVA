@@ -8,6 +8,7 @@ from sqlalchemy.orm import selectinload
 from tava.application.use_cases.loyalty import LoyaltyUseCase
 from tava.config import get_settings
 from tava.domain.enums import PaymentProvider, PaymentStatus
+from tava.domain.event_timing import tickets_purchase_allowed
 from tava.infrastructure.persistence.models import EventModel, OrderModel, TicketModel, TicketTypeModel, UserModel
 from tava.infrastructure.persistence.repositories.sqlalchemy_user_repository import SQLAlchemyUserRepository
 from tava.infrastructure.security.ticket_codes import assign_unique_ticket_code, backfill_missing_ticket_codes
@@ -43,6 +44,19 @@ class TicketUseCase:
         if not tt or tt.event_id != event_id:
             raise ValueError("Tipo de boleta no encontrado")
         return tt
+
+    def _assert_tickets_on_sale(self, event: EventModel) -> None:
+        details = event.theatrical_details if isinstance(event.theatrical_details, dict) else None
+        if not tickets_purchase_allowed(
+            event_date=event.event_date,
+            event_time=event.event_time,
+            theatrical_details=details,
+            status=event.status,
+        ):
+            raise ValueError(
+                "Te perdiste este evento, pero tenemos otros para ti. "
+                "Revisa la cartelera de funciones disponibles."
+            )
 
     def _normalize_holder_names(self, quantity: int, holder_names: list[str] | None, fallback: str) -> list[str]:
         if holder_names and len(holder_names) == quantity:
@@ -384,6 +398,7 @@ class TicketUseCase:
         holder_names: list[str] | None,
     ) -> dict:
         event = await self._load_event(event_id)
+        self._assert_tickets_on_sale(event)
         tt = await self._load_ticket_type(ticket_type_id, event_id)
         total = tt.price * quantity
 
@@ -459,6 +474,8 @@ class TicketUseCase:
         buyer = await self._users.get_model_by_email(buyer_email)
         if not buyer:
             raise ValueError("El comprador debe tener cuenta registrada con ese correo")
+        event = await self._load_event(event_id)
+        self._assert_tickets_on_sale(event)
         seller = await self._users.get_model_by_email(seller_email)
         order, tickets, event, tt = await self.create_order(
             event_id=event_id,
@@ -533,6 +550,36 @@ class TicketUseCase:
             tickets=[(t.qr_token, t.holder_name or "", t.ticket_code or "") for t in order.tickets],
         )
 
+    async def get_ticket_pdf_bytes(self, ticket_id: UUID, user_id: UUID, is_admin: bool) -> bytes:
+        result = await self._session.execute(
+            select(TicketModel, EventModel, TicketTypeModel, OrderModel)
+            .join(EventModel, TicketModel.event_id == EventModel.id)
+            .join(TicketTypeModel, TicketModel.ticket_type_id == TicketTypeModel.id)
+            .join(OrderModel, TicketModel.order_id == OrderModel.id)
+            .where(TicketModel.id == ticket_id)
+        )
+        row = result.one_or_none()
+        if not row:
+            raise ValueError("Boleta no encontrada")
+        ticket, event, tt, order = row
+        if not is_admin and ticket.owner_id != user_id and order.buyer_id != user_id:
+            raise ValueError("No autorizado")
+        age = None
+        if event.theatrical_details and isinstance(event.theatrical_details, dict):
+            age = event.theatrical_details.get("age_rating")
+        return build_tickets_pdf(
+            event_name=event.name,
+            event_date=event.event_date,
+            event_time=event.event_time,
+            city=event.city,
+            address=event.address,
+            age_rating=age,
+            main_image_url=event.main_image_url,
+            ticket_type_name=tt.name,
+            price=tt.price,
+            tickets=[(ticket.qr_token, ticket.holder_name or "", ticket.ticket_code or "")],
+        )
+
     async def list_my_tickets(self, user_id: UUID) -> list[dict]:
         result = await self._session.execute(
             select(TicketModel, EventModel, TicketTypeModel, OrderModel)
@@ -560,7 +607,7 @@ class TicketUseCase:
                 "ticket_code": t.ticket_code,
                 "is_used": t.is_used,
                 "main_image_url": ev.main_image_url,
-                "pdf_url": f"/tickets/orders/{t.order_id}/pdf",
+                "pdf_url": f"/tickets/{t.id}/pdf",
             }
             for t, ev, tt, _o in rows
         ]

@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, inject, OnInit, signal, ViewChild } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { FormsModule } from '@angular/forms';
@@ -7,20 +7,31 @@ import { ApiService } from '../../core/services/api.service';
 import { AuthService } from '../../core/services/auth.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { TavaEventDetail } from '../../core/models/event.model';
+import {
+  canPurchaseTickets,
+  formatEventDateTime,
+  formatEventTime,
+  funnyCtaForEvent,
+  getEventPhase,
+  liveBannerMessage,
+  totalTicketsAvailable,
+} from '../../core/utils/event-timing.util';
 import { mediaBackgroundStyle, resolveMediaUrl } from '../../core/utils/media-url.util';
 import { trailerEmbedUrl, trailerVideoSrc } from '../../core/utils/trailer-embed.util';
 import { onEventImageError } from '../../core/utils/event-image.util';
 import { TavaTheatricalVideoComponent } from '../../shared/components/tava-theatrical-video/tava-theatrical-video.component';
 import { TavaTicketPreviewComponent } from '../../shared/components/tava-ticket-preview/tava-ticket-preview.component';
+import { TavaCaptchaComponent } from '../../shared/components/tava-captcha/tava-captcha.component';
 
 @Component({
   selector: 'app-event-detail',
   standalone: true,
-  imports: [RouterLink, FormsModule, DecimalPipe, TavaTheatricalVideoComponent, TavaTicketPreviewComponent],
+  imports: [RouterLink, FormsModule, DecimalPipe, TavaTheatricalVideoComponent, TavaTicketPreviewComponent, TavaCaptchaComponent],
   templateUrl: './event-detail.component.html',
   styleUrl: './event-detail.component.scss',
 })
 export class EventDetailComponent implements OnInit {
+  @ViewChild(TavaCaptchaComponent) captcha?: TavaCaptchaComponent;
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly api = inject(ApiService);
@@ -33,6 +44,15 @@ export class EventDetailComponent implements OnInit {
   readonly mediaBg = mediaBackgroundStyle;
   readonly trailerVideo = trailerVideoSrc;
   purchasing = false;
+  captchaToken = '';
+
+  readonly formatEventDateTime = formatEventDateTime;
+  readonly formatEventTime = formatEventTime;
+  readonly funnyCta = funnyCtaForEvent;
+  readonly liveMessage = liveBannerMessage;
+  readonly getPhase = getEventPhase;
+  readonly canBuy = canPurchaseTickets;
+  readonly ticketsLeft = totalTicketsAvailable;
 
   readonly onImgError = onEventImageError;
 
@@ -114,6 +134,10 @@ export class EventDetailComponent implements OnInit {
     return names;
   }
 
+  onCaptchaToken(token: string): void {
+    this.captchaToken = token;
+  }
+
   comprar(): void {
     if (!this.auth.isLoggedIn()) {
       this.notify.warning('Inicia sesión', 'Debes ingresar para comprar boletas');
@@ -128,6 +152,16 @@ export class EventDetailComponent implements OnInit {
     const typeId = this.selectedTypeId();
     const tt = this.selectedTicketType();
     if (!ev || !typeId || !tt) return;
+
+    if (!this.canBuy(ev)) {
+      this.notify.warning('Evento finalizado', 'Te perdiste este evento, pero tenemos otros para ti.');
+      return;
+    }
+
+    if (!this.captchaToken) {
+      this.notify.warning('Verificación', 'Completa el puzzle de verificación antes de comprar');
+      return;
+    }
 
     const names = this.resolveHolderNames();
     if (!names) {
@@ -164,12 +198,14 @@ export class EventDetailComponent implements OnInit {
           quantity: this.quantity,
           holder_names: names,
           legal_accepted: true,
-          captcha_token: 'dev-captcha',
+          captcha_token: this.captchaToken,
         })
         .subscribe({
           next: (res) => {
             this.purchasing = false;
             this.notify.hide();
+            this.captcha?.reset();
+            this.captchaToken = '';
             if (res.payment_required && res.checkout_url) {
               window.location.href = res.checkout_url;
               return;
@@ -186,6 +222,8 @@ export class EventDetailComponent implements OnInit {
           error: (err) => {
             this.purchasing = false;
             this.notify.hide();
+            this.captcha?.reset();
+            this.captchaToken = '';
             const msg = err?.error?.detail ?? 'No se pudo completar la compra';
             this.notify.error('Compra', typeof msg === 'string' ? msg : 'Error en la compra');
           },

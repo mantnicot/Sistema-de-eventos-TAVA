@@ -27,6 +27,7 @@ export interface TavaEvent {
   category: string;
   status: string;
   capacity: number;
+  tickets_available?: number;
   main_image_url?: string;
   trailer_url?: string;
   theatrical_details?: TheatricalDetails;

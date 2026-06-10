@@ -300,3 +300,118 @@
     font-weight: 700;
   }
 }
+
+.detail__datetime {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--tava-gold-glow);
+}
+
+.detail__live-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  margin: -1rem 0 1.5rem;
+  padding: 1.25rem 1.5rem;
+  border: 2px solid rgba(255, 80, 80, 0.5);
+  background: linear-gradient(135deg, rgba(100, 15, 25, 0.9), rgba(40, 10, 20, 0.95));
+
+  strong {
+    display: block;
+    font-size: 1.25rem;
+    color: #ff6b6b;
+    margin-bottom: 0.35rem;
+  }
+
+  p {
+    margin: 0;
+    color: var(--tava-gold);
+    font-weight: 500;
+  }
+}
+
+.detail__live-pulse {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #ff4444;
+  margin-top: 0.35rem;
+  flex-shrink: 0;
+  animation: detail-live-pulse 1.5s infinite;
+}
+
+@keyframes detail-live-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 68, 68, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 12px rgba(255, 68, 68, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 68, 68, 0);
+  }
+}
+
+.detail__funny-cta {
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--tava-gold-glow);
+  text-align: center;
+  padding: 0.65rem;
+  margin: 0 0 1rem;
+  border-radius: 8px;
+  background: rgba(123, 30, 58, 0.35);
+  border: 1px solid rgba(201, 162, 39, 0.4);
+}
+
+.detail__tickets-meter {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  margin-bottom: 1.25rem;
+  border-radius: 16px;
+  background: rgba(201, 162, 39, 0.1);
+  border: 2px solid rgba(201, 162, 39, 0.45);
+}
+
+.detail__tickets-num {
+  font-family: var(--tava-font-display);
+  font-size: 3.5rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--tava-gold);
+}
+
+.detail__tickets-label {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--tava-cream-muted);
+  margin-top: 0.35rem;
+}
+
+.detail__missed {
+  text-align: center;
+  padding: 1rem 0.5rem;
+
+  &-title {
+    font-family: var(--tava-font-display);
+    font-size: 1.35rem;
+    color: var(--tava-cream-muted);
+    margin: 0 0 0.5rem;
+  }
+
+  p {
+    color: var(--tava-cream-muted);
+    margin: 0 0 1.25rem;
+    line-height: 1.5;
+  }
+
+  a {
+    display: inline-block;
+    text-decoration: none;
+  }
+}
