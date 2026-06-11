@@ -31,8 +31,7 @@
   @if (tab() === 'events') {
     <div class="admin-events-layout">
       <div class="admin-events-main">
-      <div class="admin-grid">
-      <form class="tava-card admin-form" (ngSubmit)="saveEvent()">
+      <form class="tava-card admin-form admin-form--wide" (ngSubmit)="saveEvent()">
         <h2>{{ editingId() ? 'Editar evento' : 'Nuevo evento' }}</h2>
         <label>Nombre <input [(ngModel)]="eventForm.name" name="name" required /></label>
         <label>Descripción <textarea [(ngModel)]="eventForm.description" name="desc" rows="3" required></textarea></label>
@@ -314,7 +313,6 @@
                 <input [(ngModel)]="tt.benefits" [name]="'ttb' + i" placeholder="Ej. Palco, bebida, meet & greet" (ngModelChange)="onTicketDraftChange()" />
               </label>
               <div class="ticket-type-row__actions">
-                <button type="button" class="link-btn" (click)="previewTypeIndex = i">Vista previa</button>
                 <button type="button" class="btn-danger" (click)="removeTicketType(i)">Quitar</button>
               </div>
             </div>
@@ -326,20 +324,44 @@
         @if (editingId()) {
           <section class="seating-admin-block">
             <h3>Silletería numerada</h3>
-            <p class="muted">Configura bloques con filas y columnas (como dos secciones con pasillo central).</p>
-            <label class="check-row">
-              <input type="checkbox" [(ngModel)]="seatingDraft.enabled" name="seatingEnabled" />
-              Activar selección de sillas para este evento
-            </label>
-            @for (block of seatingDraft.blocks; track block.id; let bi = $index) {
-              <div class="seating-admin-row tava-card">
-                <strong>{{ block.name }}</strong>
-                <label>Nombre bloque <input [(ngModel)]="block.name" [name]="'sbname' + bi" /></label>
-                <label>Filas <input type="number" min="1" max="30" [(ngModel)]="block.rows" [name]="'sbrows' + bi" /></label>
-                <label>Columnas <input type="number" min="1" max="30" [(ngModel)]="block.cols" [name]="'sbcols' + bi" /></label>
+            <p class="muted">Configura bloques con filas y columnas. La vista previa se actualiza al instante.</p>
+            <div class="seating-admin-layout">
+              <div class="seating-admin-config">
+                <label class="check-row">
+                  <input type="checkbox" [(ngModel)]="seatingDraft.enabled" name="seatingEnabled" />
+                  Activar selección de sillas para este evento
+                </label>
+                <label>Etiqueta del escenario
+                  <input [(ngModel)]="seatingDraft.stage_label" name="stageLabel" placeholder="Escenario" />
+                </label>
+                @for (block of seatingDraft.blocks; track block.id; let bi = $index) {
+                  <div class="seating-admin-row tava-card">
+                    <strong>{{ block.name }}</strong>
+                    <label>Nombre bloque <input [(ngModel)]="block.name" [name]="'sbname' + bi" /></label>
+                    <label>Filas <input type="number" min="1" max="30" [(ngModel)]="block.rows" [name]="'sbrows' + bi" /></label>
+                    <label>Columnas <input type="number" min="1" max="30" [(ngModel)]="block.cols" [name]="'sbcols' + bi" /></label>
+                  </div>
+                }
+                <button type="button" class="tava-btn-primary" (click)="saveEventSeating()">Guardar mapa de sillas</button>
               </div>
-            }
-            <button type="button" class="tava-btn-primary" (click)="saveEventSeating()">Guardar mapa de sillas</button>
+              <div class="seating-admin-preview">
+                <h4>Vista en tiempo real</h4>
+                <p class="muted">Así verá el público el mapa. Haz clic en las sillas para probar la selección.</p>
+                @if (seatingDraft.enabled) {
+                  <tava-seat-map
+                    [config]="seatingDraft"
+                    [seats]="liveSeatingSeats()"
+                    [selectedIds]="adminSeatPreviewSelected"
+                    (selectedIdsChange)="adminSeatPreviewSelected = $event"
+                  />
+                  @if (adminSeatPreviewSelected.length) {
+                    <p class="muted seating-preview-count">Seleccionadas en prueba: {{ adminSeatPreviewSelected.length }}</p>
+                  }
+                } @else {
+                  <p class="muted seating-preview-empty">Activa la silletería para ver la distribución gráfica.</p>
+                }
+              </div>
+            </div>
           </section>
         }
 
@@ -348,36 +370,6 @@
           <button type="button" class="link-btn" (click)="resetEventForm()">Cancelar edición</button>
         }
       </form>
-
-      <aside class="ticket-preview-panel tava-card">
-        <h2>Vista previa de boleta</h2>
-        <p class="muted">Así verá el público la entrada al comprar.</p>
-        @if (previewType(); as pt) {
-          <label class="preview-pick">
-            Tipo a previsualizar
-            <select [(ngModel)]="previewTypeIndex" name="previewPick">
-              @for (tt of ticketTypesDraft; track $index; let i = $index) {
-                <option [ngValue]="i">{{ tt.name }} — ${{ tt.price | number }}</option>
-              }
-            </select>
-          </label>
-          <tava-ticket-preview
-            [eventName]="eventForm.name"
-            [eventDate]="eventForm.event_date"
-            [eventTime]="eventForm.event_time"
-            [city]="eventForm.city"
-            [address]="eventForm.address"
-            [typeName]="pt.name"
-            [kind]="pt.kind"
-            [price]="pt.price"
-            [benefits]="pt.benefits"
-            [imageUrl]="eventForm.main_image_url || undefined"
-          />
-        } @else {
-          <p class="muted">Configura tipos de boleta para ver la vista previa.</p>
-        }
-      </aside>
-      </div>
       </div>
 
       <aside class="admin-events-sidebar tava-card">

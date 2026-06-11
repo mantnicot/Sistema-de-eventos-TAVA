@@ -18,6 +18,20 @@ export class TavaSeatMapComponent {
     return this.seats.find((s) => s.block_id === blockId && s.row === row && s.col === col);
   }
 
+  seatAt(block: SeatingBlockConfig, row: string, col: string): SeatMapItem | undefined {
+    const existing = this.seatFor(block.id, row, col);
+    if (existing) return existing;
+    if (!this.config.enabled) return undefined;
+    return {
+      id: `preview-${block.id}-${row}-${col}`,
+      block_id: block.id,
+      row,
+      col,
+      label: `${block.name} · Fila ${row} · Asiento ${col}`,
+      status: 'disponible',
+    };
+  }
+
   rowLabels(block: SeatingBlockConfig): string[] {
     if (block.row_labels?.length) return block.row_labels.slice(0, block.rows);
     return Array.from({ length: block.rows }, (_, i) =>

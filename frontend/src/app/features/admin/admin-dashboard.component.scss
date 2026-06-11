@@ -125,6 +125,35 @@
   h3 {
     margin: 0 0 0.5rem;
   }
+
+  h4 {
+    margin: 0 0 0.35rem;
+    font-family: var(--tava-font-display);
+    color: var(--tava-gold-glow);
+    font-size: 1rem;
+  }
+}
+
+.seating-admin-layout {
+  display: grid;
+  grid-template-columns: minmax(240px, 320px) minmax(0, 1fr);
+  gap: 1.25rem;
+  align-items: start;
+  margin-top: 0.75rem;
+
+  @media (max-width: 900px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.seating-admin-preview {
+  min-width: 0;
+}
+
+.seating-preview-empty,
+.seating-preview-count {
+  margin: 0.5rem 0 0;
+  text-align: center;
 }
 
 .seating-admin-row {
@@ -223,7 +252,7 @@
 
 .admin-events-layout {
   display: grid;
-  grid-template-columns: 1fr minmax(280px, 340px);
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 280px);
   gap: 1.25rem;
   align-items: start;
 
@@ -269,19 +298,6 @@
   background: rgba(255, 248, 230, 0.6);
 }
 
-.admin-grid {
-  display: grid;
-  grid-template-columns: 1fr minmax(280px, 340px);
-  gap: 1.25rem;
-  align-items: start;
-}
-
-@media (max-width: 960px) {
-  .admin-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
 .ticketing-block {
   margin-top: 0.5rem;
   padding-top: 0.5rem;
@@ -302,35 +318,10 @@
 
   &__actions {
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-end;
     align-items: center;
     margin-top: 0.35rem;
   }
-}
-
-.ticket-preview-panel {
-  padding: 1.25rem;
-  position: sticky;
-  top: 1rem;
-
-  @media (max-width: 960px) {
-    position: static;
-  }
-
-  h2 {
-    margin: 0 0 0.35rem;
-    font-family: var(--tava-font-display);
-    color: var(--tava-gold-glow);
-    font-size: 1.1rem;
-  }
-}
-
-.preview-pick {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  font-size: 0.85rem;
-  margin-bottom: 1rem;
 }
 
 .warn-text {
@@ -351,6 +342,11 @@
   display: flex;
   flex-direction: column;
   gap: 0.65rem;
+
+  &--wide {
+    max-width: none;
+    width: 100%;
+  }
 
   h2, h3 {
     margin: 0.5rem 0 0;
@@ -513,11 +509,5 @@
   .link-btn {
     grid-column: 1 / -1;
     justify-self: start;
-  }
-}
-
-@media (max-width: 800px) {
-  .admin-grid {
-    grid-template-columns: 1fr;
   }
 }

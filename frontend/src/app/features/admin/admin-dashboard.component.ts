@@ -13,11 +13,12 @@ import {
   VIDEO_TRAILER_SPEC,
 } from '../../core/constants/media-upload-specs.const';
 import { TavaFileUploadComponent } from '../../shared/components/tava-file-upload/tava-file-upload.component';
-import { TavaTicketPreviewComponent } from '../../shared/components/tava-ticket-preview/tava-ticket-preview.component';
+import { TavaSeatMapComponent } from '../../shared/components/tava-seat-map/tava-seat-map.component';
 import { TavaEvent, TavaEventDetail, TheatricalDetails, CastMember } from '../../core/models/event.model';
 import { TicketKind, TicketTypeDraft } from '../../core/models/ticket-type.model';
 import { resolveMediaUrl } from '../../core/utils/media-url.util';
-import { DEFAULT_SEATING, SeatingConfig } from '../../core/models/seating.model';
+import { mergeSeatingPreview } from '../../core/utils/seating-preview.util';
+import { DEFAULT_SEATING, SeatMapItem, SeatingConfig } from '../../core/models/seating.model';
 
 interface Kpis {
   eventos_activos: number;
@@ -71,7 +72,7 @@ interface EventUpdateResponse extends TavaEvent {
 @Component({
   selector: 'app-admin-dashboard',
   standalone: true,
-  imports: [DecimalPipe, FormsModule, TavaFileUploadComponent, TavaTicketPreviewComponent],
+  imports: [DecimalPipe, FormsModule, TavaFileUploadComponent, TavaSeatMapComponent],
   templateUrl: './admin-dashboard.component.html',
   styleUrl: './admin-dashboard.component.scss',
 })
@@ -104,6 +105,8 @@ export class AdminDashboardComponent implements OnInit {
   broadcastMessage = '';
   cancelNotifyHolder = true;
   seatingDraft: SeatingConfig = structuredClone(DEFAULT_SEATING);
+  savedSeatingSeats: SeatMapItem[] = [];
+  adminSeatPreviewSelected: string[] = [];
 
   theatrical: TheatricalDetails = {};
   eventForm = {
@@ -124,7 +127,6 @@ export class AdminDashboardComponent implements OnInit {
 
   ticketTypesDraft: TicketTypeDraft[] = [];
   ticketTypesTouched = false;
-  previewTypeIndex = 0;
   readonly ticketKinds: { value: TicketKind; label: string }[] = [
     { value: 'individual', label: 'Individual' },
     { value: 'grupal', label: 'Grupal' },
@@ -273,10 +275,8 @@ export class AdminDashboardComponent implements OnInit {
     return cap > 0 && this.ticketsAllocated() > cap;
   }
 
-  previewType(): TicketTypeDraft | null {
-    if (!this.ticketTypesDraft.length) return null;
-    const idx = Math.min(this.previewTypeIndex, this.ticketTypesDraft.length - 1);
-    return this.ticketTypesDraft[idx];
+  liveSeatingSeats(): SeatMapItem[] {
+    return mergeSeatingPreview(this.seatingDraft, this.savedSeatingSeats);
   }
 
   addTicketType(): void {
@@ -289,7 +289,6 @@ export class AdminDashboardComponent implements OnInit {
       benefits: '',
     });
     this.ticketTypesTouched = true;
-    this.previewTypeIndex = this.ticketTypesDraft.length - 1;
   }
 
   addSuggestedTicketTypes(): void {
@@ -313,15 +312,11 @@ export class AdminDashboardComponent implements OnInit {
       },
     ];
     this.ticketTypesTouched = true;
-    this.previewTypeIndex = 0;
   }
 
   removeTicketType(index: number): void {
     this.ticketTypesDraft.splice(index, 1);
     this.ticketTypesTouched = true;
-    if (this.previewTypeIndex >= this.ticketTypesDraft.length) {
-      this.previewTypeIndex = Math.max(0, this.ticketTypesDraft.length - 1);
-    }
   }
 
   onTicketDraftChange(): void {
@@ -354,7 +349,6 @@ export class AdminDashboardComponent implements OnInit {
     this.castMembers = [{ name: '', photo_url: '', role: '' }];
     this.ticketTypesDraft = [];
     this.ticketTypesTouched = false;
-    this.previewTypeIndex = 0;
     this.theatrical = {};
     this.eventForm = {
       name: '',
@@ -375,6 +369,8 @@ export class AdminDashboardComponent implements OnInit {
     this.broadcastSubject = '';
     this.broadcastMessage = '';
     this.seatingDraft = structuredClone(DEFAULT_SEATING);
+    this.savedSeatingSeats = [];
+    this.adminSeatPreviewSelected = [];
   }
 
   loadAttendees(eventId: string): void {
@@ -504,6 +500,17 @@ export class AdminDashboardComponent implements OnInit {
     });
   }
 
+  loadEventSeating(eventId: string): void {
+    this.api.get<{ seats: SeatMapItem[] }>(`/events/${eventId}/seating`).subscribe({
+      next: (res) => {
+        this.savedSeatingSeats = res.seats ?? [];
+      },
+      error: () => {
+        this.savedSeatingSeats = [];
+      },
+    });
+  }
+
   saveEventSeating(): void {
     const id = this.editingId();
     if (!id) return;
@@ -511,6 +518,8 @@ export class AdminDashboardComponent implements OnInit {
     this.api.put<{ seats_created?: number }>(`/events/${id}/seating`, { seating: this.seatingDraft }).subscribe({
       next: (res) => {
         this.notify.hide();
+        this.loadEventSeating(id);
+        this.adminSeatPreviewSelected = [];
         this.notify.success(
           'Silletería',
           `Mapa guardado${res.seats_created != null ? ` (${res.seats_created} sillas)` : ''}.`
@@ -527,7 +536,7 @@ export class AdminDashboardComponent implements OnInit {
     this.editingId.set(ev.id);
     this.ticketTypesDraft = [];
     this.ticketTypesTouched = false;
-    this.previewTypeIndex = 0;
+    this.adminSeatPreviewSelected = [];
     this.api.get<TavaEventDetail>(`/events/${ev.id}`).subscribe({
       next: (detail) => {
         this.ticketTypesDraft = (detail.ticket_types ?? []).map((t) => ({
@@ -572,6 +581,7 @@ export class AdminDashboardComponent implements OnInit {
           blocks: seating.blocks?.length ? seating.blocks : DEFAULT_SEATING.blocks,
         }
       : structuredClone(DEFAULT_SEATING);
+    this.loadEventSeating(ev.id);
     this.api
       .get<{ validator_ids: string[]; seller_ids: string[] }>(`/events/${ev.id}/staff`)
       .subscribe({
