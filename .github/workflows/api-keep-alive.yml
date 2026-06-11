@@ -1,0 +1,25 @@
+# Mantiene despierta la API en Render (plan gratis duerme ~15 min sin tráfico).
+name: API keep-alive
+
+on:
+  schedule:
+    # Cada 10 minutos (UTC)
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Ping API Render
+        run: |
+          set +e
+          echo "Ping $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          curl -fsS -m 90 \
+            "https://tava-api-1.onrender.com/api/v1/settings/appearance" \
+            -o /dev/null -w "appearance: %{http_code}\n"
+          curl -fsS -m 60 \
+            "https://tava-api-1.onrender.com/api/v1/ping" \
+            -o /dev/null -w "ping: %{http_code}\n" || true
+          exit 0
