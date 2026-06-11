@@ -325,6 +325,18 @@
           <section class="seating-admin-block">
             <h3>Silletería numerada</h3>
             <p class="muted">Configura bloques con filas y columnas. La vista previa se actualiza al instante.</p>
+            @if (seatingDraft.enabled) {
+              <p class="seating-capacity-line" [class.warn-text]="seatingCapacityExceeded()">
+                Sillas en el mapa: <strong>{{ seatingTotalSeats() }}</strong> /
+                Aforo: <strong>{{ eventForm.capacity }}</strong>
+              </p>
+              @if (seatingCapacityExceeded()) {
+                <p class="warn-box">Reduce filas, columnas o bloques: no puede haber más sillas que el aforo.</p>
+              }
+              @if (seatingTicketTypeOverflow(); as overflowMsg) {
+                <p class="warn-box">{{ overflowMsg }}</p>
+              }
+            }
             <div class="seating-admin-layout">
               <div class="seating-admin-config">
                 <label class="check-row">
@@ -334,29 +346,80 @@
                 <label>Etiqueta del escenario
                   <input [(ngModel)]="seatingDraft.stage_label" name="stageLabel" placeholder="Escenario" />
                 </label>
+                <div class="seating-block-actions">
+                  <button type="button" class="nav__btn-outline" (click)="addSeatingBlock()">+ Agregar bloque</button>
+                </div>
                 @for (block of seatingDraft.blocks; track block.id; let bi = $index) {
                   <div class="seating-admin-row tava-card">
-                    <strong>{{ block.name }}</strong>
+                    <div class="seating-admin-row__head">
+                      <strong>{{ block.name }}</strong>
+                      @if (seatingDraft.blocks.length > 1) {
+                        <button type="button" class="btn-danger btn-sm" (click)="removeSeatingBlock(bi)">Quitar bloque</button>
+                      }
+                    </div>
                     <label>Nombre bloque <input [(ngModel)]="block.name" [name]="'sbname' + bi" /></label>
                     <label>Filas <input type="number" min="1" max="30" [(ngModel)]="block.rows" [name]="'sbrows' + bi" /></label>
                     <label>Columnas <input type="number" min="1" max="30" [(ngModel)]="block.cols" [name]="'sbcols' + bi" /></label>
+                    <label>Etiquetas de fila (opcional, separadas por coma)
+                      <input
+                        [ngModel]="block.row_labels?.join(', ') ?? ''"
+                        (ngModelChange)="onBlockRowLabelsInput(block, $event)"
+                        [name]="'sbrowlabels' + bi"
+                        placeholder="A, B, C, D"
+                      />
+                    </label>
+                    @if (ticketTypesDraft.length) {
+                      <label>Categoría por defecto del bloque
+                        <select
+                          [ngModel]="block.ticket_type_id ?? ''"
+                          (ngModelChange)="onBlockTicketTypeChange(block.id, $event)"
+                          [name]="'sbtt' + bi"
+                        >
+                          <option value="">Sin categoría</option>
+                          @for (tt of ticketTypesDraft; track $index) {
+                            @if (tt.id) {
+                              <option [value]="tt.id">{{ tt.name }}</option>
+                            }
+                          }
+                        </select>
+                      </label>
+                    }
+                    <p class="muted-inline">{{ block.rows * block.cols }} sillas en este bloque</p>
                   </div>
                 }
-                <button type="button" class="tava-btn-primary" (click)="saveEventSeating()">Guardar mapa de sillas</button>
+                <button
+                  type="button"
+                  class="tava-btn-primary"
+                  [disabled]="seatingCapacityExceeded()"
+                  (click)="saveEventSeating()"
+                >
+                  Guardar mapa de sillas
+                </button>
               </div>
               <div class="seating-admin-preview">
                 <h4>Vista en tiempo real</h4>
-                <p class="muted">Así verá el público el mapa. Haz clic en las sillas para probar la selección.</p>
                 @if (seatingDraft.enabled) {
+                  @if (ticketTypesDraft.length) {
+                    <label>Asignar categoría a sillas
+                      <select [(ngModel)]="seatingAssignTicketTypeId" name="seatingAssignType">
+                        <option [ngValue]="null">Sin categoría</option>
+                        @for (tt of ticketTypesDraft; track $index) {
+                          @if (tt.id) {
+                            <option [ngValue]="tt.id">{{ tt.name }}</option>
+                          }
+                        }
+                      </select>
+                    </label>
+                    <p class="muted">Elige una categoría y haz clic en las sillas del mapa para asignarla.</p>
+                  }
                   <tava-seat-map
                     [config]="seatingDraft"
                     [seats]="liveSeatingSeats()"
-                    [selectedIds]="adminSeatPreviewSelected"
-                    (selectedIdsChange)="adminSeatPreviewSelected = $event"
+                    [ticketTypes]="seatingTicketTypeOptions()"
+                    [mode]="'assign'"
+                    [activeTicketTypeId]="seatingAssignTicketTypeId"
+                    (seatTicketTypeChange)="onSeatTicketTypeAssign($event)"
                   />
-                  @if (adminSeatPreviewSelected.length) {
-                    <p class="muted seating-preview-count">Seleccionadas en prueba: {{ adminSeatPreviewSelected.length }}</p>
-                  }
                 } @else {
                   <p class="muted seating-preview-empty">Activa la silletería para ver la distribución gráfica.</p>
                 }

@@ -95,12 +95,14 @@ class SeatingBlockSchema(BaseModel):
     cols: int = Field(ge=1, le=30)
     row_labels: list[str] | None = None
     col_labels: list[str] | None = None
+    ticket_type_id: str | None = None
 
 
 class SeatingConfigSchema(BaseModel):
     enabled: bool = False
     stage_label: str = "Escenario"
     blocks: list[SeatingBlockSchema] = Field(default_factory=list)
+    seat_ticket_types: dict[str, str] | None = None
 
 
 class TheatricalDetailsSchema(BaseModel):

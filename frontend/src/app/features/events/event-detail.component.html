@@ -158,7 +158,7 @@
                 name="tt"
                 [value]="tt.id"
                 [checked]="selectedTypeId() === tt.id"
-                (change)="selectedTypeId.set(tt.id)"
+                (change)="onTicketTypeChange(tt.id)"
               />
               {{ tt.name }} — ${{ tt.price | number }} ({{ tt.quantity_available }} disp.)
             </label>
@@ -168,10 +168,14 @@
             @if (map.config) {
               <div class="seating-block">
                 <h3>Elige tu silla</h3>
+                <p class="hint">Solo puedes elegir sillas de la categoría «{{ selectedTicketType()?.name }}».</p>
                 <tava-seat-map
                   [config]="map.config"
                   [seats]="map.seats"
                   [selectedIds]="selectedSeatIds"
+                  [mode]="'purchase'"
+                  [ticketTypes]="seatingTicketTypes()"
+                  [allowedTicketTypeId]="selectedTypeId()"
                   (selectedIdsChange)="onSeatsChange($event)"
                 />
                 <p class="hint">Seleccionadas: {{ selectedSeatIds.length }}</p>

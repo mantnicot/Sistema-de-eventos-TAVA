@@ -17,8 +17,16 @@ import { TavaSeatMapComponent } from '../../shared/components/tava-seat-map/tava
 import { TavaEvent, TavaEventDetail, TheatricalDetails, CastMember } from '../../core/models/event.model';
 import { TicketKind, TicketTypeDraft } from '../../core/models/ticket-type.model';
 import { resolveMediaUrl } from '../../core/utils/media-url.util';
-import { mergeSeatingPreview } from '../../core/utils/seating-preview.util';
-import { DEFAULT_SEATING, SeatMapItem, SeatingConfig } from '../../core/models/seating.model';
+import { mergeSeatingPreview, applyBlockTicketType, applySeatTicketType } from '../../core/utils/seating-preview.util';
+import {
+  countLayoutSeats,
+  countSeatsByTicketType,
+  DEFAULT_SEATING,
+  newSeatingBlock,
+  SeatMapItem,
+  SeatingConfig,
+  SeatTicketTypeOption,
+} from '../../core/models/seating.model';
 
 interface Kpis {
   eventos_activos: number;
@@ -107,6 +115,7 @@ export class AdminDashboardComponent implements OnInit {
   seatingDraft: SeatingConfig = structuredClone(DEFAULT_SEATING);
   savedSeatingSeats: SeatMapItem[] = [];
   adminSeatPreviewSelected: string[] = [];
+  seatingAssignTicketTypeId: string | null = null;
 
   theatrical: TheatricalDetails = {};
   eventForm = {
@@ -279,6 +288,87 @@ export class AdminDashboardComponent implements OnInit {
     return mergeSeatingPreview(this.seatingDraft, this.savedSeatingSeats);
   }
 
+  seatingTicketTypeOptions(): SeatTicketTypeOption[] {
+    return this.ticketTypesDraft
+      .filter((t) => t.id)
+      .map((t) => ({ id: t.id!, name: t.name }));
+  }
+
+  seatingTotalSeats(): number {
+    return countLayoutSeats(this.seatingDraft);
+  }
+
+  seatingCapacityExceeded(): boolean {
+    const cap = this.eventForm.capacity || 0;
+    return cap > 0 && this.seatingDraft.enabled && this.seatingTotalSeats() > cap;
+  }
+
+  seatingTicketTypeOverflow(): string | null {
+    if (!this.seatingDraft.enabled) return null;
+    const counts = countSeatsByTicketType(this.seatingDraft);
+    for (const tt of this.ticketTypesDraft) {
+      if (!tt.id) continue;
+      const assigned = counts[tt.id] ?? 0;
+      if (assigned > (tt.quantity_available || 0)) {
+        return `«${tt.name}»: ${assigned} sillas asignadas pero solo ${tt.quantity_available} cupos en boletería.`;
+      }
+    }
+    return null;
+  }
+
+  addSeatingBlock(): void {
+    const cap = this.eventForm.capacity || 0;
+    const next = newSeatingBlock(this.seatingDraft.blocks.length);
+    if (cap > 0 && this.seatingTotalSeats() + next.rows * next.cols > cap) {
+      this.notify.warning(
+        'Aforo',
+        `No puedes agregar otro bloque: superarías el aforo de ${cap} sillas.`
+      );
+      return;
+    }
+    this.seatingDraft = {
+      ...this.seatingDraft,
+      blocks: [...this.seatingDraft.blocks, next],
+    };
+  }
+
+  removeSeatingBlock(index: number): void {
+    if (this.seatingDraft.blocks.length <= 1) {
+      this.notify.warning('Silletería', 'Debe quedar al menos un bloque.');
+      return;
+    }
+    const blocks = [...this.seatingDraft.blocks];
+    blocks.splice(index, 1);
+    this.seatingDraft = { ...this.seatingDraft, blocks };
+  }
+
+  onBlockTicketTypeChange(blockId: string, typeId: string): void {
+    this.seatingDraft = applyBlockTicketType(this.seatingDraft, blockId, typeId || null);
+  }
+
+  onSeatTicketTypeAssign(event: {
+    blockId: string;
+    row: string;
+    col: string;
+    ticketTypeId: string | null;
+  }): void {
+    this.seatingDraft = applySeatTicketType(
+      this.seatingDraft,
+      event.blockId,
+      event.row,
+      event.col,
+      event.ticketTypeId
+    );
+  }
+
+  onBlockRowLabelsInput(block: { row_labels?: string[]; rows: number }, value: string): void {
+    const labels = value
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+    block.row_labels = labels.length ? labels : undefined;
+  }
+
   addTicketType(): void {
     const remaining = this.ticketsRemaining() || this.eventForm.capacity || 50;
     this.ticketTypesDraft.push({
@@ -371,6 +461,7 @@ export class AdminDashboardComponent implements OnInit {
     this.seatingDraft = structuredClone(DEFAULT_SEATING);
     this.savedSeatingSeats = [];
     this.adminSeatPreviewSelected = [];
+    this.seatingAssignTicketTypeId = null;
   }
 
   loadAttendees(eventId: string): void {
@@ -514,6 +605,18 @@ export class AdminDashboardComponent implements OnInit {
   saveEventSeating(): void {
     const id = this.editingId();
     if (!id) return;
+    if (this.seatingCapacityExceeded()) {
+      this.notify.warning(
+        'Aforo',
+        `El mapa tiene ${this.seatingTotalSeats()} sillas pero el aforo es ${this.eventForm.capacity}.`
+      );
+      return;
+    }
+    const overflow = this.seatingTicketTypeOverflow();
+    if (overflow) {
+      this.notify.warning('Categorías', overflow);
+      return;
+    }
     this.notify.loadingTheatrical('Generando silletería', 'admin');
     this.api.put<{ seats_created?: number }>(`/events/${id}/seating`, { seating: this.seatingDraft }).subscribe({
       next: (res) => {
@@ -547,6 +650,7 @@ export class AdminDashboardComponent implements OnInit {
           quantity_available: t.quantity_available,
           benefits: t.benefits ?? '',
         }));
+        this.seatingAssignTicketTypeId = this.ticketTypesDraft.find((t) => t.id)?.id ?? null;
       },
     });
     this.eventForm = {
@@ -579,6 +683,7 @@ export class AdminDashboardComponent implements OnInit {
           ...DEFAULT_SEATING,
           ...seating,
           blocks: seating.blocks?.length ? seating.blocks : DEFAULT_SEATING.blocks,
+          seat_ticket_types: seating.seat_ticket_types ?? {},
         }
       : structuredClone(DEFAULT_SEATING);
     this.loadEventSeating(ev.id);

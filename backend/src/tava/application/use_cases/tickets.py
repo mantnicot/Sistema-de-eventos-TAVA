@@ -133,7 +133,7 @@ class TicketUseCase:
             )
             if seat_ids:
                 await SeatingUseCase(self._session).assign_seats_to_tickets(
-                    event.id, seat_ids, created
+                    event.id, seat_ids, created, ticket_type.id
                 )
             lamina = event.main_image_url or f"/uploads/laminas/{event_id}.png"
             await LoyaltyUseCase(self._session).grant_collectible(buyer_id, event_id, lamina)
@@ -226,7 +226,7 @@ class TicketUseCase:
         )
         if seat_ids:
             await SeatingUseCase(self._session).assign_seats_to_tickets(
-                event.id, seat_ids, tickets
+                event.id, seat_ids, tickets, ticket_type.id
             )
         lamina = event.main_image_url or f"/uploads/laminas/{event.id}.png"
         await LoyaltyUseCase(self._session).grant_collectible(order.buyer_id, event.id, lamina)

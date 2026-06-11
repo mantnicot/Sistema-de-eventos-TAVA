@@ -98,7 +98,15 @@
 .seat--free .seat-svg {
   .seat-svg__back,
   .seat-svg__base {
-    fill: #f5f5f5;
+    fill: var(--seat-type-color, #f5f5f5);
+  }
+}
+
+.seat--restricted .seat-svg {
+  .seat-svg__back,
+  .seat-svg__base {
+    fill: #bdbdbd;
+    opacity: 0.35;
   }
 }
 
@@ -166,6 +174,10 @@
 
   &--sold {
     background: #757575;
+  }
+
+  &--restricted {
+    background: #bdbdbd;
   }
 }
 

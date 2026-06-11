@@ -61,6 +61,7 @@ async def apply_schema_upgrades(conn: AsyncConnection) -> None:
         "CREATE UNIQUE INDEX IF NOT EXISTS uq_orders_payment_reference ON orders(payment_reference) WHERE payment_reference IS NOT NULL",
         "ALTER TABLE tickets ADD COLUMN IF NOT EXISTS is_cancelled BOOLEAN NOT NULL DEFAULT FALSE",
         "ALTER TABLE tickets ADD COLUMN IF NOT EXISTS event_seat_id UUID REFERENCES event_seats(id)",
+        "ALTER TABLE event_seats ADD COLUMN IF NOT EXISTS ticket_type_id UUID REFERENCES ticket_types(id) ON DELETE SET NULL",
         """
         CREATE TABLE IF NOT EXISTS event_seats (
             id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

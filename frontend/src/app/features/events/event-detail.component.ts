@@ -23,7 +23,7 @@ import { TavaTheatricalVideoComponent } from '../../shared/components/tava-theat
 import { TavaTicketPreviewComponent } from '../../shared/components/tava-ticket-preview/tava-ticket-preview.component';
 import { TavaCaptchaComponent } from '../../shared/components/tava-captcha/tava-captcha.component';
 import { TavaTheatricalLoaderComponent } from '../../shared/components/tava-theatrical-loader/tava-theatrical-loader.component';
-import { SeatMapResponse } from '../../core/models/seating.model';
+import { SeatMapResponse, resolveSeatTicketTypeId, SeatTicketTypeOption } from '../../core/models/seating.model';
 import {
   clearPurchaseDraft,
   readPurchaseDraft,
@@ -87,6 +87,38 @@ export class EventDetailComponent implements OnInit {
     this.selectedSeatIds = ids;
     this.quantity = ids.length || 1;
     if (!this.singleHolderMode) this.onQuantityChange();
+    this.persistDraft();
+  }
+
+  onTicketTypeChange(typeId: string): void {
+    this.selectedTypeId.set(typeId);
+    this.filterSeatsForTicketType();
+    this.persistDraft();
+  }
+
+  seatingTicketTypes(): SeatTicketTypeOption[] {
+    const ev = this.event();
+    if (!ev) return [];
+    return ev.ticket_types.map((t) => ({ id: t.id, name: t.name }));
+  }
+
+  private filterSeatsForTicketType(): void {
+    const typeId = this.selectedTypeId();
+    const map = this.seating();
+    if (!typeId || !map?.config) {
+      this.selectedSeatIds = [];
+      this.quantity = 1;
+      return;
+    }
+    this.selectedSeatIds = this.selectedSeatIds.filter((id) => {
+      const seat = map.seats.find((s) => s.id === id);
+      if (!seat || seat.status !== 'disponible') return false;
+      const tt =
+        seat.ticket_type_id ??
+        resolveSeatTicketTypeId(map.config!, seat.block_id, seat.row, seat.col);
+      return tt === typeId;
+    });
+    this.quantity = this.selectedSeatIds.length || 1;
   }
 
   private persistDraft(): void {

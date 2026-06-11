@@ -117,6 +117,9 @@ class EventSeatModel(Base):
     col_label: Mapped[str] = mapped_column(String(10))
     label: Mapped[str] = mapped_column(String(120))
     status: Mapped[SeatStatus] = mapped_column(Enum(SeatStatus), default=SeatStatus.AVAILABLE)
+    ticket_type_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("ticket_types.id", ondelete="SET NULL"), nullable=True
+    )
 
 
 class VenueModel(Base):

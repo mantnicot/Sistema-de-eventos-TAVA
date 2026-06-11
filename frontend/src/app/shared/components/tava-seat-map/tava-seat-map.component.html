@@ -14,12 +14,14 @@
             <div class="seat-map__row-label">{{ row }}</div>
             @for (col of colLabels(block); track $index) {
               @let seat = seatAt(block, row, col);
+              @let typeColor = seatTypeColor(seat);
               <button
                 type="button"
                 class="seat-btn"
                 [class]="seatClass(seat)"
-                [disabled]="readonly || !seat || seat.status !== 'disponible'"
+                [disabled]="seatDisabled(seat)"
                 [attr.aria-label]="ariaLabel(seat)"
+                [style.--seat-type-color]="typeColor"
                 (click)="toggle(seat)"
               >
                 <svg class="seat-svg" viewBox="0 0 32 36" aria-hidden="true">
@@ -41,8 +43,24 @@
   </div>
 
   <div class="seat-map__legend">
-    <span><i class="dot dot--free"></i> Disponible</span>
-    <span><i class="dot dot--selected"></i> Seleccionada</span>
-    <span><i class="dot dot--sold"></i> Ocupada</span>
+    @if (mode === 'purchase') {
+      <span><i class="dot dot--free"></i> Disponible</span>
+      <span><i class="dot dot--selected"></i> Seleccionada</span>
+      <span><i class="dot dot--sold"></i> Ocupada</span>
+      <span><i class="dot dot--restricted"></i> Otro tipo</span>
+    } @else if (mode === 'assign') {
+      <span><i class="dot dot--free"></i> Sin categoría</span>
+      <span><i class="dot dot--sold"></i> Ocupada</span>
+    } @else {
+      <span><i class="dot dot--free"></i> Disponible</span>
+      <span><i class="dot dot--selected"></i> Seleccionada</span>
+      <span><i class="dot dot--sold"></i> Ocupada</span>
+    }
+    @for (tt of legendTypes(); track tt.id) {
+      <span>
+        <i class="dot" [style.background]="ticketTypeColor(tt.id, ticketTypes)"></i>
+        {{ tt.name }}
+      </span>
+    }
   </div>
 </div>
