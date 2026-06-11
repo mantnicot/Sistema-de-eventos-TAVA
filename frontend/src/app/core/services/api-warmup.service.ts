@@ -1,17 +1,18 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpBackend, HttpClient } from '@angular/common/http';
+import { HttpClient } from '@angular/common/http';
 import { firstValueFrom, timeout } from 'rxjs';
 import { environment } from '../../../environments/environment';
 
 /** Despierta la API en Render antes de peticiones pesadas. */
 @Injectable({ providedIn: 'root' })
 export class ApiWarmupService {
-  private readonly http = new HttpClient(inject(HttpBackend));
+  private readonly http = inject(HttpClient);
   private inflight: Promise<boolean> | null = null;
 
-  private healthUrl(): string {
-    const base = environment.mediaBaseUrl || environment.apiUrl.replace(/\/api\/v1\/?$/, '');
-    return `${base.replace(/\/$/, '')}/health`;
+  /** /health suele bloquearse (adblock); usamos /api/v1/ping con CORS normal. */
+  private pingUrl(): string {
+    const base = environment.apiUrl.replace(/\/$/, '');
+    return `${base}/ping`;
   }
 
   wake(): Promise<boolean> {
@@ -23,7 +24,7 @@ export class ApiWarmupService {
   }
 
   private async runWarmup(): Promise<boolean> {
-    const delays = [0, 2500, 6000, 12000];
+    const delays = [0, 3000, 8000];
     for (const waitMs of delays) {
       if (waitMs > 0) {
         await new Promise((resolve) => setTimeout(resolve, waitMs));
@@ -35,10 +36,10 @@ export class ApiWarmupService {
 
   private async pingOnce(): Promise<boolean> {
     try {
-      await firstValueFrom(
-        this.http.get(this.healthUrl(), { responseType: 'text' }).pipe(timeout(45000))
+      const res = await firstValueFrom(
+        this.http.get<{ ok?: boolean }>(this.pingUrl()).pipe(timeout(45000))
       );
-      return true;
+      return res?.ok === true;
     } catch {
       return false;
     }

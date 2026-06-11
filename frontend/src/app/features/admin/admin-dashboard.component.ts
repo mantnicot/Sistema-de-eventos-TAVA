@@ -156,45 +156,40 @@ export class AdminDashboardComponent implements OnInit {
   bootstrapAdmin(): void {
     this.adminLoading.set(true);
     this.adminApiError.set(null);
-    void this.warmup.wake().then((ready) => {
-      if (!ready) {
+    void this.warmup.wake().finally(() => this.loadAdminData());
+  }
+
+  private loadAdminData(): void {
+    forkJoin({
+      kpis: this.api.get<Kpis>('/dashboard/kpis').pipe(catchError(() => of(null))),
+      events: this.api.get<TavaEvent[]>('/events/admin/all').pipe(catchError(() => of([] as TavaEvent[]))),
+      users: this.api.get<AdminUser[]>('/users').pipe(catchError(() => of([] as AdminUser[]))),
+    }).subscribe({
+      next: ({ kpis, events, users }) => {
+        if (kpis) this.kpis.set(kpis);
+        this.adminEvents.set(events ?? []);
+        this.users.set(users ?? []);
         this.adminLoading.set(false);
-        this.adminApiError.set(
-          'El servidor tarda en responder (puede estar despertando en Render). Pulsa Reintentar.'
-        );
-        return;
-      }
-      forkJoin({
-        kpis: this.api.get<Kpis>('/dashboard/kpis').pipe(catchError(() => of(null))),
-        events: this.api.get<TavaEvent[]>('/events/admin/all').pipe(catchError(() => of([] as TavaEvent[]))),
-        users: this.api.get<AdminUser[]>('/users').pipe(catchError(() => of([] as AdminUser[]))),
-      }).subscribe({
-        next: ({ kpis, events, users }) => {
-          if (kpis) this.kpis.set(kpis);
-          this.adminEvents.set(events ?? []);
-          this.users.set(users ?? []);
-          this.adminLoading.set(false);
-          if (!kpis) {
-            this.adminApiError.set(
-              'Algunos datos no cargaron por completo. Comprueba la conexión y pulsa Reintentar.'
-            );
-          }
-          const app = this.site.appearance();
-          if (app) {
-            this.appearanceForm = { ...app };
-          } else {
-            this.site.loadAppearance();
-            setTimeout(() => {
-              const a = this.site.appearance();
-              if (a) this.appearanceForm = { ...a };
-            }, 400);
-          }
-        },
-        error: () => {
-          this.adminLoading.set(false);
-          this.adminApiError.set('No se pudo cargar el panel. Pulsa Reintentar.');
-        },
-      });
+        if (!kpis) {
+          this.adminApiError.set(
+            'Algunos datos no cargaron. El servidor puede estar despertando — pulsa Reintentar.'
+          );
+        }
+        const app = this.site.appearance();
+        if (app) {
+          this.appearanceForm = { ...app };
+        } else {
+          this.site.loadAppearance();
+          setTimeout(() => {
+            const a = this.site.appearance();
+            if (a) this.appearanceForm = { ...a };
+          }, 400);
+        }
+      },
+      error: () => {
+        this.adminLoading.set(false);
+        this.adminApiError.set('No se pudo cargar el panel. Pulsa Reintentar.');
+      },
     });
   }
 

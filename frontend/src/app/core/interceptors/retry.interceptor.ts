@@ -15,7 +15,7 @@ export const retryInterceptor: HttpInterceptorFn = (req, next) => {
   const isSafeRetry =
     req.method === 'GET' ||
     req.method === 'HEAD' ||
-    req.url.includes('/health') ||
+    req.url.includes('/ping') ||
     req.url.includes('/settings/appearance') ||
     req.url.includes('/events');
 

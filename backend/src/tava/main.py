@@ -120,6 +120,13 @@ _uploads.mkdir(parents=True, exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=str(_uploads)), name="uploads")
 
 
+@app.get("/api/v1/ping")
+@limiter.exempt
+async def api_ping():
+    """Despertar Render / comprobar API. Evita /health (bloqueado por algunos navegadores)."""
+    return {"ok": True, "service": "tava-api"}
+
+
 @app.get("/health")
 @limiter.exempt
 async def health():
