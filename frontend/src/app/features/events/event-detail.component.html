@@ -169,15 +169,17 @@
               <div class="seating-block">
                 <h3>Elige tu silla</h3>
                 <p class="hint">Solo puedes elegir sillas de la categoría «{{ selectedTicketType()?.name }}».</p>
-                <tava-seat-map
-                  [config]="map.config"
-                  [seats]="map.seats"
-                  [selectedIds]="selectedSeatIds"
-                  [mode]="'purchase'"
-                  [ticketTypes]="seatingTicketTypes()"
-                  [allowedTicketTypeId]="selectedTypeId()"
-                  (selectedIdsChange)="onSeatsChange($event)"
-                />
+                <div class="seating-block__map">
+                  <tava-seat-map
+                    [config]="map.config"
+                    [seats]="map.seats"
+                    [selectedIds]="selectedSeatIds"
+                    [mode]="'purchase'"
+                    [ticketTypes]="seatingTicketTypes()"
+                    [allowedTicketTypeId]="selectedTypeId()"
+                    (selectedIdsChange)="onSeatsChange($event)"
+                  />
+                </div>
                 <p class="hint">Seleccionadas: {{ selectedSeatIds.length }}</p>
               </div>
             }

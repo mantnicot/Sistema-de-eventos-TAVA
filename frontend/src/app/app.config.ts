@@ -7,6 +7,7 @@ import { routes } from './app.routes';
 import { authInterceptor } from './core/interceptors/auth.interceptor';
 import { errorLogInterceptor } from './core/interceptors/error-log.interceptor';
 import { retryInterceptor } from './core/interceptors/retry.interceptor';
+import { timeoutInterceptor } from './core/interceptors/timeout.interceptor';
 import { tokenRefreshInterceptor } from './core/interceptors/token-refresh.interceptor';
 
 export const appConfig: ApplicationConfig = {
@@ -14,7 +15,13 @@ export const appConfig: ApplicationConfig = {
     provideZoneChangeDetection({ eventCoalescing: true }),
     provideRouter(routes, withViewTransitions()),
     provideHttpClient(
-      withInterceptors([authInterceptor, retryInterceptor, tokenRefreshInterceptor, errorLogInterceptor])
+      withInterceptors([
+        authInterceptor,
+        timeoutInterceptor,
+        retryInterceptor,
+        tokenRefreshInterceptor,
+        errorLogInterceptor,
+      ])
     ),
     provideAnimationsAsync(),
   ],

@@ -1,7 +1,9 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { forkJoin, of, catchError } from 'rxjs';
 import { ApiService } from '../../core/services/api.service';
+import { ApiWarmupService } from '../../core/services/api-warmup.service';
 import { AuthService } from '../../core/services/auth.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { SiteAppearance, SiteSettingsService } from '../../core/services/site-settings.service';
@@ -86,6 +88,7 @@ interface EventUpdateResponse extends TavaEvent {
 })
 export class AdminDashboardComponent implements OnInit {
   private readonly api = inject(ApiService);
+  private readonly warmup = inject(ApiWarmupService);
   private readonly auth = inject(AuthService);
   private readonly notify = inject(NotificationService);
   private readonly site = inject(SiteSettingsService);
@@ -100,6 +103,8 @@ export class AdminDashboardComponent implements OnInit {
   readonly adminEvents = signal<TavaEvent[]>([]);
   readonly users = signal<AdminUser[]>([]);
   readonly editingId = signal<string | null>(null);
+  readonly adminLoading = signal(true);
+  readonly adminApiError = signal<string | null>(null);
 
   roleEmail = '';
   rolePick = 'seller';
@@ -145,19 +150,52 @@ export class AdminDashboardComponent implements OnInit {
   ];
 
   ngOnInit(): void {
-    this.loadKpis();
-    this.loadAdminEvents();
-    this.loadUsers();
-    const app = this.site.appearance();
-    if (app) {
-      this.appearanceForm = { ...app };
-    } else {
-      this.site.loadAppearance();
-      setTimeout(() => {
-        const a = this.site.appearance();
-        if (a) this.appearanceForm = { ...a };
-      }, 500);
-    }
+    void this.bootstrapAdmin();
+  }
+
+  bootstrapAdmin(): void {
+    this.adminLoading.set(true);
+    this.adminApiError.set(null);
+    void this.warmup.wake().then((ready) => {
+      if (!ready) {
+        this.adminLoading.set(false);
+        this.adminApiError.set(
+          'El servidor tarda en responder (puede estar despertando en Render). Pulsa Reintentar.'
+        );
+        return;
+      }
+      forkJoin({
+        kpis: this.api.get<Kpis>('/dashboard/kpis').pipe(catchError(() => of(null))),
+        events: this.api.get<TavaEvent[]>('/events/admin/all').pipe(catchError(() => of([] as TavaEvent[]))),
+        users: this.api.get<AdminUser[]>('/users').pipe(catchError(() => of([] as AdminUser[]))),
+      }).subscribe({
+        next: ({ kpis, events, users }) => {
+          if (kpis) this.kpis.set(kpis);
+          this.adminEvents.set(events ?? []);
+          this.users.set(users ?? []);
+          this.adminLoading.set(false);
+          if (!kpis) {
+            this.adminApiError.set(
+              'Algunos datos no cargaron por completo. Comprueba la conexión y pulsa Reintentar.'
+            );
+          }
+          const app = this.site.appearance();
+          if (app) {
+            this.appearanceForm = { ...app };
+          } else {
+            this.site.loadAppearance();
+            setTimeout(() => {
+              const a = this.site.appearance();
+              if (a) this.appearanceForm = { ...a };
+            }, 400);
+          }
+        },
+        error: () => {
+          this.adminLoading.set(false);
+          this.adminApiError.set('No se pudo cargar el panel. Pulsa Reintentar.');
+        },
+      });
+    });
   }
 
   isCurrentUser(u: AdminUser): boolean {
@@ -252,13 +290,9 @@ export class AdminDashboardComponent implements OnInit {
   }
 
   loadKpis(): void {
-    this.notify.loadingTheatrical('Cartelera del director', 'admin');
     this.api.get<Kpis>('/dashboard/kpis').subscribe({
-      next: (k) => {
-        this.notify.hide();
-        this.kpis.set(k);
-      },
-      error: () => this.notify.hide(),
+      next: (k) => this.kpis.set(k),
+      error: () => this.notify.error('Métricas', 'No se pudieron cargar las métricas'),
     });
   }
 

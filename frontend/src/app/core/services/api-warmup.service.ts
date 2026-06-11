@@ -1,5 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpBackend, HttpClient } from '@angular/common/http';
+import { firstValueFrom, timeout } from 'rxjs';
 import { environment } from '../../../environments/environment';
 
 /** Despierta la API en Render antes de peticiones pesadas. */
@@ -15,18 +16,31 @@ export class ApiWarmupService {
 
   wake(): Promise<boolean> {
     if (this.inflight) return this.inflight;
-    this.inflight = new Promise((resolve) => {
-      this.http.get(this.healthUrl(), { responseType: 'text' }).subscribe({
-        next: () => {
-          this.inflight = null;
-          resolve(true);
-        },
-        error: () => {
-          this.inflight = null;
-          resolve(false);
-        },
-      });
+    this.inflight = this.runWarmup().finally(() => {
+      this.inflight = null;
     });
     return this.inflight;
+  }
+
+  private async runWarmup(): Promise<boolean> {
+    const delays = [0, 2500, 6000, 12000];
+    for (const waitMs of delays) {
+      if (waitMs > 0) {
+        await new Promise((resolve) => setTimeout(resolve, waitMs));
+      }
+      if (await this.pingOnce()) return true;
+    }
+    return false;
+  }
+
+  private async pingOnce(): Promise<boolean> {
+    try {
+      await firstValueFrom(
+        this.http.get(this.healthUrl(), { responseType: 'text' }).pipe(timeout(45000))
+      );
+      return true;
+    } catch {
+      return false;
+    }
   }
 }

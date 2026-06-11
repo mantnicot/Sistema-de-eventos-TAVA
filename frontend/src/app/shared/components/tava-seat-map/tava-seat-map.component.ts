@@ -22,6 +22,7 @@ export class TavaSeatMapComponent {
   @Input({ required: true }) seats: SeatMapItem[] = [];
   @Input() selectedIds: string[] = [];
   @Input() readonly = false;
+  @Input() compact = false;
   @Input() mode: SeatMapMode = 'purchase';
   @Input() ticketTypes: SeatTicketTypeOption[] = [];
   @Input() activeTicketTypeId: string | null = null;

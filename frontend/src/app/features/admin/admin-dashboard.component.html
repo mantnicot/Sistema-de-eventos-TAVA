@@ -9,6 +9,16 @@
     </nav>
   </header>
 
+  @if (adminApiError()) {
+    <div class="warn-box report-actions">
+      <p class="muted-inline">{{ adminApiError() }}</p>
+      <button type="button" class="nav__btn-outline" (click)="bootstrapAdmin()">Reintentar conexión</button>
+    </div>
+  }
+  @if (adminLoading()) {
+    <p class="muted">Conectando con el servidor… (puede tardar hasta 1 minuto si estaba inactivo)</p>
+  }
+
   @if (tab() === 'kpis') {
     @if (kpis(); as k) {
       <div class="kpi-grid">
@@ -360,7 +370,7 @@
                     <label>Nombre bloque <input [(ngModel)]="block.name" [name]="'sbname' + bi" /></label>
                     <label>Filas <input type="number" min="1" max="30" [(ngModel)]="block.rows" [name]="'sbrows' + bi" /></label>
                     <label>Columnas <input type="number" min="1" max="30" [(ngModel)]="block.cols" [name]="'sbcols' + bi" /></label>
-                    <label>Etiquetas de fila (opcional, separadas por coma)
+                    <label class="seating-admin-row__full">Etiquetas de fila (opcional, separadas por coma)
                       <input
                         [ngModel]="block.row_labels?.join(', ') ?? ''"
                         (ngModelChange)="onBlockRowLabelsInput(block, $event)"
@@ -369,7 +379,7 @@
                       />
                     </label>
                     @if (ticketTypesDraft.length) {
-                      <label>Categoría por defecto del bloque
+                      <label class="seating-admin-row__full">Categoría por defecto del bloque
                         <select
                           [ngModel]="block.ticket_type_id ?? ''"
                           (ngModelChange)="onBlockTicketTypeChange(block.id, $event)"
@@ -384,19 +394,11 @@
                         </select>
                       </label>
                     }
-                    <p class="muted-inline">{{ block.rows * block.cols }} sillas en este bloque</p>
+                    <p class="muted-inline seating-admin-row__full">{{ block.rows * block.cols }} sillas en este bloque</p>
                   </div>
                 }
-                <button
-                  type="button"
-                  class="tava-btn-primary"
-                  [disabled]="seatingCapacityExceeded()"
-                  (click)="saveEventSeating()"
-                >
-                  Guardar mapa de sillas
-                </button>
               </div>
-              <div class="seating-admin-preview">
+              <div class="seating-admin-preview tava-card">
                 <h4>Vista en tiempo real</h4>
                 @if (seatingDraft.enabled) {
                   @if (ticketTypesDraft.length) {
@@ -410,21 +412,36 @@
                         }
                       </select>
                     </label>
-                    <p class="muted">Elige una categoría y haz clic en las sillas del mapa para asignarla.</p>
+                    <p class="muted seating-admin-preview__hint">Elige una categoría y haz clic en las sillas para asignarla.</p>
                   }
-                  <tava-seat-map
-                    [config]="seatingDraft"
-                    [seats]="liveSeatingSeats()"
-                    [ticketTypes]="seatingTicketTypeOptions()"
-                    [mode]="'assign'"
-                    [activeTicketTypeId]="seatingAssignTicketTypeId"
-                    (seatTicketTypeChange)="onSeatTicketTypeAssign($event)"
-                  />
+                  <div class="seating-admin-preview__map">
+                    <tava-seat-map
+                      [config]="seatingDraft"
+                      [seats]="liveSeatingSeats()"
+                      [ticketTypes]="seatingTicketTypeOptions()"
+                      [mode]="'assign'"
+                      [compact]="true"
+                      [activeTicketTypeId]="seatingAssignTicketTypeId"
+                      (seatTicketTypeChange)="onSeatTicketTypeAssign($event)"
+                    />
+                  </div>
                 } @else {
                   <p class="muted seating-preview-empty">Activa la silletería para ver la distribución gráfica.</p>
                 }
               </div>
             </div>
+            @if (seatingDraft.enabled) {
+              <div class="seating-admin-footer">
+                <button
+                  type="button"
+                  class="tava-btn-primary"
+                  [disabled]="seatingCapacityExceeded()"
+                  (click)="saveEventSeating()"
+                >
+                  Guardar mapa de sillas
+                </button>
+              </div>
+            }
           </section>
         }
 
