@@ -4,8 +4,8 @@
       <img class="detail__hero-fallback" [src]="mediaUrl(ev.main_image_url)" [alt]="ev.name" (error)="onImgError($event)" />
       <div class="detail__hero-content">
         <span class="badge">{{ ev.category }}</span>
-        <h1 class="tava-glow-text">{{ ev.name }}</h1>
-        <p>{{ ev.city }} · {{ ev.address }}</p>
+        <h1 class="detail__title">{{ ev.name }}</h1>
+        <p class="detail__venue">{{ ev.city }} · {{ ev.address }}</p>
         <p class="detail__datetime">
           <time>{{ formatEventDateTime(ev.event_date, ev.event_time) }}</time>
         </p>
@@ -246,4 +246,11 @@
       <a routerLink="/eventos" class="back">← Volver a cartelera</a>
     </div>
   </article>
+} @else if (loading()) {
+  <tava-theatrical-loader title="Preparando la función" />
+} @else if (loadError()) {
+  <div class="detail__error">
+    <p>{{ loadError() }}</p>
+    <button type="button" class="tava-btn-primary" (click)="loadEvent()">Reintentar</button>
+  </div>
 }

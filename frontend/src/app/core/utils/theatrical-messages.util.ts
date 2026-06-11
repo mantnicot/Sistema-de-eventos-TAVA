@@ -60,6 +60,16 @@ const MESSAGES: Record<string, string[]> = {
     'Último curtain call para este registro…',
     'Borrando con efecto de niebla…',
   ],
+  loader: [
+    'Trayendo información del servidor al teatro…',
+    'El tramoyista corre al almacén de datos…',
+    'Construyendo el escenario digital ladrillo a ladrillo…',
+    'Despertando al servidor en la bodega (cuesta, pero llega)…',
+    'Los actores esperan mientras llega el libreto…',
+    'El director grita: «¡Que entre la cartelera!»…',
+    'Afinando las luces mientras cargan los eventos…',
+    'El prompter busca el USB con la programación…',
+  ],
 };
 
 const POPUP_PHRASES = [

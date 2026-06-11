@@ -7,6 +7,7 @@ import { HeroVideoComponent } from '../hero-video/hero-video.component';
 import { TavaContactFabComponent } from '../../shared/components/tava-contact-fab/tava-contact-fab.component';
 import { TavaPopupComponent } from '../../shared/components/tava-popup/tava-popup.component';
 import { SessionIdleService } from '../../core/services/session-idle.service';
+import { ApiWarmupService } from '../../core/services/api-warmup.service';
 
 @Component({
   selector: 'app-shell',
@@ -27,12 +28,14 @@ export class ShellComponent implements OnInit, OnDestroy {
   private readonly site = inject(SiteSettingsService);
   private readonly router = inject(Router);
   private readonly idle = inject(SessionIdleService);
+  private readonly warmup = inject(ApiWarmupService);
   private navSub?: Subscription;
 
   menuOpen = false;
 
   ngOnInit(): void {
-    this.site.loadAppearance();
+    void this.warmup.wake();
+    setTimeout(() => this.site.loadAppearance(), 800);
     this.idle.start();
     this.navSub = this.router.events
       .pipe(filter((e) => e instanceof NavigationEnd))

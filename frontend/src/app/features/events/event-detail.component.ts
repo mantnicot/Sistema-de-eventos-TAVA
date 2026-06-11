@@ -22,11 +22,21 @@ import { onEventImageError } from '../../core/utils/event-image.util';
 import { TavaTheatricalVideoComponent } from '../../shared/components/tava-theatrical-video/tava-theatrical-video.component';
 import { TavaTicketPreviewComponent } from '../../shared/components/tava-ticket-preview/tava-ticket-preview.component';
 import { TavaCaptchaComponent } from '../../shared/components/tava-captcha/tava-captcha.component';
+import { TavaTheatricalLoaderComponent } from '../../shared/components/tava-theatrical-loader/tava-theatrical-loader.component';
+import { ApiWarmupService } from '../../core/services/api-warmup.service';
 
 @Component({
   selector: 'app-event-detail',
   standalone: true,
-  imports: [RouterLink, FormsModule, DecimalPipe, TavaTheatricalVideoComponent, TavaTicketPreviewComponent, TavaCaptchaComponent],
+  imports: [
+    RouterLink,
+    FormsModule,
+    DecimalPipe,
+    TavaTheatricalVideoComponent,
+    TavaTicketPreviewComponent,
+    TavaCaptchaComponent,
+    TavaTheatricalLoaderComponent,
+  ],
   templateUrl: './event-detail.component.html',
   styleUrl: './event-detail.component.scss',
 })
@@ -35,10 +45,13 @@ export class EventDetailComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly api = inject(ApiService);
+  private readonly warmup = inject(ApiWarmupService);
   readonly auth = inject(AuthService);
   private readonly notify = inject(NotificationService);
   private readonly sanitizer = inject(DomSanitizer);
   readonly event = signal<TavaEventDetail | null>(null);
+  readonly loading = signal(true);
+  readonly loadError = signal<string | null>(null);
   readonly selectedTypeId = signal<string | null>(null);
   readonly mediaUrl = resolveMediaUrl;
   readonly mediaBg = mediaBackgroundStyle;
@@ -87,9 +100,22 @@ export class EventDetailComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    const id = this.route.snapshot.paramMap.get('id');
     this.holderName = this.auth.user()?.full_name ?? '';
-    if (id) {
+    this.loadEvent();
+  }
+
+  loadEvent(): void {
+    const id = this.route.snapshot.paramMap.get('id');
+    if (!id) {
+      this.loading.set(false);
+      this.loadError.set('Evento no encontrado.');
+      return;
+    }
+    this.loading.set(true);
+    this.loadError.set(null);
+    this.event.set(null);
+
+    void this.warmup.wake().finally(() => {
       this.api.get<TavaEventDetail>(`/events/${id}`).subscribe({
         next: (e) => {
           const detail: TavaEventDetail = {
@@ -98,13 +124,19 @@ export class EventDetailComponent implements OnInit {
             ticket_types: e.ticket_types ?? [],
           };
           this.event.set(detail);
+          this.loading.set(false);
           if (detail.ticket_types.length) {
             this.selectedTypeId.set(detail.ticket_types[0].id);
           }
         },
-        error: () => this.notify.error('Evento', 'No se pudo cargar el evento'),
+        error: () => {
+          this.loading.set(false);
+          this.loadError.set(
+            'No pudimos cargar este evento. El servidor puede estar despertando — intenta de nuevo.'
+          );
+        },
       });
-    }
+    });
   }
 
   onQuantityChange(): void {

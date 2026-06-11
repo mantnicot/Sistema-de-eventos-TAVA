@@ -2,7 +2,7 @@ import { HttpContextToken, HttpErrorResponse, HttpEvent, HttpInterceptorFn } fro
 import { Observable, catchError, switchMap, throwError, timer } from 'rxjs';
 
 const RETRYABLE = new Set([0, 502, 503, 504]);
-const DELAYS_MS = [1200, 3500, 8000];
+const DELAYS_MS = [600, 1800, 4000];
 const MAX_RETRIES = 3;
 
 /** No reintentar compras/ventas para evitar duplicados accidentales. */

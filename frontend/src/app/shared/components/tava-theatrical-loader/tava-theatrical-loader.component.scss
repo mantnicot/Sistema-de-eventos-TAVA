@@ -1,0 +1,273 @@
+.theatrical-loader {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 2.5rem 1.25rem;
+  min-height: 280px;
+  gap: 0.75rem;
+}
+
+.theatrical-loader__scene {
+  position: relative;
+  width: min(320px, 88vw);
+  height: 200px;
+  margin-bottom: 0.5rem;
+}
+
+.theatrical-loader__sky {
+  position: absolute;
+  inset: 0 0 28px;
+  border-radius: 16px 16px 0 0;
+  background: linear-gradient(180deg, rgba(107, 26, 42, 0.15), rgba(201, 162, 39, 0.08));
+}
+
+.theatrical-loader__theater {
+  position: absolute;
+  left: 50%;
+  bottom: 28px;
+  transform: translateX(-50%);
+  width: 200px;
+}
+
+.theatrical-loader__roof {
+  height: 18px;
+  margin: 0 auto;
+  width: 0;
+  border-left: 100px solid transparent;
+  border-right: 100px solid transparent;
+  border-bottom: 28px solid #8b6914;
+  animation: roof-rise 2.4s ease-in-out infinite;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+}
+
+.theatrical-loader__columns {
+  display: flex;
+  justify-content: space-between;
+  padding: 0 12px;
+  margin-top: -4px;
+
+  span {
+    width: 14px;
+    height: 52px;
+    background: linear-gradient(180deg, #c9a227, #8b6914);
+    border-radius: 3px;
+    animation: column-grow 2.4s ease-in-out infinite;
+  }
+}
+
+.theatrical-loader__stage {
+  position: relative;
+  height: 44px;
+  margin: 0 8px;
+  background: #3d2a14;
+  border: 2px solid #c9a227;
+  border-top: none;
+  overflow: hidden;
+  display: flex;
+}
+
+.theatrical-loader__curtain {
+  flex: 1;
+  background: linear-gradient(180deg, #6b1a2a, #4a1020);
+  animation: curtain-sway 1.8s ease-in-out infinite alternate;
+
+  &--l {
+    transform-origin: left center;
+    border-right: 1px solid rgba(201, 162, 39, 0.4);
+  }
+
+  &--r {
+    transform-origin: right center;
+    animation-delay: 0.3s;
+  }
+}
+
+.theatrical-loader__bricks {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 6px;
+
+  span {
+    width: 22px;
+    height: 10px;
+    background: #b8860b;
+    border-radius: 2px;
+    opacity: 0;
+    animation: brick-stack 2.4s ease-in-out infinite;
+
+    @for $i from 1 through 4 {
+      &:nth-child(#{$i}) {
+        animation-delay: #{$i * 0.25}s;
+      }
+    }
+  }
+}
+
+.theatrical-loader__builder {
+  position: absolute;
+  bottom: 8px;
+  left: 18%;
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  animation: builder-walk 2.4s ease-in-out infinite;
+}
+
+.theatrical-loader__person {
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.theatrical-loader__tool {
+  font-size: 1.2rem;
+  animation: hammer-hit 0.6s ease-in-out infinite;
+  transform-origin: bottom left;
+}
+
+.theatrical-loader__dust {
+  position: absolute;
+  bottom: 32px;
+  left: 22%;
+
+  span {
+    position: absolute;
+    width: 6px;
+    height: 6px;
+    background: rgba(184, 134, 11, 0.5);
+    border-radius: 50%;
+    opacity: 0;
+    animation: dust-puff 2.4s ease-out infinite;
+
+    &:nth-child(2) {
+      left: 12px;
+      animation-delay: 0.15s;
+    }
+
+    &:nth-child(3) {
+      left: 24px;
+      animation-delay: 0.3s;
+    }
+  }
+}
+
+.theatrical-loader__title {
+  margin: 0;
+  font-family: var(--tava-font-display);
+  font-size: clamp(1.25rem, 4vw, 1.65rem);
+  color: var(--tava-gold-glow);
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+
+.theatrical-loader__message {
+  margin: 0;
+  max-width: 28rem;
+  font-size: 0.95rem;
+  color: var(--tava-cream-muted);
+  line-height: 1.45;
+  min-height: 2.8em;
+  animation: msg-fade 0.5s ease;
+}
+
+@keyframes roof-rise {
+  0%,
+  100% {
+    transform: scaleY(0.85);
+    opacity: 0.7;
+  }
+  50% {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+}
+
+@keyframes column-grow {
+  0%,
+  100% {
+    transform: scaleY(0.9);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+
+@keyframes curtain-sway {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0.92);
+  }
+}
+
+@keyframes brick-stack {
+  0%,
+  20% {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  40%,
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes builder-walk {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  50% {
+    transform: translateX(140px);
+  }
+}
+
+@keyframes hammer-hit {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  50% {
+    transform: rotate(-35deg);
+  }
+}
+
+@keyframes dust-puff {
+  0%,
+  35% {
+    opacity: 0;
+    transform: translateY(0) scale(0.5);
+  }
+  45% {
+    opacity: 0.8;
+    transform: translateY(-10px) scale(1.2);
+  }
+  60%,
+  100% {
+    opacity: 0;
+    transform: translateY(-18px) scale(0.8);
+  }
+}
+
+@keyframes msg-fade {
+  from {
+    opacity: 0.4;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (max-width: 480px) {
+  .theatrical-loader {
+    min-height: 240px;
+    padding: 1.5rem 1rem;
+  }
+
+  .theatrical-loader__scene {
+    height: 170px;
+  }
+}

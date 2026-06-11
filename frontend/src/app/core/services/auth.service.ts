@@ -95,10 +95,7 @@ export class AuthService {
     const normalized = email.trim().toLowerCase();
     return this.api.post<{ message: string; success: boolean; email_sent?: boolean }>(
       '/auth/forgot-password',
-      {
-        email: normalized,
-        captcha_token: 'dev-captcha',
-      }
+      { email: normalized }
     );
   }
 
@@ -110,7 +107,6 @@ export class AuthService {
             this.api.post<{ message: string; success: boolean }>('/auth/reset-password', {
               token,
               password_encrypted,
-              captcha_token: 'dev-captcha',
             })
           )
         )
