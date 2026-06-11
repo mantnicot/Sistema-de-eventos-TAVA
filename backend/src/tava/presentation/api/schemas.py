@@ -88,6 +88,21 @@ class CastMemberSchema(BaseModel):
     role: str | None = None
 
 
+class SeatingBlockSchema(BaseModel):
+    id: str = Field(min_length=1, max_length=40)
+    name: str = Field(min_length=1, max_length=80)
+    rows: int = Field(ge=1, le=30)
+    cols: int = Field(ge=1, le=30)
+    row_labels: list[str] | None = None
+    col_labels: list[str] | None = None
+
+
+class SeatingConfigSchema(BaseModel):
+    enabled: bool = False
+    stage_label: str = "Escenario"
+    blocks: list[SeatingBlockSchema] = Field(default_factory=list)
+
+
 class TheatricalDetailsSchema(BaseModel):
     synopsis: str | None = None
     cast: list[str] = Field(default_factory=list)
@@ -98,6 +113,7 @@ class TheatricalDetailsSchema(BaseModel):
     language: str | None = None
     warnings: str | None = None
     credits: str | None = None
+    seating: SeatingConfigSchema | None = None
 
 
 class RegisterResponse(BaseModel):
@@ -164,6 +180,11 @@ class EventResponse(BaseModel):
 class EventDetailResponse(EventResponse):
     gallery: list[EventMediaResponse] = Field(default_factory=list)
     ticket_types: list[TicketTypePublicResponse] = Field(default_factory=list)
+    seating_enabled: bool = False
+
+
+class SeatingSyncRequest(BaseModel):
+    seating: SeatingConfigSchema
 
 
 class VenueCreateRequest(BaseModel):

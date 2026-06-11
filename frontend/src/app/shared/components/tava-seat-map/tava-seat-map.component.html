@@ -1,0 +1,39 @@
+<div class="seat-map">
+  <div class="seat-map__stage">{{ config.stage_label || 'Escenario' }}</div>
+
+  <div class="seat-map__blocks">
+    @for (block of config.blocks; track block.id) {
+      <div class="seat-map__block">
+        <p class="seat-map__block-name">{{ block.name }}</p>
+        <div class="seat-map__grid" [style.--cols]="block.cols">
+          <div class="seat-map__corner"></div>
+          @for (col of colLabels(block); track col) {
+            <div class="seat-map__col-label">{{ col }}</div>
+          }
+          @for (row of rowLabels(block); track row) {
+            <div class="seat-map__row-label">{{ row }}</div>
+            @for (col of colLabels(block); track $index) {
+              @let seat = seatFor(block.id, row, col);
+              <button
+                type="button"
+                class="seat-btn"
+                [class]="seatClass(seat)"
+                [disabled]="readonly || !seat || seat.status !== 'disponible'"
+                [attr.aria-label]="ariaLabel(seat)"
+                (click)="toggle(seat)"
+              >
+                🪑
+              </button>
+            }
+          }
+        </div>
+      </div>
+    }
+  </div>
+
+  <div class="seat-map__legend">
+    <span><i class="dot dot--free"></i> Disponible</span>
+    <span><i class="dot dot--selected"></i> Tu selección</span>
+    <span><i class="dot dot--sold"></i> Ocupada</span>
+  </div>
+</div>

@@ -60,6 +60,19 @@ async def apply_schema_upgrades(conn: AsyncConnection) -> None:
         "ALTER TABLE orders ADD COLUMN IF NOT EXISTS pending_payload JSONB",
         "CREATE UNIQUE INDEX IF NOT EXISTS uq_orders_payment_reference ON orders(payment_reference) WHERE payment_reference IS NOT NULL",
         "ALTER TABLE tickets ADD COLUMN IF NOT EXISTS is_cancelled BOOLEAN NOT NULL DEFAULT FALSE",
+        "ALTER TABLE tickets ADD COLUMN IF NOT EXISTS event_seat_id UUID REFERENCES event_seats(id)",
+        """
+        CREATE TABLE IF NOT EXISTS event_seats (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            event_id UUID NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+            block_id VARCHAR(40) NOT NULL,
+            row_label VARCHAR(10) NOT NULL,
+            col_label VARCHAR(10) NOT NULL,
+            label VARCHAR(120) NOT NULL,
+            status VARCHAR(20) NOT NULL DEFAULT 'disponible',
+            CONSTRAINT uq_event_seat_pos UNIQUE (event_id, block_id, row_label, col_label)
+        )
+        """,
     ]
     for sql in statements:
         await conn.execute(text(sql.strip()))

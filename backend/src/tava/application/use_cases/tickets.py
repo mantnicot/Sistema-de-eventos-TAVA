@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from tava.application.use_cases.loyalty import LoyaltyUseCase
+from tava.application.use_cases.seating import SeatingUseCase, seating_enabled
 from tava.config import get_settings
 from tava.domain.enums import PaymentProvider, PaymentStatus
 from tava.domain.event_timing import tickets_purchase_allowed
@@ -79,10 +80,16 @@ class TicketUseCase:
         issue_tickets: bool = True,
         payment_provider: PaymentProvider | None = None,
         payment_reference: str | None = None,
+        seat_ids: list[UUID] | None = None,
     ) -> tuple[OrderModel, list[TicketModel], EventModel, TicketTypeModel]:
         if quantity < 1 or quantity > 20:
             raise ValueError("Cantidad inválida (1-20)")
         event = await self._load_event(event_id)
+        if seating_enabled(event):
+            if not seat_ids or len(seat_ids) != quantity:
+                raise ValueError("Debes seleccionar una silla por cada boleta")
+        elif seat_ids:
+            raise ValueError("Este evento no tiene silletería numerada")
         ticket_type = await self._load_ticket_type(ticket_type_id, event_id)
         if ticket_type.quantity_available < quantity:
             raise ValueError("Cantidad no disponible")
@@ -105,6 +112,7 @@ class TicketUseCase:
                     "ticket_type_id": str(ticket_type_id),
                     "quantity": quantity,
                     "holder_names": names,
+                    "seat_ids": [str(s) for s in seat_ids] if seat_ids else None,
                 }
             ),
             legal_accepted=True,
@@ -123,6 +131,10 @@ class TicketUseCase:
                 buyer_id=buyer_id,
                 names=names,
             )
+            if seat_ids:
+                await SeatingUseCase(self._session).assign_seats_to_tickets(
+                    event.id, seat_ids, created
+                )
             lamina = event.main_image_url or f"/uploads/laminas/{event_id}.png"
             await LoyaltyUseCase(self._session).grant_collectible(buyer_id, event_id, lamina)
 
@@ -194,6 +206,8 @@ class TicketUseCase:
         ticket_type_id = UUID(str(payload["ticket_type_id"]))
         quantity = int(payload["quantity"])
         names = list(payload.get("holder_names") or [])
+        seat_ids_raw = payload.get("seat_ids")
+        seat_ids = [UUID(str(s)) for s in seat_ids_raw] if seat_ids_raw else None
         event = await self._load_event(order.event_id)
         ticket_type = await self._load_ticket_type(ticket_type_id, order.event_id)
 
@@ -210,6 +224,10 @@ class TicketUseCase:
             buyer_id=order.buyer_id,
             names=names[:quantity] if names else [""] * quantity,
         )
+        if seat_ids:
+            await SeatingUseCase(self._session).assign_seats_to_tickets(
+                event.id, seat_ids, tickets
+            )
         lamina = event.main_image_url or f"/uploads/laminas/{event.id}.png"
         await LoyaltyUseCase(self._session).grant_collectible(order.buyer_id, event.id, lamina)
         await self._session.flush()
@@ -233,6 +251,7 @@ class TicketUseCase:
         ticket_type_id: UUID,
         quantity: int,
         holder_names: list[str] | None,
+        seat_ids: list[UUID] | None = None,
     ) -> dict:
         payment_reference = f"TAVA-{uuid4().hex[:12].upper()}"
         order, _, event, tt = await self.create_order(
@@ -247,6 +266,7 @@ class TicketUseCase:
             issue_tickets=False,
             payment_provider=PaymentProvider.WOMPI,
             payment_reference=payment_reference,
+            seat_ids=seat_ids,
         )
         redirect_url = f"{settings.frontend_url.rstrip('/')}/compra/resultado?order_id={order.id}"
         cents = amount_in_cents(order.total_amount)
@@ -396,6 +416,7 @@ class TicketUseCase:
         ticket_type_id: UUID,
         quantity: int,
         holder_names: list[str] | None,
+        seat_ids: list[UUID] | None = None,
     ) -> dict:
         event = await self._load_event(event_id)
         self._assert_tickets_on_sale(event)
@@ -414,6 +435,7 @@ class TicketUseCase:
                 mark_paid=True,
                 issue_tickets=True,
                 payment_provider=PaymentProvider.MANUAL,
+                seat_ids=seat_ids,
             )
             buyer_model = await self._users.get_model_by_email(user_email)
             if buyer_model:
@@ -435,6 +457,7 @@ class TicketUseCase:
                 ticket_type_id=ticket_type_id,
                 quantity=quantity,
                 holder_names=holder_names,
+                seat_ids=seat_ids,
             )
 
         order, tickets, event, tt = await self.create_order(
@@ -448,6 +471,7 @@ class TicketUseCase:
             mark_paid=True,
             issue_tickets=True,
             payment_provider=PaymentProvider.MANUAL,
+            seat_ids=seat_ids,
         )
         buyer_model = await self._users.get_model_by_email(user_email)
         if buyer_model:

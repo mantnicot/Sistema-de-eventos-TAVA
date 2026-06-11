@@ -117,6 +117,35 @@
   margin-top: 0.75rem;
 }
 
+.seating-admin-block {
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px dashed rgba(201, 162, 39, 0.25);
+
+  h3 {
+    margin: 0 0 0.5rem;
+  }
+}
+
+.seating-admin-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  margin: 0.65rem 0;
+
+  strong {
+    grid-column: 1 / -1;
+  }
+
+  label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    font-size: 0.82rem;
+  }
+}
+
 .attendees-block {
   margin-top: 0.75rem;
   padding-top: 0.75rem;

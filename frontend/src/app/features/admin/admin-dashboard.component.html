@@ -323,6 +323,26 @@
           }
         </section>
 
+        @if (editingId()) {
+          <section class="seating-admin-block">
+            <h3>Silletería numerada</h3>
+            <p class="muted">Configura bloques con filas y columnas (como dos secciones con pasillo central).</p>
+            <label class="check-row">
+              <input type="checkbox" [(ngModel)]="seatingDraft.enabled" name="seatingEnabled" />
+              Activar selección de sillas para este evento
+            </label>
+            @for (block of seatingDraft.blocks; track block.id; let bi = $index) {
+              <div class="seating-admin-row tava-card">
+                <strong>{{ block.name }}</strong>
+                <label>Nombre bloque <input [(ngModel)]="block.name" [name]="'sbname' + bi" /></label>
+                <label>Filas <input type="number" min="1" max="30" [(ngModel)]="block.rows" [name]="'sbrows' + bi" /></label>
+                <label>Columnas <input type="number" min="1" max="30" [(ngModel)]="block.cols" [name]="'sbcols' + bi" /></label>
+              </div>
+            }
+            <button type="button" class="tava-btn-primary" (click)="saveEventSeating()">Guardar mapa de sillas</button>
+          </section>
+        }
+
         <button type="submit" class="tava-btn-primary">{{ editingId() ? 'Guardar cambios' : 'Crear evento' }}</button>
         @if (editingId()) {
           <button type="button" class="link-btn" (click)="resetEventForm()">Cancelar edición</button>

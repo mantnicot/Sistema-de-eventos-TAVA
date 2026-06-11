@@ -123,6 +123,7 @@ async def purchase(
             ticket_type_id=body.ticket_type_id,
             quantity=body.quantity,
             holder_names=body.holder_names,
+            seat_ids=body.seat_ids,
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))

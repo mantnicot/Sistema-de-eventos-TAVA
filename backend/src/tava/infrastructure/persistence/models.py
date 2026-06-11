@@ -104,6 +104,21 @@ class EventMediaModel(Base):
     event: Mapped["EventModel"] = relationship(back_populates="gallery")
 
 
+class EventSeatModel(Base):
+    __tablename__ = "event_seats"
+    __table_args__ = (
+        UniqueConstraint("event_id", "block_id", "row_label", "col_label", name="uq_event_seat_pos"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    event_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("events.id", ondelete="CASCADE"))
+    block_id: Mapped[str] = mapped_column(String(40))
+    row_label: Mapped[str] = mapped_column(String(10))
+    col_label: Mapped[str] = mapped_column(String(10))
+    label: Mapped[str] = mapped_column(String(120))
+    status: Mapped[SeatStatus] = mapped_column(Enum(SeatStatus), default=SeatStatus.AVAILABLE)
+
+
 class VenueModel(Base):
     __tablename__ = "venues"
 
@@ -202,6 +217,9 @@ class TicketModel(Base):
     owner_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"))
     event_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("events.id"))
     seat_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("seats.id"), nullable=True)
+    event_seat_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("event_seats.id"), nullable=True
+    )
     holder_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
     qr_token: Mapped[str] = mapped_column(String(128), unique=True, index=True)
     ticket_code: Mapped[str | None] = mapped_column(String(12), unique=True, index=True, nullable=True)

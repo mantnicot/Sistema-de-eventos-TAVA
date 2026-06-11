@@ -1,6 +1,6 @@
 import { Component, inject, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { TAVA_PRIVACY_CLAUSES, TAVA_PRIVACY_SUMMARY } from '../../core/constants/privacy-policy.const';
 import { AuthService } from '../../core/services/auth.service';
 import { NotificationService } from '../../core/services/notification.service';
@@ -19,6 +19,13 @@ export class RegisterComponent {
   @ViewChild(TavaCaptchaComponent) captcha?: TavaCaptchaComponent;
   private readonly auth = inject(AuthService);
   private readonly notify = inject(NotificationService);
+  private readonly route = inject(ActivatedRoute);
+
+  readonly returnUrl = this.route.snapshot.queryParamMap.get('returnUrl') ?? '/eventos';
+  readonly loginQuery =
+    this.returnUrl.startsWith('/') && this.returnUrl !== '/eventos'
+      ? { returnUrl: this.returnUrl }
+      : {};
 
   readonly privacySummary = TAVA_PRIVACY_SUMMARY;
   readonly privacyClauses = TAVA_PRIVACY_CLAUSES;

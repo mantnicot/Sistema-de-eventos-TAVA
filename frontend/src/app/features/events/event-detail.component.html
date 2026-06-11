@@ -10,12 +10,14 @@
           <time>{{ formatEventDateTime(ev.event_date, ev.event_time) }}</time>
         </p>
         @if (ev.theatrical_details; as td) {
-          @if (td.duration_minutes) {
-            <p class="meta">Duración: {{ td.duration_minutes }} min</p>
-          }
-          @if (td.age_rating) {
-            <p class="meta">{{ td.age_rating }}</p>
-          }
+          <div class="detail__meta-row">
+            @if (td.duration_minutes) {
+              <span class="detail__meta">Duración: {{ td.duration_minutes }} min</span>
+            }
+            @if (td.age_rating) {
+              <span class="detail__meta detail__meta--rating">{{ td.age_rating }}</span>
+            }
+          </div>
         }
       </div>
     </div>
@@ -55,6 +57,19 @@
                 <p class="muted">Formato de trailer no reconocido. URL: {{ ev.trailer_url }}</p>
               }
             }
+          </section>
+        }
+
+        @if (ev.main_image_url) {
+          <section class="tava-card block poster-block">
+            <h2>Poster</h2>
+            <img
+              class="poster-block__img"
+              [src]="mediaUrl(ev.main_image_url)"
+              [alt]="'Poster — ' + ev.name"
+              loading="eager"
+              (error)="onImgError($event)"
+            />
           </section>
         }
 
@@ -149,6 +164,26 @@
             </label>
           }
 
+          @if (seatingActive() && seating(); as map) {
+            @if (map.config) {
+              <div class="seating-block">
+                <h3>Elige tu silla</h3>
+                <tava-seat-map
+                  [config]="map.config"
+                  [seats]="map.seats"
+                  [selectedIds]="selectedSeatIds"
+                  (selectedIdsChange)="onSeatsChange($event)"
+                />
+                <p class="hint">Seleccionadas: {{ selectedSeatIds.length }}</p>
+              </div>
+            }
+          } @else {
+            <p class="seating-info">
+              Este evento no tiene silletería numerada. La entrada es por aforo general (sin selección de silla).
+            </p>
+          }
+
+          @if (!seatingActive()) {
           <label class="field">
             Cantidad
             <input
@@ -159,6 +194,7 @@
               (ngModelChange)="onQuantityChange()"
             />
           </label>
+          }
 
           <label class="check-row buy-hint">
             <input type="checkbox" [(ngModel)]="singleHolderMode" (ngModelChange)="onHolderModeChange()" />

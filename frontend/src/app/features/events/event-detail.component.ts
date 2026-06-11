@@ -23,6 +23,13 @@ import { TavaTheatricalVideoComponent } from '../../shared/components/tava-theat
 import { TavaTicketPreviewComponent } from '../../shared/components/tava-ticket-preview/tava-ticket-preview.component';
 import { TavaCaptchaComponent } from '../../shared/components/tava-captcha/tava-captcha.component';
 import { TavaTheatricalLoaderComponent } from '../../shared/components/tava-theatrical-loader/tava-theatrical-loader.component';
+import { SeatMapResponse } from '../../core/models/seating.model';
+import {
+  clearPurchaseDraft,
+  readPurchaseDraft,
+  savePurchaseDraft,
+} from '../../core/utils/purchase-draft.util';
+import { TavaSeatMapComponent } from '../../shared/components/tava-seat-map/tava-seat-map.component';
 import { ApiWarmupService } from '../../core/services/api-warmup.service';
 
 @Component({
@@ -36,6 +43,7 @@ import { ApiWarmupService } from '../../core/services/api-warmup.service';
     TavaTicketPreviewComponent,
     TavaCaptchaComponent,
     TavaTheatricalLoaderComponent,
+    TavaSeatMapComponent,
   ],
   templateUrl: './event-detail.component.html',
   styleUrl: './event-detail.component.scss',
@@ -52,6 +60,8 @@ export class EventDetailComponent implements OnInit {
   readonly event = signal<TavaEventDetail | null>(null);
   readonly loading = signal(true);
   readonly loadError = signal<string | null>(null);
+  readonly seating = signal<SeatMapResponse | null>(null);
+  selectedSeatIds: string[] = [];
   readonly selectedTypeId = signal<string | null>(null);
   readonly mediaUrl = resolveMediaUrl;
   readonly mediaBg = mediaBackgroundStyle;
@@ -68,6 +78,50 @@ export class EventDetailComponent implements OnInit {
   readonly ticketsLeft = totalTicketsAvailable;
 
   readonly onImgError = onEventImageError;
+
+  seatingActive(): boolean {
+    return Boolean(this.seating()?.enabled && this.seating()?.config?.enabled);
+  }
+
+  onSeatsChange(ids: string[]): void {
+    this.selectedSeatIds = ids;
+    this.quantity = ids.length || 1;
+    if (!this.singleHolderMode) this.onQuantityChange();
+  }
+
+  private persistDraft(): void {
+    const ev = this.event();
+    if (!ev) return;
+    savePurchaseDraft({
+      eventId: ev.id,
+      selectedTypeId: this.selectedTypeId(),
+      quantity: this.quantity,
+      singleHolderMode: this.singleHolderMode,
+      holderName: this.holderName,
+      holderNames: [...this.holderNames],
+      legalAccepted: this.legalAccepted,
+      selectedSeatIds: [...this.selectedSeatIds],
+    });
+  }
+
+  private restoreDraft(eventId: string): void {
+    const draft = readPurchaseDraft(eventId);
+    if (!draft) return;
+    if (draft.selectedTypeId) this.selectedTypeId.set(draft.selectedTypeId);
+    this.quantity = draft.quantity;
+    this.singleHolderMode = draft.singleHolderMode;
+    this.holderName = draft.holderName;
+    this.holderNames = [...draft.holderNames];
+    this.legalAccepted = draft.legalAccepted;
+    this.selectedSeatIds = [...draft.selectedSeatIds];
+  }
+
+  private loadSeating(eventId: string): void {
+    this.api.get<SeatMapResponse>(`/events/${eventId}/seating`).subscribe({
+      next: (map) => this.seating.set(map),
+      error: () => this.seating.set({ enabled: false, config: null, seats: [] }),
+    });
+  }
 
   safeTrailer(url: string | undefined): SafeResourceUrl | null {
     const embed = trailerEmbedUrl(url);
@@ -128,6 +182,8 @@ export class EventDetailComponent implements OnInit {
           if (detail.ticket_types.length) {
             this.selectedTypeId.set(detail.ticket_types[0].id);
           }
+          this.restoreDraft(id);
+          this.loadSeating(id);
         },
         error: () => {
           this.loading.set(false);
@@ -172,8 +228,12 @@ export class EventDetailComponent implements OnInit {
 
   comprar(): void {
     if (!this.auth.isLoggedIn()) {
-      this.notify.warning('Inicia sesión', 'Debes ingresar para comprar boletas');
-      this.router.navigate(['/ingresar']);
+      this.persistDraft();
+      this.notify.warning(
+        'Inicia sesión',
+        'Guardamos tu selección. Regístrate o ingresa para continuar la compra.'
+      );
+      this.router.navigate(['/registro'], { queryParams: { returnUrl: this.router.url } });
       return;
     }
     if (!this.legalAccepted) {
@@ -193,6 +253,13 @@ export class EventDetailComponent implements OnInit {
     if (!this.captchaToken) {
       this.notify.warning('Verificación', 'Completa el puzzle de verificación antes de comprar');
       return;
+    }
+
+    if (this.seatingActive()) {
+      if (this.selectedSeatIds.length !== this.quantity) {
+        this.notify.warning('Sillas', 'Selecciona una silla por cada boleta en el mapa');
+        return;
+      }
     }
 
     const names = this.resolveHolderNames();
@@ -231,11 +298,13 @@ export class EventDetailComponent implements OnInit {
           holder_names: names,
           legal_accepted: true,
           captcha_token: this.captchaToken,
+          seat_ids: this.seatingActive() ? this.selectedSeatIds : undefined,
         })
         .subscribe({
           next: (res) => {
             this.purchasing = false;
             this.notify.hide();
+            clearPurchaseDraft();
             this.captcha?.reset();
             this.captchaToken = '';
             if (res.payment_required && res.checkout_url) {

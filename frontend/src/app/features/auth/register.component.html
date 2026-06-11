@@ -59,7 +59,7 @@
       <tava-captcha (tokenChange)="onCaptchaToken($event)" />
 
       <button type="submit" class="tava-btn-primary" [disabled]="!acceptPrivacy || !captchaToken">Registrarse</button>
-      <p class="hint">¿Ya tienes cuenta? <a routerLink="/ingresar">Ingresar</a></p>
+      <p class="hint">¿Ya tienes cuenta? <a routerLink="/ingresar" [queryParams]="loginQuery">Ingresar</a></p>
     </form>
   } @else {
     <div class="auth-form tava-form tava-card verify-pending">
@@ -73,7 +73,7 @@
       @if (theatricalLine) {
         <p class="theatrical-line">{{ theatricalLine }}</p>
       }
-      <a routerLink="/ingresar" class="tava-btn-primary">Ir a ingresar</a>
+      <a routerLink="/ingresar" [queryParams]="loginQuery" class="tava-btn-primary">Ir a ingresar</a>
     </div>
   }
 </div>

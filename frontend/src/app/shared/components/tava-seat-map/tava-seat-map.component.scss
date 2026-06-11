@@ -1,0 +1,133 @@
+.seat-map {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.seat-map__stage {
+  text-align: center;
+  padding: 0.55rem 1rem;
+  background: linear-gradient(180deg, #f5f5f5, #ddd);
+  border: 2px solid #bbb;
+  border-radius: 6px;
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: #444;
+  max-width: 420px;
+  margin: 0 auto;
+}
+
+.seat-map__blocks {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 1.25rem;
+}
+
+.seat-map__block-name {
+  text-align: center;
+  margin: 0 0 0.35rem;
+  font-size: 0.78rem;
+  color: var(--tava-cream-muted);
+}
+
+.seat-map__grid {
+  display: grid;
+  grid-template-columns: auto repeat(var(--cols), 1fr);
+  gap: 0.2rem;
+  align-items: center;
+}
+
+.seat-map__corner,
+.seat-map__col-label,
+.seat-map__row-label {
+  font-size: 0.65rem;
+  color: var(--tava-cream-muted);
+  text-align: center;
+}
+
+.seat-btn {
+  border: none;
+  background: transparent;
+  padding: 0.1rem;
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: transform 0.12s ease, filter 0.12s ease;
+
+  &:disabled {
+    cursor: not-allowed;
+  }
+
+  &:not(:disabled):hover {
+    transform: scale(1.12);
+  }
+}
+
+.seat--free {
+  filter: grayscale(0.1) brightness(1.05);
+}
+
+.seat--selected {
+  filter: hue-rotate(85deg) saturate(2.2) brightness(1.1);
+  transform: scale(1.08);
+}
+
+.seat--sold {
+  filter: grayscale(1) opacity(0.45);
+}
+
+.seat--blocked,
+.seat--reserved {
+  filter: grayscale(0.8) opacity(0.35);
+}
+
+.seat--empty {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.seat-map__legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.75rem;
+  font-size: 0.75rem;
+  color: var(--tava-cream-muted);
+
+  span {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+  }
+}
+
+.dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+
+  &--free {
+    background: #81c784;
+  }
+
+  &--selected {
+    background: #ffd54f;
+  }
+
+  &--sold {
+    background: #9e9e9e;
+  }
+}
+
+@media (max-width: 640px) {
+  .seat-btn {
+    font-size: 0.85rem;
+  }
+
+  .seat-map__blocks {
+    gap: 0.75rem;
+  }
+}

@@ -4,6 +4,8 @@ export interface CastMember {
   role?: string;
 }
 
+import { SeatingConfig } from './seating.model';
+
 export interface TheatricalDetails {
   synopsis?: string;
   cast?: string[];
@@ -14,6 +16,7 @@ export interface TheatricalDetails {
   language?: string;
   warnings?: string;
   credits?: string;
+  seating?: SeatingConfig;
 }
 
 export interface TavaEvent {
@@ -43,4 +46,5 @@ export interface TavaEventDetail extends TavaEvent {
     quantity_available: number;
     benefits?: string;
   }[];
+  seating_enabled?: boolean;
 }

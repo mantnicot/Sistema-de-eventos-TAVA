@@ -23,7 +23,9 @@ from tava.presentation.api.schemas import (
     TicketTypePublicResponse,
     TicketTypesSyncRequest,
     BroadcastEmailRequest,
+    SeatingSyncRequest,
 )
+from tava.application.use_cases.seating import SeatingUseCase, seating_enabled
 
 router = APIRouter(prefix="/events", tags=["Eventos"])
 
@@ -85,6 +87,7 @@ def _event_detail(model: EventModel) -> EventDetailResponse:
             )
             for t in model.ticket_types
         ],
+        seating_enabled=seating_enabled(model),
     )
 
 
@@ -375,6 +378,28 @@ async def add_event_media(
     return EventMediaResponse(
         id=media.id, media_type=media.media_type, url=media.url, sort_order=media.sort_order
     )
+
+
+@router.get("/{event_id}/seating")
+async def get_event_seating(event_id: UUID, db: AsyncSession = Depends(get_db)):
+    uc = SeatingUseCase(db)
+    return await uc.get_map(event_id)
+
+
+@router.put("/{event_id}/seating")
+async def sync_event_seating(
+    event_id: UUID,
+    body: SeatingSyncRequest,
+    _user=Depends(require_roles(UserRole.ADMIN)),
+    db: AsyncSession = Depends(get_db),
+):
+    uc = SeatingUseCase(db)
+    try:
+        result = await uc.sync_layout(event_id, body.seating.model_dump())
+        await db.commit()
+        return result
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.post("/{event_id}/broadcast-email")

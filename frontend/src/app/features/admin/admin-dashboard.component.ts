@@ -17,6 +17,7 @@ import { TavaTicketPreviewComponent } from '../../shared/components/tava-ticket-
 import { TavaEvent, TavaEventDetail, TheatricalDetails, CastMember } from '../../core/models/event.model';
 import { TicketKind, TicketTypeDraft } from '../../core/models/ticket-type.model';
 import { resolveMediaUrl } from '../../core/utils/media-url.util';
+import { DEFAULT_SEATING, SeatingConfig } from '../../core/models/seating.model';
 
 interface Kpis {
   eventos_activos: number;
@@ -102,6 +103,7 @@ export class AdminDashboardComponent implements OnInit {
   broadcastSubject = '';
   broadcastMessage = '';
   cancelNotifyHolder = true;
+  seatingDraft: SeatingConfig = structuredClone(DEFAULT_SEATING);
 
   theatrical: TheatricalDetails = {};
   eventForm = {
@@ -372,6 +374,7 @@ export class AdminDashboardComponent implements OnInit {
     this.attendeesData.set(null);
     this.broadcastSubject = '';
     this.broadcastMessage = '';
+    this.seatingDraft = structuredClone(DEFAULT_SEATING);
   }
 
   loadAttendees(eventId: string): void {
@@ -501,6 +504,25 @@ export class AdminDashboardComponent implements OnInit {
     });
   }
 
+  saveEventSeating(): void {
+    const id = this.editingId();
+    if (!id) return;
+    this.notify.loadingTheatrical('Generando silletería', 'admin');
+    this.api.put<{ seats_created?: number }>(`/events/${id}/seating`, { seating: this.seatingDraft }).subscribe({
+      next: (res) => {
+        this.notify.hide();
+        this.notify.success(
+          'Silletería',
+          `Mapa guardado${res.seats_created != null ? ` (${res.seats_created} sillas)` : ''}.`
+        );
+      },
+      error: (err) => {
+        this.notify.hide();
+        this.notify.error('Silletería', err.error?.detail ?? 'No se pudo guardar');
+      },
+    });
+  }
+
   editEvent(ev: TavaEvent): void {
     this.editingId.set(ev.id);
     this.ticketTypesDraft = [];
@@ -542,6 +564,14 @@ export class AdminDashboardComponent implements OnInit {
     }
     this.staffValidatorIds = [];
     this.staffSellerIds = [];
+    const seating = ev.theatrical_details?.seating;
+    this.seatingDraft = seating
+      ? {
+          ...DEFAULT_SEATING,
+          ...seating,
+          blocks: seating.blocks?.length ? seating.blocks : DEFAULT_SEATING.blocks,
+        }
+      : structuredClone(DEFAULT_SEATING);
     this.api
       .get<{ validator_ids: string[]; seller_ids: string[] }>(`/events/${ev.id}/staff`)
       .subscribe({
@@ -575,6 +605,7 @@ export class AdminDashboardComponent implements OnInit {
         ...this.theatrical,
         cast: members.map((m) => m.name),
         cast_members: members,
+        seating: this.seatingDraft,
       },
     };
     const id = this.editingId();
