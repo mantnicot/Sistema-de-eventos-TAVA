@@ -9,6 +9,7 @@ from tava.infrastructure.demo_reset import (
     ADMIN_PASSWORD,
     TEST_EMAIL,
     TEST_PASSWORD,
+    cleanup_demo_events,
     reset_demo_data,
 )
 from tava.infrastructure.persistence.database import AsyncSessionLocal, init_db
@@ -24,6 +25,7 @@ async def bootstrap_application() -> None:
     async with AsyncSessionLocal() as session:
         try:
             await reset_demo_data(session)
+            await cleanup_demo_events(session)
 
             admin = (
                 await session.execute(select(UserModel).where(UserModel.email == ADMIN_EMAIL))

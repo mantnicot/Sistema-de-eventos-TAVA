@@ -11,6 +11,7 @@ from tava.infrastructure.persistence.models import (
     EmailVerificationTokenModel,
     EventMediaModel,
     EventModel,
+    EventSeatModel,
     EventStaffAssignmentModel,
     FavoriteModel,
     LoyaltyRewardModel,
@@ -38,6 +39,58 @@ ADMIN_PASSWORD = "AdminTava2026!"
 
 RESET_MARKER_KEY = "demo_reset_marker"
 RESET_MARKER_VALUE = "2026-06-clean-v1"
+EVENT_CLEANUP_MARKER_KEY = "demo_event_cleanup_marker"
+EVENT_CLEANUP_MARKER_VALUE = "2026-07-remove-test-events-v1"
+DEMO_EVENT_NAMES_TO_DELETE = ("Prueba de evento pago", "Laboratorio de impro")
+
+
+async def cleanup_demo_events(session, *, force: bool = False) -> int:
+    """Elimina eventos demo puntuales sin reiniciar toda la base."""
+    marker = await session.get(SiteSettingModel, EVENT_CLEANUP_MARKER_KEY)
+    if marker and marker.value == EVENT_CLEANUP_MARKER_VALUE and not force:
+        logger.info("Limpieza de eventos demo ya aplicada (%s)", EVENT_CLEANUP_MARKER_VALUE)
+        return 0
+
+    result = await session.execute(
+        select(EventModel.id).where(EventModel.name.in_(DEMO_EVENT_NAMES_TO_DELETE))
+    )
+    event_ids = [row[0] for row in result.all()]
+    if not event_ids:
+        deleted = 0
+    else:
+        ticket_result = await session.execute(
+            select(TicketModel.id).where(TicketModel.event_id.in_(event_ids))
+        )
+        ticket_ids = [row[0] for row in ticket_result.all()]
+        if ticket_ids:
+            await session.execute(
+                delete(CheckInModel).where(CheckInModel.ticket_id.in_(ticket_ids))
+            )
+        await session.execute(delete(CheckInModel).where(CheckInModel.event_id.in_(event_ids)))
+        await session.execute(delete(TicketModel).where(TicketModel.event_id.in_(event_ids)))
+        await session.execute(delete(OrderModel).where(OrderModel.event_id.in_(event_ids)))
+        await session.execute(
+            delete(EventStaffAssignmentModel).where(EventStaffAssignmentModel.event_id.in_(event_ids))
+        )
+        await session.execute(delete(EventMediaModel).where(EventMediaModel.event_id.in_(event_ids)))
+        await session.execute(delete(TicketTypeModel).where(TicketTypeModel.event_id.in_(event_ids)))
+        await session.execute(delete(ReviewModel).where(ReviewModel.event_id.in_(event_ids)))
+        await session.execute(delete(FavoriteModel).where(FavoriteModel.event_id.in_(event_ids)))
+        await session.execute(delete(CollectibleModel).where(CollectibleModel.event_id.in_(event_ids)))
+        await session.execute(delete(PromotionModel).where(PromotionModel.event_id.in_(event_ids)))
+        await session.execute(delete(EventSeatModel).where(EventSeatModel.event_id.in_(event_ids)))
+        await session.execute(delete(SeatModel).where(SeatModel.event_id.in_(event_ids)))
+        await session.execute(delete(EventModel).where(EventModel.id.in_(event_ids)))
+        deleted = len(event_ids)
+
+    if marker:
+        marker.value = EVENT_CLEANUP_MARKER_VALUE
+    else:
+        session.add(SiteSettingModel(key=EVENT_CLEANUP_MARKER_KEY, value=EVENT_CLEANUP_MARKER_VALUE))
+
+    await session.flush()
+    logger.info("Eventos demo eliminados: %s", deleted)
+    return deleted
 
 
 async def reset_demo_data(session, *, force: bool = False) -> bool:
@@ -55,6 +108,7 @@ async def reset_demo_data(session, *, force: bool = False) -> bool:
     await session.execute(delete(EventStaffAssignmentModel))
     await session.execute(delete(EventMediaModel))
     await session.execute(delete(TicketTypeModel))
+    await session.execute(delete(EventSeatModel))
     await session.execute(delete(ReviewModel))
     await session.execute(delete(FavoriteModel))
     await session.execute(delete(CollectibleModel))

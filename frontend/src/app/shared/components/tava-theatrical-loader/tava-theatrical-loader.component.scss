@@ -23,6 +23,40 @@
   background: linear-gradient(180deg, rgba(107, 26, 42, 0.15), rgba(201, 162, 39, 0.08));
 }
 
+.theatrical-loader__roses {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.theatrical-loader__rose {
+  position: absolute;
+  bottom: 20px;
+  font-size: 2.2rem;
+  line-height: 1;
+  filter: drop-shadow(0 5px 8px rgba(107, 26, 42, 0.32));
+  animation: rose-sway 2.8s ease-in-out infinite;
+
+  &--one {
+    left: 20px;
+  }
+
+  &--two {
+    right: 26px;
+    bottom: 24px;
+    transform: scale(1.12);
+    animation-delay: 0.35s;
+  }
+
+  &--three {
+    left: 50%;
+    bottom: 4px;
+    transform: translateX(-50%) scale(0.92);
+    animation-delay: 0.7s;
+  }
+}
+
 .theatrical-loader__theater {
   position: absolute;
   left: 50%;
@@ -127,32 +161,6 @@
   transform-origin: bottom left;
 }
 
-.theatrical-loader__dust {
-  position: absolute;
-  bottom: 32px;
-  left: 22%;
-
-  span {
-    position: absolute;
-    width: 6px;
-    height: 6px;
-    background: rgba(184, 134, 11, 0.5);
-    border-radius: 50%;
-    opacity: 0;
-    animation: dust-puff 2.4s ease-out infinite;
-
-    &:nth-child(2) {
-      left: 12px;
-      animation-delay: 0.15s;
-    }
-
-    &:nth-child(3) {
-      left: 24px;
-      animation-delay: 0.3s;
-    }
-  }
-}
-
 .theatrical-loader__title {
   margin: 0;
   font-family: var(--tava-font-display);
@@ -235,20 +243,13 @@
   }
 }
 
-@keyframes dust-puff {
+@keyframes rose-sway {
   0%,
-  35% {
-    opacity: 0;
-    transform: translateY(0) scale(0.5);
-  }
-  45% {
-    opacity: 0.8;
-    transform: translateY(-10px) scale(1.2);
-  }
-  60%,
   100% {
-    opacity: 0;
-    transform: translateY(-18px) scale(0.8);
+    rotate: -3deg;
+  }
+  50% {
+    rotate: 5deg;
   }
 }
 
