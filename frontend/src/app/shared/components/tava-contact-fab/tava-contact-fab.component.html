@@ -1,11 +1,37 @@
-<a
-  class="contact-fab"
-  [href]="improUrl"
-  target="_blank"
-  rel="noopener noreferrer"
-  aria-label="Abrir Impro TAVA"
-  title="Impro TAVA"
->
-  <span class="contact-fab__icon" aria-hidden="true">🤹</span>
-  <span class="contact-fab__badge">Impro</span>
-</a>
+<div class="contact-fab" [class.contact-fab--open]="open">
+  @if (open) {
+    <div class="contact-fab__menu">
+      <a
+        class="contact-fab__action contact-fab__action--wa"
+        [href]="whatsappUrl"
+        target="_blank"
+        rel="noopener noreferrer"
+        title="WhatsApp TAVA"
+      >
+        WhatsApp
+      </a>
+      <a
+        class="contact-fab__action contact-fab__action--ig"
+        [href]="instagramUrl"
+        target="_blank"
+        rel="noopener noreferrer"
+        title="@tavateatro"
+      >
+        Instagram
+      </a>
+      <a
+        class="contact-fab__action contact-fab__action--impro"
+        [href]="improUrl"
+        target="_blank"
+        rel="noopener noreferrer"
+        title="Impro TAVA"
+      >
+        <img [src]="improLogoUrl" alt="" width="22" height="22" />
+        Impro
+      </a>
+    </div>
+  }
+  <button type="button" class="contact-fab__toggle" (click)="toggle()" [attr.aria-expanded]="open" aria-label="Contactar TAVA">
+    <img src="/logo-tava.png" alt="Contactar TAVA" width="44" height="44" />
+  </button>
+</div>
