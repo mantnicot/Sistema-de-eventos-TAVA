@@ -29,11 +29,11 @@ const MESSAGES: Record<string, string[]> = {
     'Reenviando la invitación con aplausos…',
   ],
   purchase: [
-    'Generando tu PDF y enviándolo a tu correo…',
-    'Imprimiendo tu boleto con tinta dorada…',
-    'La taquilla empaqueta tus entradas digitales…',
-    'Reservando tu lugar en primera fila…',
-    'Por favor espera, el envío puede tardar unos segundos…',
+    'Preparando tus boletas digitales…',
+    'Validando disponibilidad en taquilla…',
+    'La taquilla acomoda tu orden…',
+    'Reservando tu lugar para la función…',
+    'Un momento, estamos dejando todo listo…',
   ],
   validation: [
     'Escaneando tu QR como crítico de estreno…',

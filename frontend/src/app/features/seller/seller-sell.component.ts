@@ -5,6 +5,7 @@ import { ApiService } from '../../core/services/api.service';
 import { AuthService } from '../../core/services/auth.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { TavaEvent, TavaEventDetail } from '../../core/models/event.model';
+import { parseHttpError } from '../../core/utils/http-error.util';
 
 @Component({
   selector: 'app-seller-sell',
@@ -98,7 +99,7 @@ export class SellerSellComponent implements OnInit {
     const total = this.totalPrice();
     this.notify.confirm(
       'Vender boletas',
-      `Venta para el evento «${ev.name}»: ${this.quantity} boleta(s) por $${total.toLocaleString('es-CO')} COP a ${this.buyerEmail}.`,
+      `Vas a registrar ${this.quantity} boleta(s) para "${ev.name}" por $${total.toLocaleString('es-CO')} COP. El comprador sera ${this.buyerEmail.trim()}.`,
       () => {
         if (this.selling) return;
         this.selling = true;
@@ -117,7 +118,10 @@ export class SellerSellComponent implements OnInit {
             next: (res) => {
               this.selling = false;
               this.notify.hide();
-              this.notify.success('Venta', res.message ?? 'Boletas enviadas por correo');
+              this.notify.success(
+                'Venta registrada',
+                res.message ?? 'Las boletas quedaron listas y enviaremos el PDF al correo del comprador.'
+              );
               this.buyerEmail = '';
               this.holderNames = [''];
               this.quantity = 1;
@@ -126,8 +130,7 @@ export class SellerSellComponent implements OnInit {
             error: (err) => {
               this.selling = false;
               this.notify.hide();
-              const msg = err?.error?.detail ?? 'No se pudo completar la venta';
-              this.notify.error('Venta', typeof msg === 'string' ? msg : 'Error en la venta');
+              this.notify.showHttpError(parseHttpError(err, 'venta'));
             },
           });
       }

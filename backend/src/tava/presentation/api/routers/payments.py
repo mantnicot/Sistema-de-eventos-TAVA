@@ -1,9 +1,10 @@
 import logging
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from tava.application.use_cases.ticket_emails import send_order_confirmation_email_background
 from tava.application.use_cases.tickets import TicketUseCase
 from tava.config import get_settings
 from tava.domain.enums import UserRole
@@ -40,7 +41,11 @@ async def order_payment_status(
 
 
 @router.post("/wompi/webhook")
-async def wompi_webhook(request: Request, db: AsyncSession = Depends(get_db)):
+async def wompi_webhook(
+    request: Request,
+    background_tasks: BackgroundTasks,
+    db: AsyncSession = Depends(get_db),
+):
     try:
         payload = await request.json()
     except Exception:
@@ -65,6 +70,11 @@ async def wompi_webhook(request: Request, db: AsyncSession = Depends(get_db)):
     try:
         result = await uc.handle_wompi_transaction_update(reference, status, transaction_id)
         await db.commit()
+        if result.get("email_pending") and result.get("order_id"):
+            background_tasks.add_task(
+                send_order_confirmation_email_background,
+                UUID(str(result["order_id"])),
+            )
         logger.info("Wompi webhook %s → %s", reference, result)
         return {"ok": True, **result}
     except Exception:
@@ -76,6 +86,7 @@ async def wompi_webhook(request: Request, db: AsyncSession = Depends(get_db)):
 @router.post("/wompi/confirm/{order_id}")
 async def wompi_confirm_from_redirect(
     order_id: UUID,
+    background_tasks: BackgroundTasks,
     transaction_id: str | None = Query(None),
     user=Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -108,6 +119,11 @@ async def wompi_confirm_from_redirect(
     try:
         result = await uc.handle_wompi_transaction_update(reference, status, tx_id)
         await db.commit()
+        if result.get("email_pending") and result.get("order_id"):
+            background_tasks.add_task(
+                send_order_confirmation_email_background,
+                UUID(str(result["order_id"])),
+            )
         final = await uc.get_order_status(order_id, user.id, user.role == UserRole.ADMIN)
         return {**final, "wompi_sync": result}
     except ValueError as e:
@@ -122,6 +138,7 @@ async def wompi_confirm_from_redirect(
 @router.post("/wompi/simulate/{payment_reference}")
 async def wompi_simulate_approved(
     payment_reference: str,
+    background_tasks: BackgroundTasks,
     _user=Depends(require_roles(UserRole.ADMIN)),
     db: AsyncSession = Depends(get_db),
 ):
@@ -134,6 +151,11 @@ async def wompi_simulate_approved(
             payment_reference, "APPROVED", f"sim-{payment_reference}"
         )
         await db.commit()
+        if result.get("email_pending") and result.get("order_id"):
+            background_tasks.add_task(
+                send_order_confirmation_email_background,
+                UUID(str(result["order_id"])),
+            )
         return result
     except Exception:
         await db.rollback()

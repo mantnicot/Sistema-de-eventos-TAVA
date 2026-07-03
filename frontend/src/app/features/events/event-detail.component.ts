@@ -29,6 +29,7 @@ import {
   readPurchaseDraft,
   savePurchaseDraft,
 } from '../../core/utils/purchase-draft.util';
+import { parseHttpError } from '../../core/utils/http-error.util';
 import { TavaSeatMapComponent } from '../../shared/components/tava-seat-map/tava-seat-map.component';
 import { ApiWarmupService } from '../../core/services/api-warmup.service';
 
@@ -263,13 +264,13 @@ export class EventDetailComponent implements OnInit {
       this.persistDraft();
       this.notify.warning(
         'Inicia sesión',
-        'Guardamos tu selección. Regístrate o ingresa para continuar la compra.'
+        'Guardamos tu selección. Crea tu cuenta o ingresa para continuar justo donde ibas.'
       );
       this.router.navigate(['/registro'], { queryParams: { returnUrl: this.router.url } });
       return;
     }
     if (!this.legalAccepted) {
-      this.notify.warning('Términos', 'Debes marcar la casilla de términos y condiciones para poder comprar');
+      this.notify.warning('Términos', 'Acepta los términos y condiciones para proteger tu compra.');
       return;
     }
     const ev = this.event();
@@ -278,18 +279,18 @@ export class EventDetailComponent implements OnInit {
     if (!ev || !typeId || !tt) return;
 
     if (!this.canBuy(ev)) {
-      this.notify.warning('Evento finalizado', 'Te perdiste este evento, pero tenemos otros para ti.');
+      this.notify.warning('Evento finalizado', 'Esta función ya pasó. Puedes revisar otros eventos disponibles.');
       return;
     }
 
     if (!this.captchaToken) {
-      this.notify.warning('Verificación', 'Completa el puzzle de verificación antes de comprar');
+      this.notify.warning('Verificación', 'Completa la verificación para proteger tu compra.');
       return;
     }
 
     if (this.seatingActive()) {
       if (this.selectedSeatIds.length !== this.quantity) {
-        this.notify.warning('Sillas', 'Selecciona una silla por cada boleta en el mapa');
+        this.notify.warning('Sillas', 'Selecciona una silla por cada boleta antes de continuar.');
         return;
       }
     }
@@ -299,8 +300,8 @@ export class EventDetailComponent implements OnInit {
       this.notify.warning(
         'Nombres',
         this.singleHolderMode
-          ? 'Indica el nombre para las boletas'
-          : 'Indica el nombre de cada asistente'
+          ? 'Escribe el nombre que aparecerá en las boletas.'
+          : 'Escribe el nombre de cada asistente.'
       );
       return;
     }
@@ -309,14 +310,13 @@ export class EventDetailComponent implements OnInit {
 
     const total = this.totalPrice();
     const confirmMsg =
-      `Su compra sería boletas para el evento «${ev.name}», ` +
-      `con la cantidad de ${this.quantity} boleta(s), ` +
-      `por un valor de $${total.toLocaleString('es-CO')} COP.`;
+      `Vas a comprar ${this.quantity} boleta(s) para "${ev.name}" ` +
+      `por $${total.toLocaleString('es-CO')} COP. Revisa nombres y sillas antes de continuar.`;
 
     this.notify.confirm('Confirmar compra', confirmMsg, () => {
       if (this.purchasing) return;
       this.purchasing = true;
-      this.notify.loadingTheatrical('Enviando boletas', 'purchase');
+      this.notify.loadingTheatrical('Preparando compra', 'purchase');
       this.api
         .post<{
           message?: string;
@@ -344,8 +344,8 @@ export class EventDetailComponent implements OnInit {
               return;
             }
             this.notify.celebration(
-              '¡Compra exitosa!',
-              res.message ?? 'Tus boletas fueron generadas y enviadas a tu correo electrónico.'
+              '¡Compra lista!',
+              res.message ?? 'Tus boletas ya están disponibles. El PDF también llegará a tu correo.'
             );
             setTimeout(() => {
               this.notify.hide();
@@ -357,8 +357,7 @@ export class EventDetailComponent implements OnInit {
             this.notify.hide();
             this.captcha?.reset();
             this.captchaToken = '';
-            const msg = err?.error?.detail ?? 'No se pudo completar la compra';
-            this.notify.error('Compra', typeof msg === 'string' ? msg : 'Error en la compra');
+            this.notify.showHttpError(parseHttpError(err, 'compra'));
           },
         });
     });

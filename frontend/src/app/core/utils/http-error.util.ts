@@ -36,13 +36,13 @@ function messageFromBody(body: ApiErrorBody | null, fallback: string): string {
   return fallback;
 }
 
-/** Clasifica errores HTTP: usuario vs sistema vs red/CORS */
-export function parseHttpError(err: unknown, context = 'operación'): ParsedHttpError {
+/** Clasifica errores HTTP: usuario vs sistema vs red/CORS. */
+export function parseHttpError(err: unknown, context = 'operacion'): ParsedHttpError {
   if (!(err instanceof HttpErrorResponse)) {
     return {
       kind: 'system',
-      title: 'Error inesperado',
-      message: 'Ocurrió un problema al procesar la solicitud.',
+      title: 'No pudimos terminar',
+      message: 'Algo no salio como esperabamos. Intenta de nuevo en un momento.',
       logLine: `[TAVA] ${context}: error no HTTP`,
     };
   }
@@ -53,15 +53,14 @@ export function parseHttpError(err: unknown, context = 'operación'): ParsedHttp
   const code = body?.code;
   const apiMessage = messageFromBody(body, '');
 
-  // Sin respuesta del servidor (CORS, red caída, API dormida)
   if (status === 0) {
     const corsHint = err.message?.toLowerCase().includes('failed') || err.statusText === 'Unknown Error';
     return {
       kind: 'network',
-      title: 'Sin conexión con el servidor',
+      title: 'No logramos conectar',
       message: corsHint
-        ? 'No se pudo contactar la API (CORS o servidor apagado). Revisa que Render esté activo y CORS en el backend.'
-        : 'Comprueba tu internet o que el servicio esté en línea.',
+        ? 'El servidor puede estar iniciando. Espera unos segundos y vuelve a intentar.'
+        : 'Revisa tu conexion a internet y prueba nuevamente.',
       code: 'NETWORK_ERROR',
       status: 0,
       logLine: `[TAVA] ${context}: status=0 ${err.url}`,
@@ -71,10 +70,10 @@ export function parseHttpError(err: unknown, context = 'operación'): ParsedHttp
   if (apiType === 'user' || status === 401 || status === 403 || status === 404 || status === 422) {
     const msg =
       apiMessage ||
-      (status === 401 ? 'Correo o contraseña incorrectos.' : 'No se pudo completar la acción.');
+      (status === 401 ? 'El correo o la contrasena no coinciden.' : 'Revisa la informacion e intenta de nuevo.');
     return {
       kind: 'user',
-      title: 'Revisa tus datos',
+      title: status === 401 ? 'No pudimos ingresar' : 'Revisa estos datos',
       message: msg,
       code: code ?? `HTTP_${status}`,
       status,
@@ -82,15 +81,26 @@ export function parseHttpError(err: unknown, context = 'operación'): ParsedHttp
     };
   }
 
+  if (status === 429) {
+    return {
+      kind: 'system',
+      title: 'Demasiados intentos',
+      message: 'Hiciste varios intentos seguidos. Espera un minuto y vuelve a probar.',
+      code: 'RATE_LIMIT',
+      status,
+      logLine: `[TAVA] ${context}: rate limit`,
+    };
+  }
+
   if (status === 503 || apiType === 'system' || status >= 500) {
     const msg =
       apiMessage ||
       (status === 503
-        ? 'Base de datos o servicio no disponible. Espera un momento e intenta de nuevo.'
-        : 'Error interno del servidor.');
+        ? 'El servicio esta tardando en responder. Espera un momento e intenta otra vez.'
+        : 'Tuvimos un problema interno. Tu solicitud no se completo.');
     return {
       kind: 'system',
-      title: 'Error del sistema',
+      title: 'Estamos revisando tras bambalinas',
       message: msg,
       code: code ?? `HTTP_${status}`,
       status,
@@ -98,21 +108,10 @@ export function parseHttpError(err: unknown, context = 'operación'): ParsedHttp
     };
   }
 
-  if (status === 429) {
-    return {
-      kind: 'system',
-      title: 'Demasiados intentos',
-      message: 'Espera un minuto y vuelve a intentar.',
-      code: 'RATE_LIMIT',
-      status,
-      logLine: `[TAVA] ${context}: rate limit`,
-    };
-  }
-
   return {
     kind: 'user',
     title: 'No se pudo completar',
-    message: apiMessage || err.message || 'Intenta de nuevo.',
+    message: apiMessage || err.message || 'Intenta de nuevo en un momento.',
     code,
     status,
     logLine: `[TAVA] ${context}: status=${status}`,

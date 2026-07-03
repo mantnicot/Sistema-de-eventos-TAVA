@@ -151,24 +151,31 @@ class TicketUseCase:
         names: list[str],
     ) -> list[TicketModel]:
         created: list[TicketModel] = []
+        used_codes: set[str] = set()
         for name in names:
+            ticket_id = uuid4()
             qr = generate_qr_token()
+            ticket_code = await assign_unique_ticket_code(self._session)
+            while ticket_code in used_codes:
+                ticket_code = await assign_unique_ticket_code(self._session)
+            used_codes.add(ticket_code)
             ticket = TicketModel(
+                id=ticket_id,
                 order_id=order.id,
                 ticket_type_id=ticket_type.id,
                 owner_id=buyer_id,
                 event_id=event.id,
                 holder_name=name,
                 qr_token=qr,
-                ticket_code=await assign_unique_ticket_code(self._session),
+                ticket_code=ticket_code,
                 security_hash="",
             )
-            self._session.add(ticket)
-            await self._session.flush()
             ticket.security_hash = generate_security_hash(
-                ticket.id, ticket.event_id, ticket.qr_token, settings.jwt_secret_key
+                ticket_id, ticket.event_id, ticket.qr_token, settings.jwt_secret_key
             )
+            self._session.add(ticket)
             created.append(ticket)
+        await self._session.flush()
         return created
 
     async def _restore_stock(self, order: OrderModel) -> None:
@@ -341,16 +348,12 @@ class TicketUseCase:
                 order, wompi_transaction_id=transaction_id
             )
             if not already_fulfilled:
-                buyer_result = await self._session.execute(
-                    select(UserModel).where(UserModel.id == order.buyer_id)
-                )
-                buyer = buyer_result.scalar_one_or_none()
-                if buyer:
-                    try:
-                        await self._send_pdf_emails(order, tickets, event, tt, buyer, None)
-                    except ValueError:
-                        await self._session.rollback()
-                        raise
+                return {
+                    "handled": True,
+                    "payment_status": "pagado",
+                    "order_id": str(order.id),
+                    "email_pending": True,
+                }
             return {"handled": True, "payment_status": "pagado", "order_id": str(order.id)}
 
         if status in ("DECLINED", "VOIDED", "ERROR"):
@@ -407,6 +410,36 @@ class TicketUseCase:
                 event_time=event.event_time.strftime("%H:%M"),
             )
 
+    async def send_order_confirmation_email(self, order_id: UUID) -> bool:
+        result = await self._session.execute(
+            select(OrderModel)
+            .where(OrderModel.id == order_id)
+            .options(selectinload(OrderModel.tickets))
+        )
+        order = result.scalar_one_or_none()
+        if not order or not order.tickets:
+            return False
+
+        event = await self._load_event(order.event_id)
+        tt = await self._load_ticket_type(order.tickets[0].ticket_type_id, order.event_id)
+
+        buyer_result = await self._session.execute(
+            select(UserModel).where(UserModel.id == order.buyer_id)
+        )
+        buyer = buyer_result.scalar_one_or_none()
+        if not buyer:
+            return False
+
+        seller = None
+        if order.seller_id:
+            seller_result = await self._session.execute(
+                select(UserModel).where(UserModel.id == order.seller_id)
+            )
+            seller = seller_result.scalar_one_or_none()
+
+        await self._send_pdf_emails(order, order.tickets, event, tt, buyer, seller)
+        return True
+
     async def purchase_for_user(
         self,
         user_id: UUID,
@@ -438,14 +471,9 @@ class TicketUseCase:
                 seat_ids=seat_ids,
             )
             buyer_model = await self._users.get_model_by_email(user_email)
-            if buyer_model:
-                try:
-                    await self._send_pdf_emails(order, tickets, event, tt, buyer_model, None)
-                except ValueError:
-                    await self._session.rollback()
-                    raise
             response = self._order_response(order, tickets, event, tt)
             response["payment_required"] = False
+            response["email_pending"] = bool(buyer_model)
             return response
 
         if wompi_configured():
@@ -474,14 +502,9 @@ class TicketUseCase:
             seat_ids=seat_ids,
         )
         buyer_model = await self._users.get_model_by_email(user_email)
-        if buyer_model:
-            try:
-                await self._send_pdf_emails(order, tickets, event, tt, buyer_model, None)
-            except ValueError:
-                await self._session.rollback()
-                raise
         response = self._order_response(order, tickets, event, tt)
         response["payment_required"] = False
+        response["email_pending"] = bool(buyer_model)
         return response
 
     async def sell_as_seller(
@@ -500,7 +523,6 @@ class TicketUseCase:
             raise ValueError("El comprador debe tener cuenta registrada con ese correo")
         event = await self._load_event(event_id)
         self._assert_tickets_on_sale(event)
-        seller = await self._users.get_model_by_email(seller_email)
         order, tickets, event, tt = await self.create_order(
             event_id=event_id,
             ticket_type_id=ticket_type_id,
@@ -511,15 +533,9 @@ class TicketUseCase:
             buyer_display_name=buyer.full_name,
             mark_paid=True,
         )
-        buyer_model = await self._users.get_model_by_email(buyer_email)
-        seller_model = await self._users.get_model_by_email(seller_email)
-        if buyer_model and seller_model:
-            try:
-                await self._send_pdf_emails(order, tickets, event, tt, buyer_model, seller_model)
-            except ValueError:
-                await self._session.rollback()
-                raise
-        return self._order_response(order, tickets, event, tt)
+        response = self._order_response(order, tickets, event, tt)
+        response["email_pending"] = True
+        return response
 
     def _order_response(
         self, order: OrderModel, tickets: list[TicketModel], event: EventModel, tt: TicketTypeModel
@@ -540,7 +556,7 @@ class TicketUseCase:
                 for t in tickets
             ],
             "pdf_url": f"/tickets/orders/{order.id}/pdf",
-            "message": "Boletas generadas. Revisa tu correo con el PDF adjunto.",
+            "message": "Boletas generadas. Ya puedes descargarlas; tambien enviaremos el PDF a tu correo.",
         }
 
     async def get_order_pdf_bytes(self, order_id: UUID, user_id: UUID, is_admin: bool, is_seller: bool) -> bytes:

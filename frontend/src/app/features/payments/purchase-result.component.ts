@@ -28,6 +28,7 @@ export class PurchaseResultComponent implements OnInit, OnDestroy {
   private readonly notify = inject(NotificationService);
   private pollTimer: ReturnType<typeof setInterval> | null = null;
   private confirmAttempted = false;
+  private notifiedReady = false;
 
   orderId = '';
   status: OrderStatus | null = null;
@@ -43,7 +44,7 @@ export class PurchaseResultComponent implements OnInit, OnDestroy {
       return;
     }
     this.refresh(wompiTxId);
-    this.pollTimer = setInterval(() => this.refresh(wompiTxId), 2000);
+    this.pollTimer = setInterval(() => this.refresh(wompiTxId), 1500);
   }
 
   ngOnDestroy(): void {
@@ -55,12 +56,7 @@ export class PurchaseResultComponent implements OnInit, OnDestroy {
       next: (data) => {
         this.status = data;
         this.loading = false;
-        if (data.tickets_ready) {
-          if (this.pollTimer) {
-            clearInterval(this.pollTimer);
-            this.pollTimer = null;
-          }
-          this.notify.success('Pago confirmado', 'Tus boletas ya están disponibles.');
+        if (this.finishIfReady(data)) {
           return;
         }
         if (data.payment_status === 'pendiente' && wompiTxId && !this.confirmAttempted) {
@@ -70,10 +66,8 @@ export class PurchaseResultComponent implements OnInit, OnDestroy {
             .subscribe({
               next: (confirmed) => {
                 this.status = confirmed;
-                if (confirmed.tickets_ready && this.pollTimer) {
-                  clearInterval(this.pollTimer);
-                  this.pollTimer = null;
-                }
+                this.loading = false;
+                this.finishIfReady(confirmed);
               },
             });
         }
@@ -84,8 +78,21 @@ export class PurchaseResultComponent implements OnInit, OnDestroy {
       },
       error: () => {
         this.loading = false;
-        this.error = 'No pudimos consultar el estado del pago.';
+        this.error = 'No pudimos consultar el estado del pago. Espera unos segundos y vuelve a intentar.';
       },
     });
+  }
+
+  private finishIfReady(data: OrderStatus): boolean {
+    if (!data.tickets_ready) return false;
+    if (this.pollTimer) {
+      clearInterval(this.pollTimer);
+      this.pollTimer = null;
+    }
+    if (!this.notifiedReady) {
+      this.notifiedReady = true;
+      this.notify.success('Pago confirmado', 'Tus boletas ya están listas. También enviaremos el PDF a tu correo.');
+    }
+    return true;
   }
 }

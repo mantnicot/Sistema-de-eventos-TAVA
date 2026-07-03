@@ -1,9 +1,10 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from tava.application.use_cases.ticket_emails import send_order_confirmation_email_background
 from tava.application.use_cases.tickets import TicketUseCase
 from tava.domain.enums import UserRole
 from tava.infrastructure.persistence.database import get_db
@@ -106,6 +107,7 @@ async def download_order_pdf(
 @router.post("/purchase")
 async def purchase(
     body: PurchaseRequest,
+    background_tasks: BackgroundTasks,
     user=Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -115,7 +117,7 @@ async def purchase(
         raise HTTPException(status_code=400, detail="Captcha inválido")
     uc = TicketUseCase(db)
     try:
-        return await uc.purchase_for_user(
+        result = await uc.purchase_for_user(
             user_id=user.id,
             user_name=user.full_name,
             user_email=user.email,
@@ -125,13 +127,22 @@ async def purchase(
             holder_names=body.holder_names,
             seat_ids=body.seat_ids,
         )
+        await db.commit()
+        if result.get("email_pending") and result.get("order_id"):
+            background_tasks.add_task(
+                send_order_confirmation_email_background,
+                UUID(str(result["order_id"])),
+            )
+        return result
     except ValueError as e:
+        await db.rollback()
         raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.post("/sell")
 async def sell_tickets(
     body: SellTicketRequest,
+    background_tasks: BackgroundTasks,
     user=Depends(require_roles(UserRole.SELLER, UserRole.ADMIN)),
     db: AsyncSession = Depends(get_db),
 ):
@@ -145,7 +156,7 @@ async def sell_tickets(
         raise HTTPException(status_code=403, detail="No autorizado para vender en este evento")
     uc = TicketUseCase(db)
     try:
-        return await uc.sell_as_seller(
+        result = await uc.sell_as_seller(
             seller_id=user.id,
             seller_email=user.email,
             seller_name=user.full_name,
@@ -155,5 +166,13 @@ async def sell_tickets(
             quantity=body.quantity,
             holder_names=body.holder_names,
         )
+        await db.commit()
+        if result.get("email_pending") and result.get("order_id"):
+            background_tasks.add_task(
+                send_order_confirmation_email_background,
+                UUID(str(result["order_id"])),
+            )
+        return result
     except ValueError as e:
+        await db.rollback()
         raise HTTPException(status_code=400, detail=str(e))

@@ -16,27 +16,28 @@ export interface NotifyState {
 @Injectable({ providedIn: 'root' })
 export class NotificationService {
   readonly state = signal<NotifyState | null>(null);
+  private autoHideTimer: ReturnType<typeof setTimeout> | null = null;
 
   success(title: string, message: string): void {
     this.show({ visible: true, type: 'success', title, message });
-    setTimeout(() => this.hide(), 3500);
+    this.scheduleHide(4200);
   }
 
   error(title: string, message: string): void {
     this.show({ visible: true, type: 'error', title, message });
-    setTimeout(() => this.hide(), 5000);
+    this.scheduleHide(6500);
   }
 
   /** Muestra popup según si el fallo es del usuario, del sistema o de red. */
   showHttpError(parsed: ParsedHttpError): void {
     const type = parsed.kind === 'user' ? 'warning' : 'error';
     this.show({ visible: true, type, title: parsed.title, message: parsed.message });
-    setTimeout(() => this.hide(), parsed.kind === 'user' ? 4500 : 6000);
+    this.scheduleHide(parsed.kind === 'user' ? 5200 : 7000);
   }
 
   warning(title: string, message: string): void {
     this.show({ visible: true, type: 'warning', title, message });
-    setTimeout(() => this.hide(), 4500);
+    this.scheduleHide(5500);
   }
 
   loading(title: string, message = 'Cargando...'): void {
@@ -58,10 +59,24 @@ export class NotificationService {
   }
 
   hide(): void {
+    this.clearAutoHide();
     this.state.set(null);
   }
 
   private show(s: NotifyState): void {
+    this.clearAutoHide();
     this.state.set(s);
+  }
+
+  private scheduleHide(ms: number): void {
+    this.clearAutoHide();
+    this.autoHideTimer = setTimeout(() => this.hide(), ms);
+  }
+
+  private clearAutoHide(): void {
+    if (this.autoHideTimer) {
+      clearTimeout(this.autoHideTimer);
+      this.autoHideTimer = null;
+    }
   }
 }
