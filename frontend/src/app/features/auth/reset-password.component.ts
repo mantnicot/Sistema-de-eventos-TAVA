@@ -24,6 +24,7 @@ export class ResetPasswordComponent implements OnInit {
   ok = false;
 
   ngOnInit(): void {
+    this.auth.preloadPublicKey();
     this.token = this.route.snapshot.queryParamMap.get('token') ?? '';
     if (!this.token) {
       this.notify.warning('Enlace inválido', 'Solicita un nuevo enlace desde ingresar.');

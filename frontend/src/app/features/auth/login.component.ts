@@ -1,4 +1,4 @@
-import { Component, inject, ViewChild } from '@angular/core';
+import { Component, inject, OnInit, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
@@ -13,7 +13,7 @@ import { TavaCaptchaComponent } from '../../shared/components/tava-captcha/tava-
   templateUrl: './login.component.html',
   styleUrl: './auth-form.scss',
 })
-export class LoginComponent {
+export class LoginComponent implements OnInit {
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
@@ -27,6 +27,10 @@ export class LoginComponent {
   submitting = false;
   needsVerification = false;
   resending = false;
+
+  ngOnInit(): void {
+    this.auth.preloadPublicKey();
+  }
 
   onCaptchaToken(token: string): void {
     this.captchaToken = token;

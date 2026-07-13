@@ -23,6 +23,8 @@ export class AuthService {
   private readonly api = inject(ApiService);
   private readonly router = inject(Router);
   private readonly httpBackend = inject(HttpBackend);
+  private publicKeyPem: string | null = null;
+  private publicKeyInflight: Promise<string> | null = null;
 
   private readonly _user = signal<TavaUser | null>(this.loadUser());
   readonly user = this._user.asReadonly();
@@ -31,9 +33,13 @@ export class AuthService {
   readonly isValidator = computed(() => ['validator', 'admin'].includes(this._user()?.role ?? ''));
   readonly isSeller = computed(() => ['seller', 'admin'].includes(this._user()?.role ?? ''));
 
+  preloadPublicKey(): void {
+    void this.getPublicKeyPem().catch(() => undefined);
+  }
+
   login(email: string, password: string, captchaToken?: string) {
-    return this.api.get<{ public_key_pem: string }>('/auth/public-key').pipe(
-      switchMap(({ public_key_pem }) =>
+    return from(this.getPublicKeyPem()).pipe(
+      switchMap((public_key_pem) =>
         from(encryptPasswordForTransport(public_key_pem, password)).pipe(
           switchMap((password_encrypted) =>
             this.api.post<AuthResponse>('/auth/login', {
@@ -57,8 +63,8 @@ export class AuthService {
     accept_marketing?: boolean;
     captcha_token?: string;
   }) {
-    return this.api.get<{ public_key_pem: string }>('/auth/public-key').pipe(
-      switchMap(({ public_key_pem }) =>
+    return from(this.getPublicKeyPem()).pipe(
+      switchMap((public_key_pem) =>
         from(encryptPasswordForTransport(public_key_pem, data.password)).pipe(
           switchMap((password_encrypted) =>
             this.api.post<{
@@ -100,8 +106,8 @@ export class AuthService {
   }
 
   resetPassword(token: string, password: string) {
-    return this.api.get<{ public_key_pem: string }>('/auth/public-key').pipe(
-      switchMap(({ public_key_pem }) =>
+    return from(this.getPublicKeyPem()).pipe(
+      switchMap((public_key_pem) =>
         from(encryptPasswordForTransport(public_key_pem, password)).pipe(
           switchMap((password_encrypted) =>
             this.api.post<{ message: string; success: boolean }>('/auth/reset-password', {
@@ -150,6 +156,20 @@ export class AuthService {
     localStorage.setItem('tava_refresh', res.tokens.refresh_token);
     localStorage.setItem('tava_user', JSON.stringify(res.user));
     this._user.set(res.user);
+  }
+
+  private getPublicKeyPem(): Promise<string> {
+    if (this.publicKeyPem) return Promise.resolve(this.publicKeyPem);
+    if (this.publicKeyInflight) return this.publicKeyInflight;
+    this.publicKeyInflight = firstValueFrom(this.api.get<{ public_key_pem: string }>('/auth/public-key'))
+      .then(({ public_key_pem }) => {
+        this.publicKeyPem = public_key_pem;
+        return public_key_pem;
+      })
+      .finally(() => {
+        this.publicKeyInflight = null;
+      });
+    return this.publicKeyInflight;
   }
 
   private loadUser(): TavaUser | null {

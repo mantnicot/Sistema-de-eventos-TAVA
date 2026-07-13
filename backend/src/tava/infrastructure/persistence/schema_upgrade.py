@@ -74,6 +74,12 @@ async def apply_schema_upgrades(conn: AsyncConnection) -> None:
             CONSTRAINT uq_event_seat_pos UNIQUE (event_id, block_id, row_label, col_label)
         )
         """,
+        "CREATE INDEX IF NOT EXISTS ix_events_status_date ON events(status, event_date)",
+        "CREATE INDEX IF NOT EXISTS ix_ticket_types_event_id ON ticket_types(event_id)",
+        "CREATE INDEX IF NOT EXISTS ix_tickets_owner_id ON tickets(owner_id)",
+        "CREATE INDEX IF NOT EXISTS ix_tickets_event_used ON tickets(event_id, is_used)",
+        "CREATE INDEX IF NOT EXISTS ix_orders_buyer_id ON orders(buyer_id)",
+        "CREATE INDEX IF NOT EXISTS ix_event_staff_user_role ON event_staff_assignments(user_id, staff_role)",
     ]
     for sql in statements:
         await conn.execute(text(sql.strip()))

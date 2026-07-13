@@ -1,4 +1,6 @@
 """Configuración pública del sitio (video de fondo, etc.)."""
+from time import monotonic
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -10,9 +12,18 @@ KEY_HERO_VIDEO_ENABLED = "hero_video_enabled"
 DEFAULT_HERO_VIDEO = (
     "https://videos.pexels.com/video-files/2795406/2795406-hd_1920_1080_25fps.mp4"
 )
+_APPEARANCE_CACHE_TTL_SECONDS = 60
+_appearance_cache: dict | None = None
+_appearance_cache_at = 0.0
 
 
 async def get_public_appearance(session: AsyncSession) -> dict:
+    global _appearance_cache, _appearance_cache_at
+
+    now = monotonic()
+    if _appearance_cache and now - _appearance_cache_at < _APPEARANCE_CACHE_TTL_SECONDS:
+        return dict(_appearance_cache)
+
     result = await session.execute(
         select(SiteSettingModel).where(
             SiteSettingModel.key.in_([KEY_HERO_VIDEO_URL, KEY_HERO_VIDEO_ENABLED])
@@ -20,13 +31,20 @@ async def get_public_appearance(session: AsyncSession) -> dict:
     )
     rows = {r.key: r.value for r in result.scalars().all()}
     enabled = rows.get(KEY_HERO_VIDEO_ENABLED, "true").lower() in ("1", "true", "yes")
-    return {
+    data = {
         "hero_video_url": rows.get(KEY_HERO_VIDEO_URL) or DEFAULT_HERO_VIDEO,
         "hero_video_enabled": enabled,
     }
+    _appearance_cache = data
+    _appearance_cache_at = now
+    return dict(data)
 
 
 async def set_setting(session: AsyncSession, key: str, value: str) -> None:
+    global _appearance_cache, _appearance_cache_at
+
+    _appearance_cache = None
+    _appearance_cache_at = 0.0
     result = await session.execute(select(SiteSettingModel).where(SiteSettingModel.key == key))
     row = result.scalar_one_or_none()
     if row:

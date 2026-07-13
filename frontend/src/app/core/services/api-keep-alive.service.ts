@@ -19,7 +19,7 @@ export class ApiKeepAliveService {
 
   private wakeUrl(): string {
     const base = environment.apiUrl.replace(/\/$/, '');
-    return `${base}/settings/appearance`;
+    return `${base}/ping`;
   }
 
   start(): void {

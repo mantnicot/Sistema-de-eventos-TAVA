@@ -36,7 +36,8 @@ export class ShellComponent implements OnInit, OnDestroy {
   menuOpen = false;
 
   ngOnInit(): void {
-    void this.warmup.wake().finally(() => this.site.loadAppearance());
+    void this.warmup.wake();
+    this.site.loadAppearance();
     this.keepAlive.start();
     this.idle.start();
     this.navSub = this.router.events

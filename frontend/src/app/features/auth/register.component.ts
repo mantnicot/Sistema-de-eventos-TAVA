@@ -1,4 +1,4 @@
-import { Component, inject, ViewChild } from '@angular/core';
+import { Component, inject, OnInit, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { TAVA_PRIVACY_CLAUSES, TAVA_PRIVACY_SUMMARY } from '../../core/constants/privacy-policy.const';
@@ -15,7 +15,7 @@ import { TavaCaptchaComponent } from '../../shared/components/tava-captcha/tava-
   templateUrl: './register.component.html',
   styleUrl: './auth-form.scss',
 })
-export class RegisterComponent {
+export class RegisterComponent implements OnInit {
   @ViewChild(TavaCaptchaComponent) captcha?: TavaCaptchaComponent;
   private readonly auth = inject(AuthService);
   private readonly notify = inject(NotificationService);
@@ -40,6 +40,10 @@ export class RegisterComponent {
   pendingVerify = false;
   theatricalLine = '';
   captchaToken = '';
+
+  ngOnInit(): void {
+    this.auth.preloadPublicKey();
+  }
 
   onCaptchaToken(token: string): void {
     this.captchaToken = token;

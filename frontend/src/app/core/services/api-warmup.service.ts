@@ -9,13 +9,9 @@ export class ApiWarmupService {
   private readonly http = inject(HttpClient);
   private inflight: Promise<boolean> | null = null;
 
-  /**
-   * Usa un endpoint real de la API (no /health: bloqueado por adblock;
-   * no /ping: requiere despliegue backend reciente).
-   */
   private wakeUrl(): string {
     const base = environment.apiUrl.replace(/\/$/, '');
-    return `${base}/settings/appearance`;
+    return `${base}/ping`;
   }
 
   wake(): Promise<boolean> {
@@ -27,7 +23,7 @@ export class ApiWarmupService {
   }
 
   private async runWarmup(): Promise<boolean> {
-    const delays = [0, 4000, 10000];
+    const delays = [0, 2500, 6000];
     for (const waitMs of delays) {
       if (waitMs > 0) {
         await new Promise((resolve) => setTimeout(resolve, waitMs));
@@ -39,7 +35,7 @@ export class ApiWarmupService {
 
   private async pingOnce(): Promise<boolean> {
     try {
-      await firstValueFrom(this.http.get(this.wakeUrl()).pipe(timeout(50000)));
+      await firstValueFrom(this.http.get(this.wakeUrl()).pipe(timeout(55000)));
       return true;
     } catch {
       return false;

@@ -67,26 +67,25 @@ export class EventsListComponent implements OnInit {
     }
     this.loadError.set(null);
 
-    void this.warmup.wake().finally(() => {
-      this.api.get<TavaEvent[]>('/events', params).subscribe({
-        next: (e) => {
-          this.loading.set(false);
-          writeEventsCache(this.search, this.category, e);
-          this.applyEvents(e);
-        },
-        error: () => {
-          this.loading.set(false);
-          if (!cached?.length) {
-            this.events.set([]);
-            this.liveEvents.set([]);
-            this.upcomingEvents.set([]);
-            this.finishedEvents.set([]);
-          }
-          this.loadError.set(
-            'No pudimos cargar los eventos. El servidor puede estar despertando — espera unos segundos e intenta de nuevo.'
-          );
-        },
-      });
+    void this.warmup.wake();
+    this.api.get<TavaEvent[]>('/events', params).subscribe({
+      next: (e) => {
+        this.loading.set(false);
+        writeEventsCache(this.search, this.category, e);
+        this.applyEvents(e);
+      },
+      error: () => {
+        this.loading.set(false);
+        if (!cached?.length) {
+          this.events.set([]);
+          this.liveEvents.set([]);
+          this.upcomingEvents.set([]);
+          this.finishedEvents.set([]);
+        }
+        this.loadError.set(
+          'No pudimos cargar los eventos. El servidor puede estar despertando — espera unos segundos e intenta de nuevo.'
+        );
+      },
     });
   }
 
