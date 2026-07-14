@@ -1,11 +1,12 @@
 from decimal import Decimal
+import secrets
+import string
 from uuid import UUID, uuid4
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from tava.application.use_cases.loyalty import LoyaltyUseCase
 from tava.application.use_cases.seating import SeatingUseCase, seating_enabled
 from tava.config import get_settings
 from tava.domain.enums import PaymentProvider, PaymentStatus
@@ -23,6 +24,11 @@ from tava.infrastructure.services.wompi import (
 )
 
 settings = get_settings()
+CLAIM_CODE_ALPHABET = string.ascii_uppercase + string.digits
+
+
+def _normalize_claim_code(code: str) -> str:
+    return code.strip().upper().replace(" ", "").replace("-", "")
 
 
 class TicketUseCase:
@@ -45,6 +51,31 @@ class TicketUseCase:
         if not tt or tt.event_id != event_id:
             raise ValueError("Tipo de boleta no encontrado")
         return tt
+
+    async def _assign_unique_claim_code(self) -> str:
+        for _ in range(30):
+            raw = "".join(secrets.choice(CLAIM_CODE_ALPHABET) for _ in range(10))
+            code = f"TAVA{raw}"
+            exists = await self._session.execute(
+                select(OrderModel.id).where(OrderModel.claim_code == code)
+            )
+            if not exists.scalar_one_or_none():
+                return code
+        raise ValueError("No se pudo generar un cÃ³digo de reclamo Ãºnico")
+
+    async def backfill_missing_claim_codes(self) -> int:
+        result = await self._session.execute(
+            select(OrderModel).where(
+                OrderModel.payment_status == PaymentStatus.PAID,
+                OrderModel.claim_code.is_(None),
+            )
+        )
+        orders = result.scalars().all()
+        for order in orders:
+            order.claim_code = await self._assign_unique_claim_code()
+        if orders:
+            await self._session.flush()
+        return len(orders)
 
     def _assert_tickets_on_sale(self, event: EventModel) -> None:
         details = event.theatrical_details if isinstance(event.theatrical_details, dict) else None
@@ -105,6 +136,7 @@ class TicketUseCase:
             payment_status=PaymentStatus.PAID if mark_paid else PaymentStatus.PENDING,
             payment_provider=provider,
             payment_reference=payment_reference,
+            claim_code=await self._assign_unique_claim_code(),
             pending_payload=(
                 None
                 if issue_tickets
@@ -135,8 +167,6 @@ class TicketUseCase:
                 await SeatingUseCase(self._session).assign_seats_to_tickets(
                     event.id, seat_ids, created, ticket_type.id
                 )
-            lamina = event.main_image_url or f"/uploads/laminas/{event_id}.png"
-            await LoyaltyUseCase(self._session).grant_collectible(buyer_id, event_id, lamina)
 
         await self._session.flush()
         return order, created, event, ticket_type
@@ -202,6 +232,9 @@ class TicketUseCase:
             )
             order = result.scalar_one()
             if order.tickets:
+                if not order.claim_code:
+                    order.claim_code = await self._assign_unique_claim_code()
+                    await self._session.flush()
                 event = await self._load_event(order.event_id)
                 tt = await self._load_ticket_type(order.tickets[0].ticket_type_id, order.event_id)
                 return order.tickets, event, tt
@@ -220,6 +253,8 @@ class TicketUseCase:
 
         order.payment_status = PaymentStatus.PAID
         order.payment_provider = PaymentProvider.WOMPI
+        if not order.claim_code:
+            order.claim_code = await self._assign_unique_claim_code()
         if wompi_transaction_id:
             order.wompi_transaction_id = wompi_transaction_id
         order.pending_payload = None
@@ -235,8 +270,6 @@ class TicketUseCase:
             await SeatingUseCase(self._session).assign_seats_to_tickets(
                 event.id, seat_ids, tickets, ticket_type.id
             )
-        lamina = event.main_image_url or f"/uploads/laminas/{event.id}.png"
-        await LoyaltyUseCase(self._session).grant_collectible(order.buyer_id, event.id, lamina)
         await self._session.flush()
         return tickets, event, ticket_type
 
@@ -328,6 +361,7 @@ class TicketUseCase:
             "ticket_type": ticket_type_name,
             "tickets_ready": order.payment_status == PaymentStatus.PAID and bool(order.tickets),
             "pdf_url": f"/tickets/orders/{order.id}/pdf" if order.tickets else None,
+            "claim_code": order.claim_code if order.payment_status == PaymentStatus.PAID else None,
         }
 
     async def handle_wompi_transaction_update(
@@ -395,6 +429,7 @@ class TicketUseCase:
             is_seller_copy=False,
             event_date=event.event_date.isoformat(),
             event_time=event.event_time.strftime("%H:%M"),
+            claim_code=order.claim_code,
         )
         if not ok_buyer:
             raise ValueError(last_email_failure() or "No se pudo enviar el correo al comprador")
@@ -408,7 +443,47 @@ class TicketUseCase:
                 is_seller_copy=True,
                 event_date=event.event_date.isoformat(),
                 event_time=event.event_time.strftime("%H:%M"),
+                claim_code=order.claim_code,
             )
+
+    async def _send_pdf_to_external_buyer(
+        self,
+        *,
+        order: OrderModel,
+        tickets: list[TicketModel],
+        event: EventModel,
+        ticket_type: TicketTypeModel,
+        buyer_email: str,
+        buyer_name: str,
+    ) -> None:
+        age = None
+        if event.theatrical_details and isinstance(event.theatrical_details, dict):
+            age = event.theatrical_details.get("age_rating")
+        pdf = build_tickets_pdf(
+            event_name=event.name,
+            event_date=event.event_date,
+            event_time=event.event_time,
+            city=event.city,
+            address=event.address,
+            age_rating=age,
+            main_image_url=event.main_image_url,
+            ticket_type_name=ticket_type.name,
+            price=ticket_type.price,
+            tickets=[(t.qr_token, t.holder_name or buyer_name, t.ticket_code or "") for t in tickets],
+        )
+        ok = await send_tickets_confirmation_email(
+            buyer_email,
+            buyer_name,
+            event.name,
+            len(tickets),
+            pdf,
+            is_seller_copy=False,
+            event_date=event.event_date.isoformat(),
+            event_time=event.event_time.strftime("%H:%M"),
+            claim_code=order.claim_code,
+        )
+        if not ok:
+            raise ValueError(last_email_failure() or "No se pudo enviar el correo al comprador")
 
     async def send_order_confirmation_email(self, order_id: UUID) -> bool:
         result = await self._session.execute(
@@ -439,6 +514,83 @@ class TicketUseCase:
 
         await self._send_pdf_emails(order, order.tickets, event, tt, buyer, seller)
         return True
+
+    async def claim_order_by_code(self, user_id: UUID, code: str) -> dict:
+        normalized = _normalize_claim_code(code)
+        result = await self._session.execute(
+            select(OrderModel)
+            .where(OrderModel.claim_code == normalized)
+            .options(selectinload(OrderModel.tickets))
+        )
+        order = result.scalar_one_or_none()
+        if not order:
+            raise ValueError("CÃ³digo no encontrado")
+        if order.payment_status != PaymentStatus.PAID:
+            raise ValueError("La orden todavÃ­a no estÃ¡ pagada")
+        if not order.tickets:
+            raise ValueError("La orden no tiene boletas disponibles")
+
+        order.buyer_id = user_id
+        for ticket in order.tickets:
+            ticket.owner_id = user_id
+        await self._session.flush()
+        return {
+            "message": "Boletas reclamadas. Ya puedes verlas en tu perfil.",
+            "order_id": str(order.id),
+            "pdf_url": f"/tickets/orders/{order.id}/pdf",
+            "tickets_count": len(order.tickets),
+        }
+
+    async def issue_claim_order_as_admin(
+        self,
+        *,
+        admin_id: UUID,
+        buyer_name: str,
+        buyer_email: str,
+        event_id: UUID,
+        ticket_type_id: UUID,
+        quantity: int,
+        holder_names: list[str] | None,
+    ) -> dict:
+        event = await self._load_event(event_id)
+        if seating_enabled(event):
+            raise ValueError("Este evento tiene silleterÃ­a numerada; emite estas boletas desde el flujo con sillas.")
+        self._assert_tickets_on_sale(event)
+
+        order, tickets, event, tt = await self.create_order(
+            event_id=event_id,
+            ticket_type_id=ticket_type_id,
+            quantity=quantity,
+            buyer_id=admin_id,
+            seller_id=admin_id,
+            holder_names=holder_names,
+            buyer_display_name=buyer_name,
+            mark_paid=True,
+            issue_tickets=True,
+            payment_provider=PaymentProvider.MANUAL,
+        )
+        await self._send_pdf_to_external_buyer(
+            order=order,
+            tickets=tickets,
+            event=event,
+            ticket_type=tt,
+            buyer_email=buyer_email,
+            buyer_name=buyer_name,
+        )
+        return {
+            "message": "Boletas generadas y correo enviado al comprador.",
+            "order_id": str(order.id),
+            "claim_code": order.claim_code,
+            "pdf_url": f"/tickets/orders/{order.id}/pdf",
+            "event_name": event.name,
+            "event_date": event.event_date.isoformat(),
+            "event_time": event.event_time.isoformat(),
+            "ticket_type": tt.name,
+            "quantity": len(tickets),
+            "total": float(order.total_amount),
+            "buyer_name": buyer_name,
+            "buyer_email": buyer_email,
+        }
 
     async def purchase_for_user(
         self,
@@ -556,6 +708,7 @@ class TicketUseCase:
                 for t in tickets
             ],
             "pdf_url": f"/tickets/orders/{order.id}/pdf",
+            "claim_code": order.claim_code,
             "message": "Boletas generadas. Ya puedes descargarlas; tambien enviaremos el PDF a tu correo.",
         }
 
@@ -676,6 +829,7 @@ class TicketUseCase:
                     "quantity": len(tickets),
                     "created_at": order.created_at.isoformat() if order.created_at else None,
                     "pdf_url": f"/tickets/orders/{order.id}/pdf",
+                    "claim_code": order.claim_code,
                     "holders": [t.holder_name for t in tickets],
                 }
             )

@@ -270,6 +270,19 @@ class CancelTicketRequest(BaseModel):
     notify_holder: bool = True
 
 
+class ClaimTicketsRequest(BaseModel):
+    code: str = Field(min_length=6, max_length=32)
+
+
+class AdminIssueTicketsRequest(BaseModel):
+    event_id: UUID
+    ticket_type_id: UUID
+    quantity: int = Field(ge=1, le=20)
+    buyer_name: str = Field(min_length=2, max_length=200)
+    buyer_email: EmailStr
+    holder_names: list[str] | None = None
+
+
 class AttendeesListResponse(BaseModel):
     event_id: UUID
     event_name: str

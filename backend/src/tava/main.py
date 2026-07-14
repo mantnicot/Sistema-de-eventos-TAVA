@@ -17,7 +17,6 @@ from tava.presentation.api.routers import (
     auth,
     dashboard,
     events,
-    loyalty,
     marketing,
     media,
     settings as site_settings_router,
@@ -108,7 +107,6 @@ app.include_router(venues.router, prefix="/api/v1")
 app.include_router(tickets.router, prefix="/api/v1")
 app.include_router(payments.router, prefix="/api/v1")
 app.include_router(validation.router, prefix="/api/v1")
-app.include_router(loyalty.router, prefix="/api/v1")
 app.include_router(dashboard.router, prefix="/api/v1")
 app.include_router(marketing.router, prefix="/api/v1")
 app.include_router(site_settings_router.router, prefix="/api/v1")

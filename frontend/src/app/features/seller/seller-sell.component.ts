@@ -105,7 +105,7 @@ export class SellerSellComponent implements OnInit {
         this.selling = true;
         this.notify.loadingTheatrical('Taquilla', 'purchase');
         this.api
-          .post<{ message?: string }>('/tickets/sell', {
+          .post<{ message?: string; claim_code?: string | null }>('/tickets/sell', {
             event_id: ev.id,
             ticket_type_id: this.selectedTypeId,
             quantity: this.quantity,
@@ -120,7 +120,9 @@ export class SellerSellComponent implements OnInit {
               this.notify.hide();
               this.notify.success(
                 'Venta registrada',
-                res.message ?? 'Las boletas quedaron listas y enviaremos el PDF al correo del comprador.'
+                res.claim_code
+                  ? `Código de reclamo: ${res.claim_code}. Las boletas quedaron listas y enviaremos el PDF al correo.`
+                  : res.message ?? 'Las boletas quedaron listas y enviaremos el PDF al correo del comprador.'
               );
               this.buyerEmail = '';
               this.holderNames = [''];

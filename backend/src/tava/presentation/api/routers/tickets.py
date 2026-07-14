@@ -12,7 +12,14 @@ from tava.infrastructure.persistence.event_staff import can_access_event
 from tava.infrastructure.persistence.models import TicketTypeModel
 from tava.infrastructure.services.captcha import verify_captcha
 from tava.presentation.api.dependencies import get_current_user, require_roles
-from tava.presentation.api.schemas import PurchaseRequest, SellTicketRequest, TicketTypeCreateRequest, CancelTicketRequest
+from tava.presentation.api.schemas import (
+    AdminIssueTicketsRequest,
+    ClaimTicketsRequest,
+    PurchaseRequest,
+    SellTicketRequest,
+    TicketTypeCreateRequest,
+    CancelTicketRequest,
+)
 
 router = APIRouter(prefix="/tickets", tags=["Boletería"])
 
@@ -34,6 +41,46 @@ async def create_ticket_type(
 async def my_tickets(user=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     uc = TicketUseCase(db)
     return await uc.list_my_tickets(user.id)
+
+
+@router.post("/claim-code")
+async def claim_tickets(
+    body: ClaimTicketsRequest,
+    user=Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    uc = TicketUseCase(db)
+    try:
+        result = await uc.claim_order_by_code(user.id, body.code)
+        await db.commit()
+        return result
+    except ValueError as e:
+        await db.rollback()
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/admin/issue-claim")
+async def admin_issue_claim_tickets(
+    body: AdminIssueTicketsRequest,
+    user=Depends(require_roles(UserRole.ADMIN)),
+    db: AsyncSession = Depends(get_db),
+):
+    uc = TicketUseCase(db)
+    try:
+        result = await uc.issue_claim_order_as_admin(
+            admin_id=user.id,
+            buyer_name=body.buyer_name,
+            buyer_email=str(body.buyer_email),
+            event_id=body.event_id,
+            ticket_type_id=body.ticket_type_id,
+            quantity=body.quantity,
+            holder_names=body.holder_names,
+        )
+        await db.commit()
+        return result
+    except ValueError as e:
+        await db.rollback()
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.get("/seller/mine")

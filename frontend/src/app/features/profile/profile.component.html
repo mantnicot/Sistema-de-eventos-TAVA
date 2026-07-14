@@ -5,6 +5,87 @@
       <p>{{ u.email }} · Rol: {{ u.role }}</p>
     </header>
 
+    @if (auth.isAdmin()) {
+      <section class="section admin-issue tava-card">
+        <div>
+          <h2>Emitir boletas para usuario</h2>
+          <p class="section__hint">
+            Registra una compra ya pagada, genera las boletas y envía al comprador el PDF con su código único de reclamo.
+          </p>
+        </div>
+
+        <form class="admin-issue__form" (ngSubmit)="issueAdminTickets()">
+          <label>
+            Evento
+            <select name="adminEvent" [(ngModel)]="adminEventId" (ngModelChange)="onAdminEventChange()" required>
+              <option value="">Selecciona un evento</option>
+              @for (event of adminEvents(); track event.id) {
+                <option [value]="event.id">{{ event.name }} - {{ event.event_date }}</option>
+              }
+            </select>
+          </label>
+
+          @if (adminEventDetail(); as event) {
+            <label>
+              Tipo de boleta
+              <select name="adminTicketType" [(ngModel)]="adminTicketTypeId" required>
+                @for (ticketType of event.ticket_types; track ticketType.id) {
+                  <option [value]="ticketType.id">
+                    {{ ticketType.name }} - ${{ ticketType.price | number:'1.0-0' }} ({{ ticketType.quantity_available }} disp.)
+                  </option>
+                }
+              </select>
+            </label>
+
+            <label>
+              Cantidad
+              <input type="number" name="adminQuantity" min="1" max="20" [(ngModel)]="adminQuantity" required />
+            </label>
+
+            <label>
+              Nombre de la persona
+              <input type="text" name="adminBuyerName" [(ngModel)]="adminBuyerName" placeholder="Nombre completo" required />
+            </label>
+
+            <label>
+              Correo
+              <input type="email" name="adminBuyerEmail" [(ngModel)]="adminBuyerEmail" placeholder="correo@ejemplo.com" required />
+            </label>
+
+            <div class="admin-issue__summary">
+              <span>Fecha: {{ event.event_date | date:'mediumDate' }} · {{ formatTime(event.event_time) }}</span>
+              <span>Valor: ${{ adminTotal() | number:'1.0-0' }} COP</span>
+            </div>
+
+            <button type="submit" class="tava-btn-primary" [disabled]="adminIssuing">
+              {{ adminIssuing ? 'Generando...' : 'Generar y enviar boletas' }}
+            </button>
+          }
+        </form>
+      </section>
+    }
+
+    <section id="reclamar" class="section claim claim--notice tava-card">
+      <div>
+        <h2>Reclamar boletas con código</h2>
+        <p class="section__hint">
+          Si ya pagaste por fuera del sistema, escribe el código que te entregó TAVA para asociar tus boletas a esta cuenta.
+        </p>
+      </div>
+      <form class="claim__form" (ngSubmit)="claimTickets()">
+        <input
+          type="text"
+          name="claimCode"
+          [(ngModel)]="claimCode"
+          placeholder="Ej: TAVA7K2M9P4Q"
+          autocomplete="off"
+        />
+        <button type="submit" class="tava-btn-primary" [disabled]="claiming">
+          {{ claiming ? 'Reclamando...' : 'Reclamar' }}
+        </button>
+      </form>
+    </section>
+
     <section class="section">
       <h2>Mis boletas</h2>
       <p class="section__hint">Agrupadas por evento. Descarga cada boleta en PDF individual.</p>
@@ -62,6 +143,9 @@
             <article class="sale-row tava-card">
               <div>
                 <strong>{{ s.event_name }}</strong>
+                @if (s.claim_code) {
+                  <p class="sale-row__code">Código de reclamo: {{ s.claim_code }}</p>
+                }
                 <p class="muted">{{ s.quantity }} boleta(s) · ${{ s.total | number:'1.0-0' }}</p>
               </div>
               <button type="button" class="tava-btn-primary" (click)="downloadPdf(s.pdf_url, 'venta-' + s.event_name)">

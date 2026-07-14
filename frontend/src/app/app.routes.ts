@@ -62,11 +62,6 @@ export const routes: Routes = [
           import('./features/admin/admin-dashboard.component').then((m) => m.AdminDashboardComponent),
       },
       {
-        path: 'coleccion',
-        canActivate: [authGuard],
-        loadComponent: () => import('./features/loyalty/collectibles.component').then((m) => m.CollectiblesComponent),
-      },
-      {
         path: 'vender',
         canActivate: [authGuard, roleGuard(['seller', 'admin'])],
         loadComponent: () => import('./features/seller/seller-sell.component').then((m) => m.SellerSellComponent),

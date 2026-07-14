@@ -2,6 +2,7 @@ import { Component, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { ApiService } from '../../core/services/api.service';
+import { AuthService } from '../../core/services/auth.service';
 import { onEventImageError } from '../../core/utils/event-image.util';
 import { resolveMediaUrl } from '../../core/utils/media-url.util';
 
@@ -23,6 +24,7 @@ interface FeaturedEvent {
 export class HomeComponent implements OnInit {
   private readonly api = inject(ApiService);
   private readonly router = inject(Router);
+  readonly auth = inject(AuthService);
   readonly featured = signal<FeaturedEvent[]>([]);
   searchQuery = '';
 

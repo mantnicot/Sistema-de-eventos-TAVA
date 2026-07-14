@@ -451,9 +451,21 @@ def _tickets_email_html(
     is_seller_copy: bool = False,
     event_date: str = "",
     event_time: str = "",
+    claim_code: str | None = None,
 ) -> str:
     role = "confirmación de venta" if is_seller_copy else "confirmación de compra"
     when = f"{event_date} · {event_time}" if event_date else "Consulta tu boleta adjunta"
+    claim_html = (
+        f"""
+            <div style="background:#fff8df;border:1px dashed #c9a227;border-radius:10px;padding:14px 18px;margin:0 0 20px;text-align:center;">
+              <p style="margin:0 0 6px;font-size:13px;color:#6b5344;">Código para reclamar boletas en tu cuenta</p>
+              <p style="margin:0;font-family:monospace;font-size:20px;font-weight:700;color:#6b1a2a;letter-spacing:0.08em;">{claim_code}</p>
+              <p style="margin:8px 0 0;font-size:12px;color:#6b5344;">Entra o regístrate en TAVA, abre Mi perfil y pega este código en el recuadro de reclamo.</p>
+            </div>
+        """
+        if claim_code
+        else ""
+    )
     return f"""
 <!DOCTYPE html>
 <html lang="es">
@@ -475,6 +487,7 @@ def _tickets_email_html(
               <p style="margin:0 0 8px;font-size:22px;font-weight:700;color:#8b6914;">{event_name}</p>
               <p style="margin:0;font-size:14px;color:#6b5344;">📅 {when}</p>
             </div>
+            {claim_html}
             <p style="margin:0 0 12px;font-size:14px;">El PDF adjunto incluye el <strong>código QR</strong> para validar tu ingreso.</p>
             <p style="margin:0;font-size:13px;color:#6b5344;font-style:italic;">Llega con 30 minutos de anticipación. ¡Nos vemos en el teatro!</p>
           </td>
@@ -503,6 +516,7 @@ async def send_tickets_confirmation_email(
     is_seller_copy: bool = False,
     event_date: str = "",
     event_time: str = "",
+    claim_code: str | None = None,
 ) -> bool:
     role = "confirmación de venta" if is_seller_copy else "confirmación de compra"
     subject = f"🎭 Boletas {event_name} — TAVA Teatro"
@@ -513,8 +527,15 @@ async def send_tickets_confirmation_email(
         is_seller_copy=is_seller_copy,
         event_date=event_date,
         event_time=event_time,
+        claim_code=claim_code,
     )
-    text = f"Hola {full_name},\n\nAdjuntamos tu {role} de {quantity} boleta(s) para {event_name}.\n"
+    claim_line = (
+        f"\nCódigo para reclamar boletas en tu cuenta: {claim_code}\n"
+        "Entra o regístrate en TAVA, abre Mi perfil y pega este código en el recuadro de reclamo.\n"
+        if claim_code
+        else ""
+    )
+    text = f"Hola {full_name},\n\nAdjuntamos tu {role} de {quantity} boleta(s) para {event_name}.{claim_line}\n"
     filename = f"boletas-{event_name.replace(' ', '-')[:40]}.pdf"
     return await _deliver_email(to_email, subject, html, text, (filename, pdf_bytes))
 

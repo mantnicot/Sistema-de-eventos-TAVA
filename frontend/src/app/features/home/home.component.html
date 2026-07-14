@@ -11,7 +11,9 @@
     </form>
     <div class="hero__actions">
       <a routerLink="/eventos" class="tava-btn-primary">Ver cartelera completa</a>
-      <a routerLink="/registro" class="hero__secondary">Crear cuenta gratis</a>
+      @if (!auth.isLoggedIn()) {
+        <a routerLink="/registro" class="hero__secondary">Crear cuenta gratis</a>
+      }
     </div>
   </div>
 </section>
@@ -43,7 +45,7 @@
 <section class="trust-strip">
   <div class="trust-strip__item tava-card">🎭 Obras en vivo</div>
   <div class="trust-strip__item tava-card">🎫 Boletas digitales</div>
-  <div class="trust-strip__item tava-card">✨ Colección TAVA</div>
+  <div class="trust-strip__item tava-card">Códigos de reclamo</div>
 </section>
 
 <section class="promo tava-card">
