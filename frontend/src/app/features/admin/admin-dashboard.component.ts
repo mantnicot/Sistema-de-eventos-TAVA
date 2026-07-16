@@ -15,7 +15,6 @@ import {
   VIDEO_TRAILER_SPEC,
 } from '../../core/constants/media-upload-specs.const';
 import { TavaFileUploadComponent } from '../../shared/components/tava-file-upload/tava-file-upload.component';
-import { TavaSeatMapComponent } from '../../shared/components/tava-seat-map/tava-seat-map.component';
 import { TavaEvent, TavaEventDetail, TheatricalDetails, CastMember } from '../../core/models/event.model';
 import { TicketKind, TicketTypeDraft } from '../../core/models/ticket-type.model';
 import { resolveMediaUrl } from '../../core/utils/media-url.util';
@@ -82,7 +81,7 @@ interface EventUpdateResponse extends TavaEvent {
 @Component({
   selector: 'app-admin-dashboard',
   standalone: true,
-  imports: [DecimalPipe, FormsModule, TavaFileUploadComponent, TavaSeatMapComponent],
+  imports: [DecimalPipe, FormsModule, TavaFileUploadComponent],
   templateUrl: './admin-dashboard.component.html',
   styleUrl: './admin-dashboard.component.scss',
 })
@@ -764,7 +763,12 @@ export class AdminDashboardComponent implements OnInit {
         whatsapp_message: this.theatrical.whatsapp_message?.trim() || null,
         cast: members.map((m) => m.name),
         cast_members: members,
-        seating: this.seatingDraft,
+        seating: {
+          enabled: false,
+          stage_label: 'Escenario',
+          blocks: [],
+          seat_ticket_types: {},
+        },
       },
     };
     const id = this.editingId();
@@ -795,17 +799,17 @@ export class AdminDashboardComponent implements OnInit {
             this.loadAdminEvents();
           }
         };
-        const shouldSync =
-          this.ticketTypesDraft.length > 0 || (this.ticketTypesTouched && !!id);
+        const shouldSync = id ? this.ticketTypesTouched : this.ticketTypesDraft.length > 0;
         if (shouldSync) {
           this.syncTicketTypes(eventId, finish);
         } else {
           finish();
         }
       },
-      error: () => {
+      error: (err) => {
         this.notify.hide();
-        this.notify.error('Eventos', 'No se pudo guardar el evento');
+        const detail = err?.error?.detail ?? err?.error?.message;
+        this.notify.error('Eventos', typeof detail === 'string' ? detail : 'No se pudo guardar el evento');
       },
     });
   }
@@ -828,15 +832,23 @@ export class AdminDashboardComponent implements OnInit {
   }
 
   private syncTicketTypes(eventId: string, onDone: () => void): void {
-    const payload = {
-      ticket_types: this.ticketTypesDraft.map((t) => ({
+    const ticketTypes = this.ticketTypesDraft
+      .map((t) => ({
         id: t.id ?? null,
-        name: t.name,
+        name: t.name.trim(),
         kind: t.kind,
-        price: t.price,
-        quantity_available: t.quantity_available,
-        benefits: t.benefits || null,
-      })),
+        price: Number(t.price) || 0,
+        quantity_available: Number(t.quantity_available) || 0,
+        benefits: t.benefits?.trim() || null,
+      }))
+      .filter((t) => t.id || t.name || t.price > 0 || t.quantity_available > 0 || t.benefits);
+    if (ticketTypes.some((t) => !t.name)) {
+      this.notify.hide();
+      this.notify.warning('Boletería', 'Cada tipo de boleta debe tener nombre.');
+      return;
+    }
+    const payload = {
+      ticket_types: ticketTypes,
     };
     this.api.put(`/events/${eventId}/ticket-types`, payload).subscribe({
       next: () => onDone(),

@@ -6,7 +6,7 @@ export interface PurchaseDraft {
   holderName: string;
   holderNames: string[];
   legalAccepted: boolean;
-  selectedSeatIds: string[];
+  selectedSeatIds?: string[];
 }
 
 const KEY = 'tava_purchase_draft';

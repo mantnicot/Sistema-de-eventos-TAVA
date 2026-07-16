@@ -183,32 +183,6 @@
             </label>
           }
 
-          @if (seatingActive() && seating(); as map) {
-            @if (map.config) {
-              <div class="seating-block">
-                <h3>Elige tu silla</h3>
-                <p class="hint">Solo puedes elegir sillas de la categoría «{{ selectedTicketType()?.name }}».</p>
-                <div class="seating-block__map">
-                  <tava-seat-map
-                    [config]="map.config"
-                    [seats]="map.seats"
-                    [selectedIds]="selectedSeatIds"
-                    [mode]="'purchase'"
-                    [ticketTypes]="seatingTicketTypes()"
-                    [allowedTicketTypeId]="selectedTypeId()"
-                    (selectedIdsChange)="onSeatsChange($event)"
-                  />
-                </div>
-                <p class="hint">Seleccionadas: {{ selectedSeatIds.length }}</p>
-              </div>
-            }
-          } @else {
-            <p class="seating-info">
-              Este evento no tiene silletería numerada. La entrada es por aforo general (sin selección de silla).
-            </p>
-          }
-
-          @if (!seatingActive()) {
           <label class="field">
             Cantidad
             <input
@@ -219,7 +193,6 @@
               (ngModelChange)="onQuantityChange()"
             />
           </label>
-          }
 
           <label class="check-row buy-hint">
             <input type="checkbox" [(ngModel)]="singleHolderMode" (ngModelChange)="onHolderModeChange()" />

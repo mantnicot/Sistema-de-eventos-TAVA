@@ -23,14 +23,12 @@ import { TavaTheatricalVideoComponent } from '../../shared/components/tava-theat
 import { TavaTicketPreviewComponent } from '../../shared/components/tava-ticket-preview/tava-ticket-preview.component';
 import { TavaCaptchaComponent } from '../../shared/components/tava-captcha/tava-captcha.component';
 import { TavaTheatricalLoaderComponent } from '../../shared/components/tava-theatrical-loader/tava-theatrical-loader.component';
-import { SeatMapResponse, resolveSeatTicketTypeId, SeatTicketTypeOption } from '../../core/models/seating.model';
 import {
   clearPurchaseDraft,
   readPurchaseDraft,
   savePurchaseDraft,
 } from '../../core/utils/purchase-draft.util';
 import { parseHttpError } from '../../core/utils/http-error.util';
-import { TavaSeatMapComponent } from '../../shared/components/tava-seat-map/tava-seat-map.component';
 import { ApiWarmupService } from '../../core/services/api-warmup.service';
 
 @Component({
@@ -44,7 +42,6 @@ import { ApiWarmupService } from '../../core/services/api-warmup.service';
     TavaTicketPreviewComponent,
     TavaCaptchaComponent,
     TavaTheatricalLoaderComponent,
-    TavaSeatMapComponent,
   ],
   templateUrl: './event-detail.component.html',
   styleUrl: './event-detail.component.scss',
@@ -61,8 +58,6 @@ export class EventDetailComponent implements OnInit {
   readonly event = signal<TavaEventDetail | null>(null);
   readonly loading = signal(true);
   readonly loadError = signal<string | null>(null);
-  readonly seating = signal<SeatMapResponse | null>(null);
-  selectedSeatIds: string[] = [];
   readonly selectedTypeId = signal<string | null>(null);
   readonly mediaUrl = resolveMediaUrl;
   readonly mediaBg = mediaBackgroundStyle;
@@ -80,46 +75,9 @@ export class EventDetailComponent implements OnInit {
 
   readonly onImgError = onEventImageError;
 
-  seatingActive(): boolean {
-    return Boolean(this.seating()?.enabled && this.seating()?.config?.enabled);
-  }
-
-  onSeatsChange(ids: string[]): void {
-    this.selectedSeatIds = ids;
-    this.quantity = ids.length || 1;
-    if (!this.singleHolderMode) this.onQuantityChange();
-    this.persistDraft();
-  }
-
   onTicketTypeChange(typeId: string): void {
     this.selectedTypeId.set(typeId);
-    this.filterSeatsForTicketType();
     this.persistDraft();
-  }
-
-  seatingTicketTypes(): SeatTicketTypeOption[] {
-    const ev = this.event();
-    if (!ev) return [];
-    return ev.ticket_types.map((t) => ({ id: t.id, name: t.name }));
-  }
-
-  private filterSeatsForTicketType(): void {
-    const typeId = this.selectedTypeId();
-    const map = this.seating();
-    if (!typeId || !map?.config) {
-      this.selectedSeatIds = [];
-      this.quantity = 1;
-      return;
-    }
-    this.selectedSeatIds = this.selectedSeatIds.filter((id) => {
-      const seat = map.seats.find((s) => s.id === id);
-      if (!seat || seat.status !== 'disponible') return false;
-      const tt =
-        seat.ticket_type_id ??
-        resolveSeatTicketTypeId(map.config!, seat.block_id, seat.row, seat.col);
-      return tt === typeId;
-    });
-    this.quantity = this.selectedSeatIds.length || 1;
   }
 
   private persistDraft(): void {
@@ -133,7 +91,6 @@ export class EventDetailComponent implements OnInit {
       holderName: this.holderName,
       holderNames: [...this.holderNames],
       legalAccepted: this.legalAccepted,
-      selectedSeatIds: [...this.selectedSeatIds],
     });
   }
 
@@ -146,14 +103,6 @@ export class EventDetailComponent implements OnInit {
     this.holderName = draft.holderName;
     this.holderNames = [...draft.holderNames];
     this.legalAccepted = draft.legalAccepted;
-    this.selectedSeatIds = [...draft.selectedSeatIds];
-  }
-
-  private loadSeating(eventId: string): void {
-    this.api.get<SeatMapResponse>(`/events/${eventId}/seating`).subscribe({
-      next: (map) => this.seating.set(map),
-      error: () => this.seating.set({ enabled: false, config: null, seats: [] }),
-    });
   }
 
   safeTrailer(url: string | undefined): SafeResourceUrl | null {
@@ -229,7 +178,6 @@ export class EventDetailComponent implements OnInit {
           this.selectedTypeId.set(detail.ticket_types[0].id);
         }
         this.restoreDraft(id);
-        this.loadSeating(id);
       },
       error: () => {
         this.loading.set(false);
@@ -300,13 +248,6 @@ export class EventDetailComponent implements OnInit {
       return;
     }
 
-    if (this.seatingActive()) {
-      if (this.selectedSeatIds.length !== this.quantity) {
-        this.notify.warning('Sillas', 'Selecciona una silla por cada boleta antes de continuar.');
-        return;
-      }
-    }
-
     const names = this.resolveHolderNames();
     if (!names) {
       this.notify.warning(
@@ -323,7 +264,7 @@ export class EventDetailComponent implements OnInit {
     const total = this.totalPrice();
     const confirmMsg =
       `Vas a comprar ${this.quantity} boleta(s) para "${ev.name}" ` +
-      `por $${total.toLocaleString('es-CO')} COP. Revisa nombres y sillas antes de continuar.`;
+      `por $${total.toLocaleString('es-CO')} COP. Revisa los nombres antes de continuar.`;
 
     this.notify.confirm('Confirmar compra', confirmMsg, () => {
       if (this.purchasing) return;
@@ -342,7 +283,6 @@ export class EventDetailComponent implements OnInit {
           holder_names: names,
           legal_accepted: true,
           captcha_token: this.captchaToken,
-          seat_ids: this.seatingActive() ? this.selectedSeatIds : undefined,
         })
         .subscribe({
           next: (res) => {

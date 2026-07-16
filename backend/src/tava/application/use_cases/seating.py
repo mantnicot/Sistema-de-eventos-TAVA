@@ -67,8 +67,7 @@ def seating_config_from_event(event: EventModel) -> dict | None:
 
 
 def seating_enabled(event: EventModel) -> bool:
-    cfg = seating_config_from_event(event)
-    return bool(cfg and cfg.get("enabled"))
+    return False
 
 
 class SeatingUseCase:
@@ -78,7 +77,7 @@ class SeatingUseCase:
     async def get_map(self, event_id: UUID) -> dict:
         event = await self._load_event(event_id)
         cfg = seating_config_from_event(event)
-        if not cfg or not cfg.get("enabled"):
+        if not cfg or not seating_enabled(event):
             return {"enabled": False, "seats": [], "config": None}
 
         result = await self._session.execute(
