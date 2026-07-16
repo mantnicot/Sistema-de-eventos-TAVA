@@ -50,6 +50,7 @@ class Settings(BaseSettings):
     wompi_events_secret: str = ""
     wompi_checkout_url: str = "https://checkout.wompi.co/p/"
     wompi_api_base_url: str = "https://production.wompi.co/v1"
+    startup_backfills_enabled: bool = False
 
     @model_validator(mode="after")
     def _apply_production_defaults(self) -> "Settings":

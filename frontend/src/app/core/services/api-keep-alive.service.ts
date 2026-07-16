@@ -5,7 +5,7 @@ import { environment } from '../../../environments/environment';
 import { SKIP_RETRY } from '../interceptors/retry.interceptor';
 
 /** Intervalo < 15 min para evitar que Render (free) apague el servicio. */
-const KEEP_ALIVE_INTERVAL_MS = 12 * 60 * 1000;
+const KEEP_ALIVE_INTERVAL_MS = 8 * 60 * 1000;
 
 /**
  * Ping periódico mientras hay usuarios con la web abierta.
@@ -55,7 +55,7 @@ export class ApiKeepAliveService {
     const ctx = new HttpContext().set(SKIP_RETRY, true);
     this.http
       .get(this.wakeUrl(), { context: ctx })
-      .pipe(timeout(55000))
+      .pipe(timeout(12000))
       .subscribe({ error: () => undefined });
   }
 }

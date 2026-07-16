@@ -3,8 +3,8 @@ name: API keep-alive
 
 on:
   schedule:
-    # Cada 10 minutos (UTC)
-    - cron: '*/10 * * * *'
+    # Cada 5 minutos (UTC)
+    - cron: '*/5 * * * *'
   workflow_dispatch:
 
 jobs:
@@ -16,7 +16,7 @@ jobs:
         run: |
           set +e
           echo "Ping $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          curl -fsS --retry 2 --retry-delay 5 -m 60 \
+          curl -fsS --retry 1 --retry-delay 3 -m 25 \
             "https://tava-api-1.onrender.com/api/v1/ping" \
             -o /dev/null -w "ping: %{http_code}\n" || true
           exit 0

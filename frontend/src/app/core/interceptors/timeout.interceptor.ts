@@ -2,7 +2,7 @@ import { HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
 import { catchError, throwError, timeout, TimeoutError } from 'rxjs';
 
 /** Evita peticiones colgadas indefinidamente (Render cold start). */
-const API_TIMEOUT_MS = 60000;
+const API_TIMEOUT_MS = 25000;
 
 export const timeoutInterceptor: HttpInterceptorFn = (req, next) => {
   if (req.url.includes('/uploads/') || req.responseType === 'blob') {

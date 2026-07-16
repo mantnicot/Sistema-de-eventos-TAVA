@@ -59,14 +59,18 @@ async def bootstrap_application() -> None:
                 )
 
             await ensure_default_settings(session)
-            from tava.infrastructure.security.ticket_codes import backfill_missing_ticket_codes
+            filled = 0
+            claim_codes = 0
+            if app_settings.startup_backfills_enabled:
+                from tava.infrastructure.security.ticket_codes import backfill_missing_ticket_codes
 
-            filled = await backfill_missing_ticket_codes(session)
+                filled = await backfill_missing_ticket_codes(session)
             if filled:
                 logger.info("Códigos numéricos asignados a %s boletas existentes", filled)
-            from tava.application.use_cases.tickets import TicketUseCase
+            if app_settings.startup_backfills_enabled:
+                from tava.application.use_cases.tickets import TicketUseCase
 
-            claim_codes = await TicketUseCase(session).backfill_missing_claim_codes()
+                claim_codes = await TicketUseCase(session).backfill_missing_claim_codes()
             if claim_codes:
                 logger.info("CÃ³digos de reclamo asignados a %s Ã³rdenes pagadas", claim_codes)
 

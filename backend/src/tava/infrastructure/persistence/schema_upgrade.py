@@ -6,8 +6,21 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 
 logger = logging.getLogger("tava.schema")
 
+SCHEMA_MARKER_KEY = "schema_upgrade_marker"
+SCHEMA_MARKER_VALUE = "2026-07-fast-start-v1"
+
 
 async def apply_schema_upgrades(conn: AsyncConnection) -> None:
+    current = (
+        await conn.execute(
+            text("SELECT value FROM site_settings WHERE key = :key"),
+            {"key": SCHEMA_MARKER_KEY},
+        )
+    ).scalar_one_or_none()
+    if current == SCHEMA_MARKER_VALUE:
+        logger.info("Esquema ya actualizado (%s)", SCHEMA_MARKER_VALUE)
+        return
+
     statements = [
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN NOT NULL DEFAULT FALSE",
         "ALTER TABLE events ADD COLUMN IF NOT EXISTS theatrical_details JSONB",
@@ -85,4 +98,15 @@ async def apply_schema_upgrades(conn: AsyncConnection) -> None:
     ]
     for sql in statements:
         await conn.execute(text(sql.strip()))
+    await conn.execute(
+        text(
+            """
+            INSERT INTO site_settings (key, value, updated_at)
+            VALUES (:key, :value, NOW())
+            ON CONFLICT (key)
+            DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()
+            """
+        ),
+        {"key": SCHEMA_MARKER_KEY, "value": SCHEMA_MARKER_VALUE},
+    )
     logger.info("Esquema actualizado (columnas/tablas nuevas)")

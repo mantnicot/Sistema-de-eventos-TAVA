@@ -2,8 +2,8 @@ import { HttpContextToken, HttpErrorResponse, HttpEvent, HttpInterceptorFn } fro
 import { Observable, catchError, switchMap, throwError, timer } from 'rxjs';
 
 const RETRYABLE = new Set([0, 502, 503, 504]);
-const DELAYS_MS = [600, 1800, 4000];
-const MAX_RETRIES = 3;
+const DELAYS_MS = [800];
+const MAX_RETRIES = 1;
 
 /** No reintentar compras/ventas para evitar duplicados accidentales. */
 export const SKIP_RETRY = new HttpContextToken<boolean>(() => false);
@@ -19,14 +19,15 @@ export const retryInterceptor: HttpInterceptorFn = (req, next) => {
     req.url.includes('/settings/appearance') ||
     req.url.includes('/events');
 
+  if (!isSafeRetry) {
+    return next(req);
+  }
+
   const attempt = (retryIndex: number): Observable<HttpEvent<unknown>> =>
     next(req).pipe(
       catchError((err: HttpErrorResponse): Observable<HttpEvent<unknown>> => {
         const status = err.status ?? 0;
         if (!RETRYABLE.has(status) || retryIndex >= MAX_RETRIES) {
-          return throwError(() => err);
-        }
-        if (!isSafeRetry && status !== 0) {
           return throwError(() => err);
         }
         const delay = DELAYS_MS[retryIndex] ?? 8000;
