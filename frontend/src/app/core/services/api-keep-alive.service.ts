@@ -25,7 +25,6 @@ export class ApiKeepAliveService {
   start(): void {
     if (this.started || !environment.production) return;
     this.started = true;
-    this.ping();
     this.timerId = setInterval(() => this.ping(), KEEP_ALIVE_INTERVAL_MS);
 
     if (typeof document !== 'undefined') {

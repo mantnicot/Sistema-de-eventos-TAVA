@@ -3,7 +3,6 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { Subscription } from 'rxjs';
 import { ApiService } from '../../core/services/api.service';
-import { ApiWarmupService } from '../../core/services/api-warmup.service';
 import { TavaEvent } from '../../core/models/event.model';
 import { readEventsCache, writeEventsCache } from '../../core/utils/events-cache.util';
 import { onEventImageError } from '../../core/utils/event-image.util';
@@ -28,7 +27,6 @@ import { TavaTheatricalLoaderComponent } from '../../shared/components/tava-thea
 })
 export class EventsListComponent implements OnInit, OnDestroy {
   private readonly api = inject(ApiService);
-  private readonly warmup = inject(ApiWarmupService);
   private readonly route = inject(ActivatedRoute);
   readonly events = signal<TavaEvent[]>([]);
   readonly liveEvents = signal<TavaEvent[]>([]);
@@ -49,7 +47,6 @@ export class EventsListComponent implements OnInit, OnDestroy {
   readonly ticketsLeft = totalTicketsAvailable;
   private loadSub?: Subscription;
   private stallTimer: ReturnType<typeof setTimeout> | null = null;
-  private hardTimeoutTimer: ReturnType<typeof setTimeout> | null = null;
 
   ngOnInit(): void {
     this.route.queryParamMap.subscribe((q) => {
@@ -80,7 +77,6 @@ export class EventsListComponent implements OnInit, OnDestroy {
     }
     this.loadError.set(null);
 
-    void this.warmup.wake();
     this.loadSub = this.api.get<TavaEvent[]>('/events', params).subscribe({
       next: (e) => {
         this.clearStallTimer();
@@ -117,22 +113,12 @@ export class EventsListComponent implements OnInit, OnDestroy {
     this.stallTimer = setTimeout(() => {
       if (this.loading()) this.loadingStalled.set(true);
     }, 9000);
-    this.hardTimeoutTimer = setTimeout(() => {
-      if (!this.loading()) return;
-      this.loadSub?.unsubscribe();
-      this.loading.set(false);
-      this.loadError.set('El servidor se demoro mucho. Vuelve a intentarlo en unos segundos.');
-    }, 25000);
   }
 
   private clearStallTimer(): void {
     if (this.stallTimer) {
       clearTimeout(this.stallTimer);
       this.stallTimer = null;
-    }
-    if (this.hardTimeoutTimer) {
-      clearTimeout(this.hardTimeoutTimer);
-      this.hardTimeoutTimer = null;
     }
     this.loadingStalled.set(false);
   }

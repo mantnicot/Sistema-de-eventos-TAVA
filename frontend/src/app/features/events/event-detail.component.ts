@@ -30,7 +30,6 @@ import {
   savePurchaseDraft,
 } from '../../core/utils/purchase-draft.util';
 import { parseHttpError } from '../../core/utils/http-error.util';
-import { ApiWarmupService } from '../../core/services/api-warmup.service';
 
 @Component({
   selector: 'app-event-detail',
@@ -52,7 +51,6 @@ export class EventDetailComponent implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly api = inject(ApiService);
-  private readonly warmup = inject(ApiWarmupService);
   readonly auth = inject(AuthService);
   private readonly notify = inject(NotificationService);
   private readonly sanitizer = inject(DomSanitizer);
@@ -120,7 +118,6 @@ export class EventDetailComponent implements OnInit, OnDestroy {
   legalAccepted = false;
   private eventSub?: Subscription;
   private stallTimer: ReturnType<typeof setTimeout> | null = null;
-  private hardTimeoutTimer: ReturnType<typeof setTimeout> | null = null;
 
   selectedTicketType() {
     const ev = this.event();
@@ -179,7 +176,6 @@ export class EventDetailComponent implements OnInit, OnDestroy {
     this.event.set(null);
     this.relatedEvents.set([]);
 
-    void this.warmup.wake();
     this.eventSub = this.api.get<TavaEventDetail>(`/events/${id}`).subscribe({
       next: (e) => {
         this.clearStallTimer();
@@ -224,22 +220,12 @@ export class EventDetailComponent implements OnInit, OnDestroy {
     this.stallTimer = setTimeout(() => {
       if (this.loading()) this.loadingStalled.set(true);
     }, 9000);
-    this.hardTimeoutTimer = setTimeout(() => {
-      if (!this.loading()) return;
-      this.eventSub?.unsubscribe();
-      this.loading.set(false);
-      this.loadError.set('El servidor se demoro mucho. Vuelve a intentarlo en unos segundos.');
-    }, 25000);
   }
 
   private clearStallTimer(): void {
     if (this.stallTimer) {
       clearTimeout(this.stallTimer);
       this.stallTimer = null;
-    }
-    if (this.hardTimeoutTimer) {
-      clearTimeout(this.hardTimeoutTimer);
-      this.hardTimeoutTimer = null;
     }
     this.loadingStalled.set(false);
   }
