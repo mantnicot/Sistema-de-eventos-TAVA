@@ -34,7 +34,14 @@
         <button type="button" class="nav__btn-outline" (click)="testAdminEmail()">Probar correo</button>
       </div>
     } @else {
-      <p>Cargando métricas…</p>
+      @if (adminLoading()) {
+        <p>Cargando métricas...</p>
+      } @else {
+        <div class="warn-box report-actions">
+          <p class="muted-inline">No se pudieron cargar las métricas. Puedes entrar a Eventos o reintentar.</p>
+          <button type="button" class="nav__btn-outline" (click)="bootstrapAdmin()">Reintentar</button>
+        </div>
+      }
     }
   }
 
@@ -382,6 +389,7 @@
               </div>
               <div class="admin-list__actions">
                 <button type="button" (click)="editEvent(ev)">Editar</button>
+                <button type="button" (click)="duplicateEvent(ev)">Duplicar</button>
                 <button type="button" class="btn-danger" (click)="deleteEvent(ev)">Eliminar</button>
               </div>
             </article>

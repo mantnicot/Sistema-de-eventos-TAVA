@@ -1,7 +1,7 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { forkJoin, of, catchError } from 'rxjs';
+import { catchError, finalize, of, timeout } from 'rxjs';
 import { ApiService } from '../../core/services/api.service';
 import { ApiWarmupService } from '../../core/services/api-warmup.service';
 import { AuthService } from '../../core/services/auth.service';
@@ -78,6 +78,8 @@ interface EventUpdateResponse extends TavaEvent {
   attendee_notification?: AttendeeNotification;
 }
 
+const ADMIN_REQUEST_TIMEOUT_MS = 12000;
+
 @Component({
   selector: 'app-admin-dashboard',
   standalone: true,
@@ -144,6 +146,7 @@ export class AdminDashboardComponent implements OnInit {
 
   ticketTypesDraft: TicketTypeDraft[] = [];
   ticketTypesTouched = false;
+  private duplicateGalleryDraft: TavaEventDetail['gallery'] = [];
   readonly ticketKinds: { value: TicketKind; label: string }[] = [
     { value: 'individual', label: 'Individual' },
     { value: 'grupal', label: 'Grupal' },
@@ -164,37 +167,75 @@ export class AdminDashboardComponent implements OnInit {
   }
 
   private loadAdminData(): void {
-    forkJoin({
-      kpis: this.api.get<Kpis>('/dashboard/kpis').pipe(catchError(() => of(null))),
-      events: this.api.get<TavaEvent[]>('/events/admin/all').pipe(catchError(() => of([] as TavaEvent[]))),
-      users: this.api.get<AdminUser[]>('/users').pipe(catchError(() => of([] as AdminUser[]))),
-    }).subscribe({
-      next: ({ kpis, events, users }) => {
-        if (kpis) this.kpis.set(kpis);
-        this.adminEvents.set(events ?? []);
-        this.users.set(users ?? []);
+    let pending = 3;
+    let failures = 0;
+    const done = () => {
+      pending -= 1;
+      if (pending === 0) {
         this.adminLoading.set(false);
-        if (!kpis) {
+        if (failures) {
           this.adminApiError.set(
-            'Algunos datos no cargaron. El servidor puede estar despertando — pulsa Reintentar.'
+            'Algunos datos no cargaron a tiempo. Puedes entrar a Eventos o pulsar Reintentar.'
           );
         }
-        const app = this.site.appearance();
-        if (app) {
-          this.appearanceForm = { ...app };
-        } else {
-          this.site.loadAppearance();
-          setTimeout(() => {
-            const a = this.site.appearance();
-            if (a) this.appearanceForm = { ...a };
-          }, 400);
-        }
-      },
-      error: () => {
-        this.adminLoading.set(false);
-        this.adminApiError.set('No se pudo cargar el panel. Pulsa Reintentar.');
-      },
-    });
+        this.loadAppearanceForm();
+      }
+    };
+
+    this.api
+      .get<Kpis>('/dashboard/kpis')
+      .pipe(
+        timeout(ADMIN_REQUEST_TIMEOUT_MS),
+        catchError(() => {
+          failures += 1;
+          return of(null);
+        }),
+        finalize(done)
+      )
+      .subscribe((kpis) => {
+        if (kpis) this.kpis.set(kpis);
+      });
+
+    this.api
+      .get<TavaEvent[]>('/events/admin/all')
+      .pipe(
+        timeout(ADMIN_REQUEST_TIMEOUT_MS),
+        catchError(() => {
+          failures += 1;
+          return of([] as TavaEvent[]);
+        }),
+        finalize(done)
+      )
+      .subscribe((events) => {
+        this.adminEvents.set(events ?? []);
+      });
+
+    this.api
+      .get<AdminUser[]>('/users')
+      .pipe(
+        timeout(ADMIN_REQUEST_TIMEOUT_MS),
+        catchError(() => {
+          failures += 1;
+          return of([] as AdminUser[]);
+        }),
+        finalize(done)
+      )
+      .subscribe((users) => {
+        this.users.set(users ?? []);
+      });
+  }
+
+  private loadAppearanceForm(): void {
+    const app = this.site.appearance();
+    if (app) {
+      this.appearanceForm = { ...app };
+      return;
+    }
+    this.site.loadAppearance();
+    setTimeout(() => {
+      const a = this.site.appearance();
+      if (a) this.appearanceForm = { ...a };
+    }, 400);
   }
 
   isCurrentUser(u: AdminUser): boolean {
@@ -472,6 +513,7 @@ export class AdminDashboardComponent implements OnInit {
     this.castMembers = [{ name: '', photo_url: '', role: '' }];
     this.ticketTypesDraft = [];
     this.ticketTypesTouched = false;
+    this.duplicateGalleryDraft = [];
     this.theatrical = {
       sale_mode: 'system',
       whatsapp_number: '',
@@ -673,6 +715,7 @@ export class AdminDashboardComponent implements OnInit {
   }
 
   editEvent(ev: TavaEvent): void {
+    this.duplicateGalleryDraft = [];
     this.editingId.set(ev.id);
     this.ticketTypesDraft = [];
     this.ticketTypesTouched = false;
@@ -738,6 +781,63 @@ export class AdminDashboardComponent implements OnInit {
     this.loadAttendees(ev.id);
   }
 
+  duplicateEvent(ev: TavaEvent): void {
+    this.notify.loadingTheatrical('Duplicando evento', 'admin');
+    this.api.get<TavaEventDetail>(`/events/${ev.id}`).subscribe({
+      next: (detail) => {
+        this.notify.hide();
+        this.editingId.set(null);
+        this.eventForm = {
+          name: detail.name,
+          description: detail.description,
+          category: detail.category,
+          event_date: '',
+          event_time: detail.event_time?.slice(0, 5) ?? '19:30',
+          city: detail.city,
+          address: detail.address,
+          capacity: detail.capacity,
+          status: 'borrador',
+          main_image_url: detail.main_image_url ?? '',
+          trailer_url: detail.trailer_url ?? '',
+        };
+        this.theatrical = {
+          ...(detail.theatrical_details ?? {}),
+          sale_mode: detail.theatrical_details?.sale_mode ?? 'system',
+          whatsapp_number: detail.theatrical_details?.whatsapp_number ?? '',
+          whatsapp_message: detail.theatrical_details?.whatsapp_message ?? '',
+        };
+        const td = detail.theatrical_details;
+        if (td?.cast_members?.length) {
+          this.castMembers = td.cast_members.map((m) => ({ ...m }));
+        } else if (td?.cast?.length) {
+          this.castMembers = td.cast.map((name) => ({ name, photo_url: '', role: '' }));
+        } else {
+          this.castMembers = [{ name: '', photo_url: '', role: '' }];
+        }
+        this.ticketTypesDraft = (detail.ticket_types ?? []).map((t) => ({
+          name: t.name,
+          kind: t.kind as TicketKind,
+          price: Number(t.price),
+          quantity_available: t.quantity_available,
+          benefits: t.benefits ?? '',
+        }));
+        this.ticketTypesTouched = true;
+        this.duplicateGalleryDraft = [...(detail.gallery ?? [])];
+        this.staffValidatorIds = [];
+        this.staffSellerIds = [];
+        this.attendeesData.set(null);
+        this.broadcastSubject = '';
+        this.broadcastMessage = '';
+        this.notify.success('Eventos', 'Copia lista. Cambia la fecha y guarda el nuevo evento.');
+        document.querySelector('.admin-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      },
+      error: () => {
+        this.notify.hide();
+        this.notify.error('Eventos', 'No se pudo duplicar el evento');
+      },
+    });
+  }
+
   saveEvent(): void {
     if (this.capacityExceeded()) {
       this.notify.warning(
@@ -799,11 +899,18 @@ export class AdminDashboardComponent implements OnInit {
             this.loadAdminEvents();
           }
         };
+        const finishAfterGallery = () => {
+          if (id || !this.duplicateGalleryDraft.length) {
+            finish();
+            return;
+          }
+          this.copyDuplicateGallery(eventId, finish);
+        };
         const shouldSync = id ? this.ticketTypesTouched : this.ticketTypesDraft.length > 0;
         if (shouldSync) {
-          this.syncTicketTypes(eventId, finish);
+          this.syncTicketTypes(eventId, finishAfterGallery);
         } else {
-          finish();
+          finishAfterGallery();
         }
       },
       error: (err) => {
@@ -812,6 +919,35 @@ export class AdminDashboardComponent implements OnInit {
         this.notify.error('Eventos', typeof detail === 'string' ? detail : 'No se pudo guardar el evento');
       },
     });
+  }
+
+  private copyDuplicateGallery(eventId: string, onDone: () => void): void {
+    let pending = this.duplicateGalleryDraft.length;
+    let failed = false;
+    const done = () => {
+      pending -= 1;
+      if (pending === 0) {
+        if (failed) {
+          this.notify.warning('Galeria', 'Evento creado, pero no se pudo copiar toda la galeria.');
+        }
+        onDone();
+      }
+    };
+    for (const item of this.duplicateGalleryDraft) {
+      this.api
+        .post(`/events/${eventId}/media`, {
+          media_type: item.media_type,
+          url: item.url,
+          sort_order: item.sort_order ?? 0,
+        })
+        .subscribe({
+          next: () => done(),
+          error: () => {
+            failed = true;
+            done();
+          },
+        });
+    }
   }
 
   private saveEventStaff(eventId: string, onDone: () => void): void {

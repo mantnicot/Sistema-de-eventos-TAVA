@@ -276,6 +276,22 @@
       </aside>
     </div>
 
+    @if (relatedEvents().length) {
+      <section class="related-events">
+        <h2>Podría interesarte</h2>
+        <div class="related-events__grid">
+          @for (item of relatedEvents(); track item.id) {
+            <a class="related-events__card tava-card" [routerLink]="['/eventos', item.id]">
+              <img [src]="mediaUrl(item.main_image_url)" [alt]="item.name" loading="lazy" (error)="onImgError($event)" />
+              <span>{{ item.category }}</span>
+              <strong>{{ item.name }}</strong>
+              <small>{{ formatEventDateTime(item.event_date, item.event_time) }} · {{ item.city }}</small>
+            </a>
+          }
+        </div>
+      </section>
+    }
+
     <div class="detail__footer">
       <a routerLink="/eventos" class="back">← Volver a cartelera</a>
     </div>

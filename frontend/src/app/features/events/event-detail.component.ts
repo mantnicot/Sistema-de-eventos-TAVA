@@ -6,7 +6,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ApiService } from '../../core/services/api.service';
 import { AuthService } from '../../core/services/auth.service';
 import { NotificationService } from '../../core/services/notification.service';
-import { TavaEventDetail } from '../../core/models/event.model';
+import { TavaEvent, TavaEventDetail } from '../../core/models/event.model';
 import {
   canPurchaseTickets,
   formatEventDateTime,
@@ -56,6 +56,7 @@ export class EventDetailComponent implements OnInit {
   private readonly notify = inject(NotificationService);
   private readonly sanitizer = inject(DomSanitizer);
   readonly event = signal<TavaEventDetail | null>(null);
+  readonly relatedEvents = signal<TavaEvent[]>([]);
   readonly loading = signal(true);
   readonly loadError = signal<string | null>(null);
   readonly selectedTypeId = signal<string | null>(null);
@@ -150,7 +151,7 @@ export class EventDetailComponent implements OnInit {
 
   ngOnInit(): void {
     this.holderName = this.auth.user()?.full_name ?? '';
-    this.loadEvent();
+    this.route.paramMap.subscribe(() => this.loadEvent());
   }
 
   loadEvent(): void {
@@ -163,6 +164,7 @@ export class EventDetailComponent implements OnInit {
     this.loading.set(true);
     this.loadError.set(null);
     this.event.set(null);
+    this.relatedEvents.set([]);
 
     void this.warmup.wake();
     this.api.get<TavaEventDetail>(`/events/${id}`).subscribe({
@@ -178,6 +180,7 @@ export class EventDetailComponent implements OnInit {
           this.selectedTypeId.set(detail.ticket_types[0].id);
         }
         this.restoreDraft(id);
+        this.loadRelatedEvents(id);
       },
       error: () => {
         this.loading.set(false);
@@ -185,6 +188,19 @@ export class EventDetailComponent implements OnInit {
           'No pudimos cargar este evento. El servidor puede estar despertando — intenta de nuevo.'
         );
       },
+    });
+  }
+
+  private loadRelatedEvents(currentEventId: string): void {
+    this.api.get<TavaEvent[]>('/events').subscribe({
+      next: (events) => {
+        this.relatedEvents.set(
+          (events ?? [])
+            .filter((item) => item.id !== currentEventId && this.canBuy(item))
+            .slice(0, 3)
+        );
+      },
+      error: () => this.relatedEvents.set([]),
     });
   }
 
