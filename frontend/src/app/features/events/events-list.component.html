@@ -93,9 +93,16 @@
 }
 
 @if (loading() && !liveEvents().length && !upcomingEvents().length && !finishedEvents().length) {
-  <tava-theatrical-loader title="Armando la cartelera" />
+  <div class="empty load-error load-error--video">
+    <tava-theatrical-loader title="Armando la cartelera" />
+    @if (loadingStalled()) {
+      <p>El servidor se demoro mucho. Puedes reintentar mientras el video sigue cargando.</p>
+      <button type="button" class="tava-btn-primary" (click)="load()">Reintentar</button>
+    }
+  </div>
 } @else if (loadError()) {
-  <div class="empty load-error">
+  <div class="empty load-error load-error--video">
+    <tava-theatrical-loader title="El servidor se demoro mucho" />
     <p>{{ loadError() }}</p>
     <button type="button" class="tava-btn-primary" (click)="load()">Reintentar</button>
   </div>

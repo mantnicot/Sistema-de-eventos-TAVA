@@ -297,9 +297,16 @@
     </div>
   </article>
 } @else if (loading()) {
-  <tava-theatrical-loader title="Preparando la función" />
+  <div class="detail__error">
+    <tava-theatrical-loader title="Preparando la función" />
+    @if (loadingStalled()) {
+      <p>El servidor se demoro mucho. Puedes reintentar mientras el video sigue cargando.</p>
+      <button type="button" class="tava-btn-primary" (click)="loadEvent()">Reintentar</button>
+    }
+  </div>
 } @else if (loadError()) {
   <div class="detail__error">
+    <tava-theatrical-loader title="El servidor se demoro mucho" />
     <p>{{ loadError() }}</p>
     <button type="button" class="tava-btn-primary" (click)="loadEvent()">Reintentar</button>
   </div>

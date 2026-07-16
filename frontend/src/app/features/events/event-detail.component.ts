@@ -1,8 +1,9 @@
-import { Component, inject, OnInit, signal, ViewChild } from '@angular/core';
+import { Component, inject, OnDestroy, OnInit, signal, ViewChild } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { Subscription } from 'rxjs';
 import { ApiService } from '../../core/services/api.service';
 import { AuthService } from '../../core/services/auth.service';
 import { NotificationService } from '../../core/services/notification.service';
@@ -46,7 +47,7 @@ import { ApiWarmupService } from '../../core/services/api-warmup.service';
   templateUrl: './event-detail.component.html',
   styleUrl: './event-detail.component.scss',
 })
-export class EventDetailComponent implements OnInit {
+export class EventDetailComponent implements OnInit, OnDestroy {
   @ViewChild(TavaCaptchaComponent) captcha?: TavaCaptchaComponent;
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
@@ -58,6 +59,7 @@ export class EventDetailComponent implements OnInit {
   readonly event = signal<TavaEventDetail | null>(null);
   readonly relatedEvents = signal<TavaEvent[]>([]);
   readonly loading = signal(true);
+  readonly loadingStalled = signal(false);
   readonly loadError = signal<string | null>(null);
   readonly selectedTypeId = signal<string | null>(null);
   readonly mediaUrl = resolveMediaUrl;
@@ -116,6 +118,9 @@ export class EventDetailComponent implements OnInit {
   holderName = '';
   holderNames: string[] = [''];
   legalAccepted = false;
+  private eventSub?: Subscription;
+  private stallTimer: ReturnType<typeof setTimeout> | null = null;
+  private hardTimeoutTimer: ReturnType<typeof setTimeout> | null = null;
 
   selectedTicketType() {
     const ev = this.event();
@@ -154,7 +159,14 @@ export class EventDetailComponent implements OnInit {
     this.route.paramMap.subscribe(() => this.loadEvent());
   }
 
+  ngOnDestroy(): void {
+    this.eventSub?.unsubscribe();
+    this.clearStallTimer();
+  }
+
   loadEvent(): void {
+    this.eventSub?.unsubscribe();
+    this.clearStallTimer();
     const id = this.route.snapshot.paramMap.get('id');
     if (!id) {
       this.loading.set(false);
@@ -162,13 +174,15 @@ export class EventDetailComponent implements OnInit {
       return;
     }
     this.loading.set(true);
+    this.startStallTimer();
     this.loadError.set(null);
     this.event.set(null);
     this.relatedEvents.set([]);
 
     void this.warmup.wake();
-    this.api.get<TavaEventDetail>(`/events/${id}`).subscribe({
+    this.eventSub = this.api.get<TavaEventDetail>(`/events/${id}`).subscribe({
       next: (e) => {
+        this.clearStallTimer();
         const detail: TavaEventDetail = {
           ...e,
           gallery: e.gallery ?? [],
@@ -183,6 +197,7 @@ export class EventDetailComponent implements OnInit {
         this.loadRelatedEvents(id);
       },
       error: () => {
+        this.clearStallTimer();
         this.loading.set(false);
         this.loadError.set(
           'No pudimos cargar este evento. El servidor puede estar despertando — intenta de nuevo.'
@@ -202,6 +217,31 @@ export class EventDetailComponent implements OnInit {
       },
       error: () => this.relatedEvents.set([]),
     });
+  }
+
+  private startStallTimer(): void {
+    this.loadingStalled.set(false);
+    this.stallTimer = setTimeout(() => {
+      if (this.loading()) this.loadingStalled.set(true);
+    }, 9000);
+    this.hardTimeoutTimer = setTimeout(() => {
+      if (!this.loading()) return;
+      this.eventSub?.unsubscribe();
+      this.loading.set(false);
+      this.loadError.set('El servidor se demoro mucho. Vuelve a intentarlo en unos segundos.');
+    }, 25000);
+  }
+
+  private clearStallTimer(): void {
+    if (this.stallTimer) {
+      clearTimeout(this.stallTimer);
+      this.stallTimer = null;
+    }
+    if (this.hardTimeoutTimer) {
+      clearTimeout(this.hardTimeoutTimer);
+      this.hardTimeoutTimer = null;
+    }
+    this.loadingStalled.set(false);
   }
 
   onQuantityChange(): void {

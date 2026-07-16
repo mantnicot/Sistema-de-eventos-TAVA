@@ -1,10 +1,12 @@
 import { Component, effect, inject, OnDestroy, signal } from '@angular/core';
 import { NotificationService } from '../../../core/services/notification.service';
 import { randomPopupPhrase } from '../../../core/utils/theatrical-messages.util';
+import { TavaTheatricalLoaderComponent } from '../tava-theatrical-loader/tava-theatrical-loader.component';
 
 @Component({
   selector: 'tava-popup',
   standalone: true,
+  imports: [TavaTheatricalLoaderComponent],
   templateUrl: './tava-popup.component.html',
   styleUrl: './tava-popup.component.scss',
 })

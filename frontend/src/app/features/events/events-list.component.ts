@@ -1,6 +1,7 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, inject, OnDestroy, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
+import { Subscription } from 'rxjs';
 import { ApiService } from '../../core/services/api.service';
 import { ApiWarmupService } from '../../core/services/api-warmup.service';
 import { TavaEvent } from '../../core/models/event.model';
@@ -25,7 +26,7 @@ import { TavaTheatricalLoaderComponent } from '../../shared/components/tava-thea
   templateUrl: './events-list.component.html',
   styleUrl: './events-list.component.scss',
 })
-export class EventsListComponent implements OnInit {
+export class EventsListComponent implements OnInit, OnDestroy {
   private readonly api = inject(ApiService);
   private readonly warmup = inject(ApiWarmupService);
   private readonly route = inject(ActivatedRoute);
@@ -34,6 +35,7 @@ export class EventsListComponent implements OnInit {
   readonly upcomingEvents = signal<TavaEvent[]>([]);
   readonly finishedEvents = signal<TavaEvent[]>([]);
   readonly loading = signal(false);
+  readonly loadingStalled = signal(false);
   readonly loadError = signal<string | null>(null);
   search = '';
   category = '';
@@ -45,6 +47,9 @@ export class EventsListComponent implements OnInit {
   readonly liveMessage = liveBannerMessage;
   readonly getPhase = getEventPhase;
   readonly ticketsLeft = totalTicketsAvailable;
+  private loadSub?: Subscription;
+  private stallTimer: ReturnType<typeof setTimeout> | null = null;
+  private hardTimeoutTimer: ReturnType<typeof setTimeout> | null = null;
 
   ngOnInit(): void {
     this.route.queryParamMap.subscribe((q) => {
@@ -53,7 +58,14 @@ export class EventsListComponent implements OnInit {
     });
   }
 
+  ngOnDestroy(): void {
+    this.loadSub?.unsubscribe();
+    this.clearStallTimer();
+  }
+
   load(): void {
+    this.loadSub?.unsubscribe();
+    this.clearStallTimer();
     const params: Record<string, string> = {};
     if (this.search) params['search'] = this.search;
     if (this.category) params['category'] = this.category;
@@ -64,17 +76,20 @@ export class EventsListComponent implements OnInit {
       this.loading.set(false);
     } else {
       this.loading.set(true);
+      this.startStallTimer();
     }
     this.loadError.set(null);
 
     void this.warmup.wake();
-    this.api.get<TavaEvent[]>('/events', params).subscribe({
+    this.loadSub = this.api.get<TavaEvent[]>('/events', params).subscribe({
       next: (e) => {
+        this.clearStallTimer();
         this.loading.set(false);
         writeEventsCache(this.search, this.category, e);
         this.applyEvents(e);
       },
       error: () => {
+        this.clearStallTimer();
         this.loading.set(false);
         if (!cached?.length) {
           this.events.set([]);
@@ -95,5 +110,30 @@ export class EventsListComponent implements OnInit {
     this.liveEvents.set(split.live);
     this.upcomingEvents.set(split.upcoming);
     this.finishedEvents.set(split.finished);
+  }
+
+  private startStallTimer(): void {
+    this.loadingStalled.set(false);
+    this.stallTimer = setTimeout(() => {
+      if (this.loading()) this.loadingStalled.set(true);
+    }, 9000);
+    this.hardTimeoutTimer = setTimeout(() => {
+      if (!this.loading()) return;
+      this.loadSub?.unsubscribe();
+      this.loading.set(false);
+      this.loadError.set('El servidor se demoro mucho. Vuelve a intentarlo en unos segundos.');
+    }, 25000);
+  }
+
+  private clearStallTimer(): void {
+    if (this.stallTimer) {
+      clearTimeout(this.stallTimer);
+      this.stallTimer = null;
+    }
+    if (this.hardTimeoutTimer) {
+      clearTimeout(this.hardTimeoutTimer);
+      this.hardTimeoutTimer = null;
+    }
+    this.loadingStalled.set(false);
   }
 }

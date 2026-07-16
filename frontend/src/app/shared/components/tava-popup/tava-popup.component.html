@@ -17,11 +17,12 @@
 
     <div class="popup tava-card" [class]="'popup--' + s.type">
       @if (s.type === 'loading') {
-        <div class="spinner" aria-hidden="true"></div>
+        <tava-theatrical-loader [title]="s.title" />
+      } @else {
+        <p class="popup__rotating">{{ rotatingPhrase() }}</p>
+        <h3 class="tava-glow-text">{{ s.title }}</h3>
+        <p class="popup__message">{{ s.message }}</p>
       }
-      <p class="popup__rotating">{{ rotatingPhrase() }}</p>
-      <h3 class="tava-glow-text">{{ s.title }}</h3>
-      <p class="popup__message">{{ s.message }}</p>
       @if (s.type === 'confirm') {
         <div class="actions">
           <button type="button" class="ghost" (click)="cancel()">Cancelar</button>
