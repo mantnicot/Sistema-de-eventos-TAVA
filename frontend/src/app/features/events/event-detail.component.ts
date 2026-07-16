@@ -179,6 +179,19 @@ export class EventDetailComponent implements OnInit {
     return (tt?.price ?? 0) * this.quantity;
   }
 
+  isWhatsAppSale(ev: TavaEventDetail): boolean {
+    return ev.theatrical_details?.sale_mode === 'whatsapp';
+  }
+
+  whatsappSaleLink(ev: TavaEventDetail): string {
+    const phone = (ev.theatrical_details?.whatsapp_number ?? '').replace(/[^\d]/g, '');
+    const configured = ev.theatrical_details?.whatsapp_message?.trim();
+    const fallback =
+      `Hola TAVA, quiero conseguir boletas para ${ev.name} ` +
+      `del ${ev.event_date} a las ${this.formatEventTime(ev.event_time)}.`;
+    return `https://wa.me/${phone}?text=${encodeURIComponent(configured || fallback)}`;
+  }
+
   previewHolderName(): string {
     if (this.singleHolderMode) {
       return this.holderName.trim() || this.auth.user()?.full_name || 'Tu nombre';
@@ -202,29 +215,28 @@ export class EventDetailComponent implements OnInit {
     this.loadError.set(null);
     this.event.set(null);
 
-    void this.warmup.wake().finally(() => {
-      this.api.get<TavaEventDetail>(`/events/${id}`).subscribe({
-        next: (e) => {
-          const detail: TavaEventDetail = {
-            ...e,
-            gallery: e.gallery ?? [],
-            ticket_types: e.ticket_types ?? [],
-          };
-          this.event.set(detail);
-          this.loading.set(false);
-          if (detail.ticket_types.length) {
-            this.selectedTypeId.set(detail.ticket_types[0].id);
-          }
-          this.restoreDraft(id);
-          this.loadSeating(id);
-        },
-        error: () => {
-          this.loading.set(false);
-          this.loadError.set(
-            'No pudimos cargar este evento. El servidor puede estar despertando — intenta de nuevo.'
-          );
-        },
-      });
+    void this.warmup.wake();
+    this.api.get<TavaEventDetail>(`/events/${id}`).subscribe({
+      next: (e) => {
+        const detail: TavaEventDetail = {
+          ...e,
+          gallery: e.gallery ?? [],
+          ticket_types: e.ticket_types ?? [],
+        };
+        this.event.set(detail);
+        this.loading.set(false);
+        if (detail.ticket_types.length) {
+          this.selectedTypeId.set(detail.ticket_types[0].id);
+        }
+        this.restoreDraft(id);
+        this.loadSeating(id);
+      },
+      error: () => {
+        this.loading.set(false);
+        this.loadError.set(
+          'No pudimos cargar este evento. El servidor puede estar despertando — intenta de nuevo.'
+        );
+      },
     });
   }
 

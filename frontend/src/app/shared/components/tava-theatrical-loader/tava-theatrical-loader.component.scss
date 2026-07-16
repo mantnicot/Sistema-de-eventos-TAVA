@@ -14,6 +14,20 @@
   width: min(320px, 88vw);
   height: 200px;
   margin-bottom: 0.5rem;
+  overflow: hidden;
+  border-radius: 16px;
+  background: #12070b;
+
+  > :not(.theatrical-loader__video) {
+    display: none;
+  }
+}
+
+.theatrical-loader__video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 .theatrical-loader__sky {

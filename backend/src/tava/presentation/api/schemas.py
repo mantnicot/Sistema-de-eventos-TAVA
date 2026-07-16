@@ -116,6 +116,9 @@ class TheatricalDetailsSchema(BaseModel):
     warnings: str | None = None
     credits: str | None = None
     seating: SeatingConfigSchema | None = None
+    sale_mode: str | None = Field(default=None, pattern="^(system|whatsapp)$")
+    whatsapp_number: str | None = Field(default=None, max_length=40)
+    whatsapp_message: str | None = Field(default=None, max_length=500)
 
 
 class RegisterResponse(BaseModel):

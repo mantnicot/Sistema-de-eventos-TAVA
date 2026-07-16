@@ -53,6 +53,17 @@ export function parseHttpError(err: unknown, context = 'operacion'): ParsedHttpE
   const code = body?.code;
   const apiMessage = messageFromBody(body, '');
 
+  if (status === 0 && (err.statusText === 'Timeout' || code === 'LOGIN_TIMEOUT')) {
+    return {
+      kind: 'network',
+      title: 'El servidor se demoró mucho',
+      message: apiMessage || 'El servidor se demoró mucho, vuelve a intentarlo.',
+      code: code ?? 'TIMEOUT',
+      status: 0,
+      logLine: `[TAVA] ${context}: timeout ${err.url}`,
+    };
+  }
+
   if (status === 0) {
     const corsHint = err.message?.toLowerCase().includes('failed') || err.statusText === 'Unknown Error';
     return {

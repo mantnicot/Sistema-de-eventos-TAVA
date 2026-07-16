@@ -1,7 +1,7 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { HttpBackend, HttpClient } from '@angular/common/http';
-import { firstValueFrom, from, switchMap, tap } from 'rxjs';
+import { HttpBackend, HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { catchError, firstValueFrom, from, switchMap, tap, throwError, timeout, TimeoutError } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { ApiService } from './api.service';
 import { encryptPasswordForTransport } from '../utils/password-crypto.util';
@@ -18,6 +18,8 @@ interface AuthResponse {
   tokens: { access_token: string; refresh_token: string; token_type: string };
 }
 
+const LOGIN_TIMEOUT_MS = 18000;
+
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private readonly api = inject(ApiService);
@@ -32,6 +34,10 @@ export class AuthService {
   readonly isAdmin = computed(() => this._user()?.role === 'admin');
   readonly isValidator = computed(() => ['validator', 'admin'].includes(this._user()?.role ?? ''));
   readonly isSeller = computed(() => ['seller', 'admin'].includes(this._user()?.role ?? ''));
+
+  constructor() {
+    this.recoverStoredSession();
+  }
 
   preloadPublicKey(): void {
     void this.getPublicKeyPem().catch(() => undefined);
@@ -50,7 +56,26 @@ export class AuthService {
           )
         )
       ),
-      tap((res) => this.persist(res))
+      timeout(LOGIN_TIMEOUT_MS),
+      tap((res) => this.persist(res)),
+      catchError((err) => {
+        if (err instanceof TimeoutError) {
+          this.publicKeyInflight = null;
+          return throwError(
+            () =>
+              new HttpErrorResponse({
+                error: {
+                  detail: 'El servidor se demoró mucho, vuelve a intentarlo.',
+                  code: 'LOGIN_TIMEOUT',
+                },
+                status: 0,
+                statusText: 'Timeout',
+                url: `${environment.apiUrl}/auth/login`,
+              })
+          );
+        }
+        return throwError(() => err);
+      })
     );
   }
 
@@ -121,9 +146,7 @@ export class AuthService {
   }
 
   logout(): void {
-    localStorage.removeItem('tava_access');
-    localStorage.removeItem('tava_refresh');
-    localStorage.removeItem('tava_user');
+    this.clearStoredSession();
     this._user.set(null);
     this.router.navigate(['/']);
   }
@@ -158,6 +181,43 @@ export class AuthService {
     this._user.set(res.user);
   }
 
+  private recoverStoredSession(): void {
+    const user = this._user();
+    if (!user) return;
+    const access = this.getAccessToken();
+    const refresh = this.getRefreshToken();
+    if (!access || !refresh) {
+      this.clearStoredSession();
+      this._user.set(null);
+      return;
+    }
+    if (!this.isJwtExpired(access)) return;
+    void this.tryRefreshSession().then((ok) => {
+      if (!ok) {
+        this.clearStoredSession();
+        this._user.set(null);
+      }
+    });
+  }
+
+  private clearStoredSession(): void {
+    localStorage.removeItem('tava_access');
+    localStorage.removeItem('tava_refresh');
+    localStorage.removeItem('tava_user');
+  }
+
+  private isJwtExpired(token: string): boolean {
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))) as {
+        exp?: number;
+      };
+      if (!payload.exp) return true;
+      return payload.exp * 1000 <= Date.now() + 15000;
+    } catch {
+      return true;
+    }
+  }
+
   private getPublicKeyPem(): Promise<string> {
     if (this.publicKeyPem) return Promise.resolve(this.publicKeyPem);
     if (this.publicKeyInflight) return this.publicKeyInflight;
@@ -173,6 +233,12 @@ export class AuthService {
   }
 
   private loadUser(): TavaUser | null {
+    const token = localStorage.getItem('tava_access');
+    const refresh = localStorage.getItem('tava_refresh');
+    if (!token || !refresh) {
+      this.clearStoredSession();
+      return null;
+    }
     const raw = localStorage.getItem('tava_user');
     if (!raw) return null;
     try {

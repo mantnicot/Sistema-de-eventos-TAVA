@@ -63,6 +63,38 @@
             <option value="agotado">Agotado</option>
           </select>
         </label>
+        <section class="ticketing-block">
+          <h3>Modo de venta</h3>
+          <label>
+            Venta de boletas
+            <select [(ngModel)]="theatrical.sale_mode" name="saleMode">
+              <option value="system">Compra en el sistema</option>
+              <option value="whatsapp">Solo por WhatsApp</option>
+            </select>
+          </label>
+          @if (theatrical.sale_mode === 'whatsapp') {
+            <label>
+              Número de WhatsApp
+              <input
+                [(ngModel)]="theatrical.whatsapp_number"
+                name="whatsappNumber"
+                placeholder="Ej. 573001234567"
+              />
+            </label>
+            <label>
+              Mensaje predeterminado
+              <textarea
+                [(ngModel)]="theatrical.whatsapp_message"
+                name="whatsappMessage"
+                rows="3"
+                placeholder="Hola TAVA, quiero boletas para este evento..."
+              ></textarea>
+            </label>
+            <p class="muted">
+              En la página pública del evento se ocultará la compra directa y se abrirá WhatsApp con este mensaje.
+            </p>
+          }
+        </section>
         <tava-file-upload
           label="Imagen principal del evento"
           kind="image"

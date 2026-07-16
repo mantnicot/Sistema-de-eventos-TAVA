@@ -143,6 +143,25 @@
             <p>Pero tenemos otros para ti. Explora la cartelera y reserva tu próxima función.</p>
             <a routerLink="/eventos" class="tava-btn-primary">Ver otros eventos</a>
           </div>
+        } @else if (isWhatsAppSale(ev)) {
+          <div class="detail__missed">
+            <p class="detail__missed-title">Boletas por WhatsApp</p>
+            <p>
+              Para este evento las boletas se gestionan directamente con TAVA. Escríbenos y te ayudamos con la compra y el código de reclamo.
+            </p>
+            @if (ev.theatrical_details?.whatsapp_number) {
+              <a
+                class="tava-btn-primary"
+                [href]="whatsappSaleLink(ev)"
+                target="_blank"
+                rel="noopener"
+              >
+                Escribir por WhatsApp
+              </a>
+            } @else {
+              <p class="hint hint--warn">WhatsApp no configurado para este evento.</p>
+            }
+          </div>
         } @else if (ev.ticket_types.length) {
           <p class="detail__funny-cta">{{ funnyCta(ev.id) }}</p>
 

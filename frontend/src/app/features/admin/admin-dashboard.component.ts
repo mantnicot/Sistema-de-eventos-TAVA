@@ -122,7 +122,11 @@ export class AdminDashboardComponent implements OnInit {
   adminSeatPreviewSelected: string[] = [];
   seatingAssignTicketTypeId: string | null = null;
 
-  theatrical: TheatricalDetails = {};
+  theatrical: TheatricalDetails = {
+    sale_mode: 'system',
+    whatsapp_number: '',
+    whatsapp_message: '',
+  };
   eventForm = {
     name: '',
     description: '',
@@ -156,7 +160,8 @@ export class AdminDashboardComponent implements OnInit {
   bootstrapAdmin(): void {
     this.adminLoading.set(true);
     this.adminApiError.set(null);
-    void this.warmup.wake().finally(() => this.loadAdminData());
+    void this.warmup.wake();
+    this.loadAdminData();
   }
 
   private loadAdminData(): void {
@@ -468,7 +473,11 @@ export class AdminDashboardComponent implements OnInit {
     this.castMembers = [{ name: '', photo_url: '', role: '' }];
     this.ticketTypesDraft = [];
     this.ticketTypesTouched = false;
-    this.theatrical = {};
+    this.theatrical = {
+      sale_mode: 'system',
+      whatsapp_number: '',
+      whatsapp_message: '',
+    };
     this.eventForm = {
       name: '',
       description: '',
@@ -696,6 +705,9 @@ export class AdminDashboardComponent implements OnInit {
       trailer_url: ev.trailer_url ?? '',
     };
     this.theatrical = { ...(ev.theatrical_details ?? {}) };
+    this.theatrical.sale_mode = this.theatrical.sale_mode ?? 'system';
+    this.theatrical.whatsapp_number = this.theatrical.whatsapp_number ?? '';
+    this.theatrical.whatsapp_message = this.theatrical.whatsapp_message ?? '';
     const td = ev.theatrical_details;
     if (td?.cast_members?.length) {
       this.castMembers = td.cast_members.map((m) => ({ ...m }));
@@ -747,6 +759,9 @@ export class AdminDashboardComponent implements OnInit {
       ...this.eventForm,
       theatrical_details: {
         ...this.theatrical,
+        sale_mode: this.theatrical.sale_mode ?? 'system',
+        whatsapp_number: this.theatrical.whatsapp_number?.trim() || null,
+        whatsapp_message: this.theatrical.whatsapp_message?.trim() || null,
         cast: members.map((m) => m.name),
         cast_members: members,
         seating: this.seatingDraft,
