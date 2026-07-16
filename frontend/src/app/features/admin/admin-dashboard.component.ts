@@ -79,6 +79,7 @@ interface EventUpdateResponse extends TavaEvent {
 }
 
 const ADMIN_REQUEST_TIMEOUT_MS = 12000;
+const ADMIN_EVENTS_TIMEOUT_MS = 55000;
 
 @Component({
   selector: 'app-admin-dashboard',
@@ -106,6 +107,8 @@ export class AdminDashboardComponent implements OnInit {
   readonly editingId = signal<string | null>(null);
   readonly adminLoading = signal(true);
   readonly adminApiError = signal<string | null>(null);
+  readonly adminEventsLoading = signal(false);
+  readonly adminEventsError = signal<string | null>(null);
 
   roleEmail = '';
   rolePick = 'seller';
@@ -162,12 +165,15 @@ export class AdminDashboardComponent implements OnInit {
   bootstrapAdmin(): void {
     this.adminLoading.set(true);
     this.adminApiError.set(null);
-    void this.warmup.wake();
+    this.adminEventsError.set(null);
+    void this.warmup.wake().finally(() => {
+      if (!this.adminEvents().length && !this.adminEventsLoading()) this.loadAdminEvents();
+    });
     this.loadAdminData();
   }
 
   private loadAdminData(): void {
-    let pending = 3;
+    let pending = 2;
     let failures = 0;
     const done = () => {
       pending -= 1;
@@ -196,19 +202,7 @@ export class AdminDashboardComponent implements OnInit {
         if (kpis) this.kpis.set(kpis);
       });
 
-    this.api
-      .get<TavaEvent[]>('/events/admin/all')
-      .pipe(
-        timeout(ADMIN_REQUEST_TIMEOUT_MS),
-        catchError(() => {
-          failures += 1;
-          return of([] as TavaEvent[]);
-        }),
-        finalize(done)
-      )
-      .subscribe((events) => {
-        this.adminEvents.set(events ?? []);
-      });
+    this.loadAdminEvents();
 
     this.api
       .get<AdminUser[]>('/users')
@@ -337,7 +331,21 @@ export class AdminDashboardComponent implements OnInit {
   }
 
   loadAdminEvents(): void {
-    this.api.get<TavaEvent[]>('/events/admin/all').subscribe({ next: (e) => this.adminEvents.set(e) });
+    this.adminEventsLoading.set(true);
+    this.adminEventsError.set(null);
+    this.api
+      .get<TavaEvent[]>('/events/admin/all')
+      .pipe(
+        timeout(ADMIN_EVENTS_TIMEOUT_MS),
+        catchError(() => {
+          this.adminEventsError.set('No se pudieron cargar los eventos. Reintenta en unos segundos.');
+          return of(null);
+        }),
+        finalize(() => this.adminEventsLoading.set(false))
+      )
+      .subscribe((events) => {
+        if (events) this.adminEvents.set(events);
+      });
   }
 
   loadUsers(): void {

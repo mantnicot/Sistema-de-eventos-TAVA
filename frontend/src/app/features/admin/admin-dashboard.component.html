@@ -394,7 +394,14 @@
               </div>
             </article>
           } @empty {
-            <p class="muted">No hay eventos. Crea el primero.</p>
+            @if (adminEventsLoading()) {
+              <p class="muted">Cargando eventos...</p>
+            } @else if (adminEventsError()) {
+              <p class="muted">{{ adminEventsError() }}</p>
+              <button type="button" class="nav__btn-outline" (click)="loadAdminEvents()">Reintentar eventos</button>
+            } @else {
+              <p class="muted">No hay eventos. Crea el primero.</p>
+            }
           }
         </div>
       </aside>
