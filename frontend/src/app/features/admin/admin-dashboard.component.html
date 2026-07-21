@@ -452,21 +452,23 @@
 
   @if (tab() === 'appearance') {
     <form class="tava-card admin-form" (ngSubmit)="saveAppearance()">
-      <h2>Video de fondo (difuminado)</h2>
-      <p class="muted">Sube un MP4 de una obra o escena. Se verá muy difuminado detrás de todo el sitio.</p>
+      <h2>Video del loader</h2>
+      <p class="muted">Sube un MP4 corto de una obra o escena. Se reproducirá al cargar cartelera, eventos y ventanas de espera.</p>
       <label class="check-row">
-        <input type="checkbox" [(ngModel)]="appearanceForm.hero_video_enabled" name="enabled" />
-        Activar video de fondo
+        <input type="checkbox" [(ngModel)]="appearanceForm.loader_video_enabled" name="enabled" />
+        Activar video del loader
       </label>
       <tava-file-upload
-        label="Subir video de fondo"
+        label="Subir video del loader"
         kind="video"
         accept="video/mp4,video/webm"
-        [specs]="videoHeroSpec"
-        (uploaded)="appearanceForm.hero_video_url = $event"
+        [specs]="videoLoaderSpec"
+        (uploaded)="appearanceForm.loader_video_url = $event"
       />
-      @if (appearanceForm.hero_video_url) {
-        <p class="muted">Video activo: {{ appearanceForm.hero_video_url }}</p>
+      @if (appearanceForm.loader_video_url) {
+        <p class="muted">Video activo: {{ appearanceForm.loader_video_url }}</p>
+      } @else {
+        <p class="muted">Sin video personalizado: se usa el loader predeterminado del sistema.</p>
       }
       <button type="submit" class="tava-btn-primary">Guardar apariencia</button>
     </form>

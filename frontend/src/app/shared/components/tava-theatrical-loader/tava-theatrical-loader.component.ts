@@ -1,5 +1,21 @@
-import { AfterViewInit, Component, ElementRef, Input, OnDestroy, OnInit, ViewChild, signal } from '@angular/core';
+import {
+  AfterViewInit,
+  Component,
+  computed,
+  effect,
+  ElementRef,
+  inject,
+  Input,
+  OnDestroy,
+  OnInit,
+  ViewChild,
+  signal,
+} from '@angular/core';
+import { SiteSettingsService } from '../../../core/services/site-settings.service';
+import { resolveMediaUrl } from '../../../core/utils/media-url.util';
 import { randomTheatricalMessage } from '../../../core/utils/theatrical-messages.util';
+
+const DEFAULT_LOADER_VIDEO = '/assets/videos/tava-loader.mp4?v=20260716';
 
 @Component({
   selector: 'tava-theatrical-loader',
@@ -8,17 +24,40 @@ import { randomTheatricalMessage } from '../../../core/utils/theatrical-messages
   styleUrl: './tava-theatrical-loader.component.scss',
 })
 export class TavaTheatricalLoaderComponent implements OnInit, AfterViewInit, OnDestroy {
+  private readonly site = inject(SiteSettingsService);
+
   @Input() title = 'Preparando el escenario';
   @Input() context = 'loader';
-  @Input() videoSrc = '/assets/videos/tava-loader.mp4?v=20260716';
   @ViewChild('loaderVideo') private videoRef?: ElementRef<HTMLVideoElement>;
 
   readonly currentMessage = signal('');
   readonly videoFailed = signal(false);
+
+  readonly resolvedVideoSrc = computed(() => {
+    const app = this.site.appearance();
+    if (app && !app.loader_video_enabled) return '';
+    const url = app?.loader_video_url?.trim();
+    if (url) return resolveMediaUrl(url);
+    return DEFAULT_LOADER_VIDEO;
+  });
+
   private timer: ReturnType<typeof setInterval> | null = null;
   private playRetry: ReturnType<typeof setTimeout> | null = null;
 
+  constructor() {
+    effect(() => {
+      const src = this.resolvedVideoSrc();
+      if (!src) {
+        this.videoFailed.set(true);
+        return;
+      }
+      this.videoFailed.set(false);
+      queueMicrotask(() => this.playVideo());
+    });
+  }
+
   ngOnInit(): void {
+    this.site.loadAppearance();
     this.rotate();
     this.timer = setInterval(() => this.rotate(), 3200);
   }
@@ -51,7 +90,7 @@ export class TavaTheatricalLoaderComponent implements OnInit, AfterViewInit, OnD
 
   private playVideo(): void {
     const video = this.videoRef?.nativeElement;
-    if (!video || this.videoFailed()) return;
+    if (!video || this.videoFailed() || !this.resolvedVideoSrc()) return;
     video.muted = true;
     video.loop = true;
     video.playsInline = true;

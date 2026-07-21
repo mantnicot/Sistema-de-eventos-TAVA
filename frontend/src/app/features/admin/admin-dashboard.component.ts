@@ -11,7 +11,7 @@ import {
   GALLERY_IMAGE_SPEC,
   GALLERY_VIDEO_SPEC,
   IMAGE_EVENT_SPEC,
-  VIDEO_HERO_SPEC,
+  VIDEO_LOADER_SPEC,
   VIDEO_TRAILER_SPEC,
 } from '../../core/constants/media-upload-specs.const';
 import { TavaFileUploadComponent } from '../../shared/components/tava-file-upload/tava-file-upload.component';
@@ -100,7 +100,7 @@ export class AdminDashboardComponent implements OnInit {
   readonly videoTrailerSpec = VIDEO_TRAILER_SPEC;
   readonly galleryImageSpec = GALLERY_IMAGE_SPEC;
   readonly galleryVideoSpec = GALLERY_VIDEO_SPEC;
-  readonly videoHeroSpec = VIDEO_HERO_SPEC;
+  readonly videoLoaderSpec = VIDEO_LOADER_SPEC;
   readonly kpis = signal<Kpis | null>(null);
   readonly adminEvents = signal<TavaEvent[]>([]);
   readonly users = signal<AdminUser[]>([]);
@@ -145,7 +145,7 @@ export class AdminDashboardComponent implements OnInit {
     trailer_url: '',
   };
 
-  appearanceForm = { hero_video_url: '', hero_video_enabled: true };
+  appearanceForm = { loader_video_url: '', loader_video_enabled: true };
 
   ticketTypesDraft: TicketTypeDraft[] = [];
   ticketTypesTouched = false;
@@ -1085,7 +1085,7 @@ export class AdminDashboardComponent implements OnInit {
       next: (a: SiteAppearance) => {
         this.notify.hide();
         this.site.appearance.set(a);
-        this.notify.success('Apariencia', 'Video de fondo actualizado');
+        this.notify.success('Apariencia', 'Video del loader actualizado');
       },
       error: () => {
         this.notify.hide();

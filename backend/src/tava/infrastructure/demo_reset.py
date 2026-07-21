@@ -128,13 +128,13 @@ async def reset_demo_data(session, *, force: bool = False) -> bool:
     )
 
     # Limpiar video/imágenes de apariencia
-    for key in ("hero_video_url", "hero_video_enabled"):
+    for key in ("loader_video_url", "loader_video_enabled"):
         row = await session.get(SiteSettingModel, key)
         if row:
-            if key == "hero_video_url":
+            if key == "loader_video_url":
                 row.value = ""
             else:
-                row.value = "false"
+                row.value = "true"
 
     admin = (
         await session.execute(select(UserModel).where(UserModel.email == ADMIN_EMAIL))

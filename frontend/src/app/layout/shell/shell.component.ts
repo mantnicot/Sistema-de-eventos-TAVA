@@ -1,9 +1,8 @@
-import { Component, inject, OnDestroy, OnInit, signal } from '@angular/core';
+import { Component, inject, OnDestroy, OnInit } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet, NavigationEnd } from '@angular/router';
 import { filter, Subscription } from 'rxjs';
 import { AuthService } from '../../core/services/auth.service';
 import { SiteSettingsService } from '../../core/services/site-settings.service';
-import { HeroVideoComponent } from '../hero-video/hero-video.component';
 import { TavaContactFabComponent } from '../../shared/components/tava-contact-fab/tava-contact-fab.component';
 import { TavaPopupComponent } from '../../shared/components/tava-popup/tava-popup.component';
 import { SessionIdleService } from '../../core/services/session-idle.service';
@@ -19,7 +18,6 @@ import { ApiKeepAliveService } from '../../core/services/api-keep-alive.service'
     RouterLinkActive,
     TavaPopupComponent,
     TavaContactFabComponent,
-    HeroVideoComponent,
   ],
   templateUrl: './shell.component.html',
   styleUrl: './shell.component.scss',

@@ -11,13 +11,13 @@ router = APIRouter(prefix="/settings", tags=["Configuración del sitio"])
 
 
 class AppearancePublicResponse(BaseModel):
-    hero_video_url: str
-    hero_video_enabled: bool
+    loader_video_url: str
+    loader_video_enabled: bool
 
 
 class AppearanceUpdateRequest(BaseModel):
-    hero_video_url: str = Field(max_length=500)
-    hero_video_enabled: bool = True
+    loader_video_url: str = Field(max_length=500)
+    loader_video_enabled: bool = True
 
 
 @router.get("/appearance", response_model=AppearancePublicResponse)
@@ -32,9 +32,9 @@ async def update_appearance(
     _user=Depends(require_roles(UserRole.ADMIN)),
     db: AsyncSession = Depends(get_db),
 ):
-    await site_svc.set_setting(db, site_svc.KEY_HERO_VIDEO_URL, body.hero_video_url.strip())
+    await site_svc.set_setting(db, site_svc.KEY_LOADER_VIDEO_URL, body.loader_video_url.strip())
     await site_svc.set_setting(
-        db, site_svc.KEY_HERO_VIDEO_ENABLED, "true" if body.hero_video_enabled else "false"
+        db, site_svc.KEY_LOADER_VIDEO_ENABLED, "true" if body.loader_video_enabled else "false"
     )
     data = await site_svc.get_public_appearance(db)
     return AppearancePublicResponse(**data)

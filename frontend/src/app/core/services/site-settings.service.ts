@@ -3,8 +3,8 @@ import { finalize } from 'rxjs';
 import { ApiService } from './api.service';
 
 export interface SiteAppearance {
-  hero_video_url: string;
-  hero_video_enabled: boolean;
+  loader_video_url: string;
+  loader_video_enabled: boolean;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -32,8 +32,8 @@ export class SiteSettingsService {
         error: () => {
           this.loadedAt = Date.now();
           this.appearance.set({
-            hero_video_url: '',
-            hero_video_enabled: false,
+            loader_video_url: '',
+            loader_video_enabled: true,
           });
         },
       });

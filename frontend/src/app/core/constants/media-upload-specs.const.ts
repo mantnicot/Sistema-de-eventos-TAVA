@@ -25,12 +25,12 @@ export const VIDEO_TRAILER_SPEC: MediaUploadSpec = {
   ],
 };
 
-export const VIDEO_HERO_SPEC: MediaUploadSpec = {
-  title: 'Video de fondo (inicio)',
+export const VIDEO_LOADER_SPEC: MediaUploadSpec = {
+  title: 'Video del loader (carga)',
   lines: [
     'Resolución: 1920 × 1080 px (16:9) · MP4 H.264',
-    'Duración: 10–30 seg en loop, sin audio fuerte',
-    'Peso máximo: 80 MB · Evita archivos muy pesados para carga rápida',
+    'Duración: 3–15 seg en loop, sin audio fuerte',
+    'Peso máximo: 80 MB · Se muestra al cargar cartelera, eventos y popups',
   ],
 };
 
