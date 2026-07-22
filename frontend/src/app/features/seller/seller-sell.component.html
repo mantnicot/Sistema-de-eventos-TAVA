@@ -73,7 +73,9 @@
         </fieldset>
       }
 
-      <button type="submit" class="tava-btn-primary sell__cta">Confirmar venta y enviar PDF</button>
+      <button type="submit" class="tava-btn-primary sell__cta" [disabled]="selling">
+        {{ selling ? 'Generando boletas...' : 'Confirmar venta y enviar PDF' }}
+      </button>
     }
   </form>
 </section>
