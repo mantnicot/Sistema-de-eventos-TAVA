@@ -10,8 +10,24 @@ from tava.infrastructure.persistence.models import Base
 _ASYNCPG_STRIP_QUERY_PARAMS = frozenset({"sslmode", "channel_binding"})
 
 
+def _normalize_async_database_url(database_url: str) -> str:
+    """Neon/Render suelen entregar postgresql:// — TAVA usa asyncpg, no psycopg2."""
+    url = database_url.strip()
+    replacements = (
+        ("postgresql+psycopg2://", "postgresql+asyncpg://"),
+        ("postgresql+psycopg://", "postgresql+asyncpg://"),
+        ("postgres://", "postgresql+asyncpg://"),
+        ("postgresql://", "postgresql+asyncpg://"),
+    )
+    for old, new in replacements:
+        if url.startswith(old):
+            return new + url[len(old) :]
+    return url
+
+
 def _prepare_asyncpg_url(database_url: str) -> tuple[str, dict]:
     """Limpia la URL y define SSL para hosts remotos (Neon, Render, etc.)."""
+    database_url = _normalize_async_database_url(database_url)
     parsed = urlparse(database_url)
     query = parse_qs(parsed.query)
     ssl_required = query.get("sslmode", [""])[0] in ("require", "verify-ca", "verify-full")
