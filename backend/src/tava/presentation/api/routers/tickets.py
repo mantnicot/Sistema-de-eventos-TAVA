@@ -112,25 +112,6 @@ async def admin_cancel_ticket(
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@router.get("/{ticket_id}/pdf")
-async def download_ticket_pdf(
-    ticket_id: UUID,
-    user=Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-):
-    uc = TicketUseCase(db)
-    is_admin = user.role == UserRole.ADMIN
-    try:
-        pdf = await uc.get_ticket_pdf_bytes(ticket_id, user.id, is_admin)
-    except ValueError as e:
-        raise HTTPException(status_code=404 if "encontrada" in str(e).lower() else 403, detail=str(e))
-    return Response(
-        content=pdf,
-        media_type="application/pdf",
-        headers={"Content-Disposition": f'attachment; filename="boleta-{ticket_id}.pdf"'},
-    )
-
-
 @router.get("/orders/{order_id}/pdf")
 async def download_order_pdf(
     order_id: UUID,
@@ -148,6 +129,25 @@ async def download_order_pdf(
         content=pdf,
         media_type="application/pdf",
         headers={"Content-Disposition": f'attachment; filename="boletas-{order_id}.pdf"'},
+    )
+
+
+@router.get("/{ticket_id}/pdf")
+async def download_ticket_pdf(
+    ticket_id: UUID,
+    user=Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    uc = TicketUseCase(db)
+    is_admin = user.role == UserRole.ADMIN
+    try:
+        pdf = await uc.get_ticket_pdf_bytes(ticket_id, user.id, is_admin)
+    except ValueError as e:
+        raise HTTPException(status_code=404 if "encontrada" in str(e).lower() else 403, detail=str(e))
+    return Response(
+        content=pdf,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="boleta-{ticket_id}.pdf"'},
     )
 
 
