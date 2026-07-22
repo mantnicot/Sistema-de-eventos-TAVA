@@ -73,7 +73,9 @@
         </fieldset>
       }
 
-      <button type="submit" class="tava-btn-primary sell__cta" [disabled]="selling">
+      <tava-captcha (tokenChange)="onCaptchaToken($event)" />
+
+      <button type="submit" class="tava-btn-primary sell__cta" [disabled]="selling || !captchaToken">
         {{ selling ? 'Generando boletas...' : 'Confirmar venta y enviar PDF' }}
       </button>
     }

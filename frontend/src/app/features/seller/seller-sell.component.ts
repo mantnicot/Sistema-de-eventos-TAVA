@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, inject, OnInit, signal, ViewChild } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../core/services/api.service';
@@ -6,15 +6,17 @@ import { AuthService } from '../../core/services/auth.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { TavaEvent, TavaEventDetail } from '../../core/models/event.model';
 import { parseHttpError } from '../../core/utils/http-error.util';
+import { TavaCaptchaComponent } from '../../shared/components/tava-captcha/tava-captcha.component';
 
 @Component({
   selector: 'app-seller-sell',
   standalone: true,
-  imports: [FormsModule, DecimalPipe],
+  imports: [FormsModule, DecimalPipe, TavaCaptchaComponent],
   templateUrl: './seller-sell.component.html',
   styleUrl: './seller-sell.component.scss',
 })
 export class SellerSellComponent implements OnInit {
+  @ViewChild(TavaCaptchaComponent) captcha?: TavaCaptchaComponent;
   private readonly api = inject(ApiService);
   readonly auth = inject(AuthService);
   private readonly notify = inject(NotificationService);
@@ -29,6 +31,7 @@ export class SellerSellComponent implements OnInit {
   singleHolderMode = true;
   holderName = '';
   holderNames: string[] = [''];
+  captchaToken = '';
 
   ngOnInit(): void {
     this.api.get<TavaEvent[]>('/events/assigned/mine', { staff_role: 'seller' }).subscribe({
@@ -78,6 +81,10 @@ export class SellerSellComponent implements OnInit {
 
   selling = false;
 
+  onCaptchaToken(token: string): void {
+    this.captchaToken = token;
+  }
+
   vender(): void {
     if (this.selling) return;
     const ev = this.eventDetail();
@@ -92,6 +99,10 @@ export class SellerSellComponent implements OnInit {
       : this.holderNames.map((n) => n.trim()).filter(Boolean);
     if (this.singleHolderMode ? names.length !== 1 : names.length !== this.quantity) {
       this.notify.warning('Nombres', this.singleHolderMode ? 'Indica el nombre' : 'Indica el nombre de cada asistente');
+      return;
+    }
+    if (!this.captchaToken) {
+      this.notify.warning('Verificación', 'Completa la verificación para registrar la venta.');
       return;
     }
 
@@ -112,7 +123,7 @@ export class SellerSellComponent implements OnInit {
             buyer_email: this.buyerEmail.trim(),
             holder_names: names,
             legal_accepted: true,
-            captcha_token: 'dev-captcha',
+            captcha_token: this.captchaToken,
           })
           .subscribe({
             next: (res) => {
@@ -127,11 +138,15 @@ export class SellerSellComponent implements OnInit {
               this.buyerEmail = '';
               this.holderNames = [''];
               this.quantity = 1;
+              this.captchaToken = '';
+              this.captcha?.reset();
               this.onEventChange();
             },
             error: (err) => {
               this.selling = false;
               this.notify.hide();
+              this.captchaToken = '';
+              this.captcha?.reset();
               this.notify.showHttpError(parseHttpError(err, 'venta'));
             },
           });
