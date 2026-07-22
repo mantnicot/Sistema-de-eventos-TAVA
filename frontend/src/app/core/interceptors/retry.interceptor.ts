@@ -2,8 +2,8 @@ import { HttpContextToken, HttpErrorResponse, HttpEvent, HttpInterceptorFn } fro
 import { Observable, catchError, switchMap, throwError, timer } from 'rxjs';
 
 const RETRYABLE = new Set([0, 502, 503, 504]);
-const DELAYS_MS: number[] = [];
-const MAX_RETRIES = 0;
+const DELAYS_MS = [2000, 4000];
+const MAX_RETRIES = 2;
 
 /** No reintentar compras/ventas para evitar duplicados accidentales. */
 export const SKIP_RETRY = new HttpContextToken<boolean>(() => false);

@@ -42,3 +42,18 @@ export function mediaBackgroundStyle(url: string | null | undefined): string {
   const resolved = resolveMediaUrl(url).replace(/"/g, '\\22');
   return `url("${resolved}")`;
 }
+
+/** Versión liviana del video del loader (Cloudinary) para carga más rápida. */
+export function optimizeLoaderVideoUrl(url: string | null | undefined): string {
+  const resolved = resolveMediaUrl(url);
+  if (!resolved.includes('res.cloudinary.com') || !resolved.includes('/video/upload/')) {
+    return resolved;
+  }
+  const marker = '/video/upload/';
+  const idx = resolved.indexOf(marker);
+  if (idx < 0) return resolved;
+  const prefix = resolved.slice(0, idx + marker.length);
+  const suffix = resolved.slice(idx + marker.length);
+  if (suffix.startsWith('q_auto') || suffix.startsWith('f_auto')) return resolved;
+  return `${prefix}q_auto:eco,w_720,c_limit/${suffix}`;
+}

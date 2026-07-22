@@ -1,5 +1,8 @@
 <div class="theatrical-loader" role="status" aria-live="polite" aria-busy="true">
   <div class="theatrical-loader__scene" [class.theatrical-loader__scene--fallback]="videoFailed()" aria-hidden="true">
+    <div class="theatrical-loader__fallback">
+      <span>TAVA</span>
+    </div>
     @if (resolvedVideoSrc()) {
       <video
         #loaderVideo
@@ -8,18 +11,13 @@
         muted
         loop
         playsinline
-        preload="auto"
+        preload="metadata"
         [src]="resolvedVideoSrc()"
         (loadeddata)="onVideoReady()"
         (canplay)="onVideoReady()"
         (playing)="onVideoPlaying()"
         (error)="onVideoError()"
       ></video>
-    }
-    @if (videoFailed()) {
-      <div class="theatrical-loader__fallback">
-        <span>TAVA</span>
-      </div>
     }
   </div>
   <h2 class="theatrical-loader__title">{{ title }}</h2>

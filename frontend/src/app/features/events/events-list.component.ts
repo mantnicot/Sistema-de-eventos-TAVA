@@ -94,7 +94,7 @@ export class EventsListComponent implements OnInit, OnDestroy {
           this.finishedEvents.set([]);
         }
         this.loadError.set(
-          'No pudimos cargar los eventos. El servidor puede estar despertando — espera unos segundos e intenta de nuevo.'
+          'No pudimos cargar los eventos. Comprueba tu conexión e intenta de nuevo.'
         );
       },
     });
@@ -112,7 +112,7 @@ export class EventsListComponent implements OnInit, OnDestroy {
     this.loadingStalled.set(false);
     this.stallTimer = setTimeout(() => {
       if (this.loading()) this.loadingStalled.set(true);
-    }, 9000);
+    }, 5000);
   }
 
   private clearStallTimer(): void {

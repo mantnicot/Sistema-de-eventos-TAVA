@@ -8,6 +8,7 @@ import { TavaPopupComponent } from '../../shared/components/tava-popup/tava-popu
 import { SessionIdleService } from '../../core/services/session-idle.service';
 import { ApiWarmupService } from '../../core/services/api-warmup.service';
 import { ApiKeepAliveService } from '../../core/services/api-keep-alive.service';
+import { EventsPrefetchService } from '../../core/services/events-prefetch.service';
 
 @Component({
   selector: 'app-shell',
@@ -29,6 +30,7 @@ export class ShellComponent implements OnInit, OnDestroy {
   private readonly idle = inject(SessionIdleService);
   private readonly warmup = inject(ApiWarmupService);
   private readonly keepAlive = inject(ApiKeepAliveService);
+  private readonly eventsPrefetch = inject(EventsPrefetchService);
   private navSub?: Subscription;
 
   menuOpen = false;
@@ -36,6 +38,7 @@ export class ShellComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     void this.warmup.wake();
     this.site.loadAppearance();
+    this.eventsPrefetch.prefetch();
     this.keepAlive.start();
     this.idle.start();
     this.navSub = this.router.events

@@ -12,7 +12,7 @@ import {
   signal,
 } from '@angular/core';
 import { SiteSettingsService } from '../../../core/services/site-settings.service';
-import { resolveMediaUrl } from '../../../core/utils/media-url.util';
+import { optimizeLoaderVideoUrl } from '../../../core/utils/media-url.util';
 import { randomTheatricalMessage } from '../../../core/utils/theatrical-messages.util';
 
 @Component({
@@ -33,10 +33,10 @@ export class TavaTheatricalLoaderComponent implements OnInit, AfterViewInit, OnD
 
   readonly resolvedVideoSrc = computed(() => {
     const app = this.site.appearance();
-    if (!app) return '';
     if (app && !app.loader_video_enabled) return '';
     const url = app?.loader_video_url?.trim();
-    return url ? this.withCacheBuster(resolveMediaUrl(url)) : '';
+    if (!url) return '';
+    return this.withCacheBuster(optimizeLoaderVideoUrl(url));
   });
 
   private timer: ReturnType<typeof setInterval> | null = null;

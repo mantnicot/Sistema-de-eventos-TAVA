@@ -20,6 +20,7 @@ import {
 import { mediaBackgroundStyle, resolveMediaUrl } from '../../core/utils/media-url.util';
 import { trailerEmbedUrl, trailerVideoSrc } from '../../core/utils/trailer-embed.util';
 import { onEventImageError } from '../../core/utils/event-image.util';
+import { readEventsCache } from '../../core/utils/events-cache.util';
 import { TavaTheatricalVideoComponent } from '../../shared/components/tava-theatrical-video/tava-theatrical-video.component';
 import { TavaTicketPreviewComponent } from '../../shared/components/tava-ticket-preview/tava-ticket-preview.component';
 import { TavaCaptchaComponent } from '../../shared/components/tava-captcha/tava-captcha.component';
@@ -195,14 +196,19 @@ export class EventDetailComponent implements OnInit, OnDestroy {
       error: () => {
         this.clearStallTimer();
         this.loading.set(false);
-        this.loadError.set(
-          'No pudimos cargar este evento. El servidor puede estar despertando — intenta de nuevo.'
-        );
+        this.loadError.set('No pudimos cargar este evento. Intenta de nuevo en unos segundos.');
       },
     });
   }
 
   private loadRelatedEvents(currentEventId: string): void {
+    const cached = readEventsCache('', '');
+    if (cached?.length) {
+      this.relatedEvents.set(
+        cached.filter((item) => item.id !== currentEventId && this.canBuy(item)).slice(0, 3)
+      );
+      return;
+    }
     this.api.get<TavaEvent[]>('/events').subscribe({
       next: (events) => {
         this.relatedEvents.set(
@@ -219,7 +225,7 @@ export class EventDetailComponent implements OnInit, OnDestroy {
     this.loadingStalled.set(false);
     this.stallTimer = setTimeout(() => {
       if (this.loading()) this.loadingStalled.set(true);
-    }, 9000);
+    }, 5000);
   }
 
   private clearStallTimer(): void {

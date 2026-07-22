@@ -1,5 +1,6 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { finalize } from 'rxjs';
+import { readAppearanceCache, writeAppearanceCache } from '../utils/appearance-cache.util';
 import { ApiService } from './api.service';
 
 export interface SiteAppearance {
@@ -13,7 +14,7 @@ export class SiteSettingsService {
   private readonly cacheTtlMs = 5 * 60 * 1000;
   private loadedAt = 0;
   private loading = false;
-  readonly appearance = signal<SiteAppearance | null>(null);
+  readonly appearance = signal<SiteAppearance | null>(readAppearanceCache());
 
   loadAppearance(): void {
     if (this.loading) return;
@@ -28,19 +29,23 @@ export class SiteSettingsService {
         next: (a) => {
           this.loadedAt = Date.now();
           this.appearance.set(a);
+          writeAppearanceCache(a);
         },
         error: () => {
           this.loadedAt = Date.now();
-          this.appearance.set({
-            loader_video_url: '',
-            loader_video_enabled: true,
-          });
+          if (!this.appearance()) {
+            this.appearance.set({
+              loader_video_url: '',
+              loader_video_enabled: true,
+            });
+          }
         },
       });
   }
 
   updateAppearance(data: SiteAppearance) {
     this.loadedAt = 0;
+    writeAppearanceCache(data);
     return this.api.put<SiteAppearance>('/settings/appearance', data);
   }
 }
