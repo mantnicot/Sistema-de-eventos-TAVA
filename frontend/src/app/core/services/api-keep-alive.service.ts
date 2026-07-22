@@ -4,8 +4,8 @@ import { timeout } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { SKIP_RETRY } from '../interceptors/retry.interceptor';
 
-/** Intervalo < 15 min para evitar que Render (free) apague el servicio. */
-const KEEP_ALIVE_INTERVAL_MS = 8 * 60 * 1000;
+/** Intervalo < 5 min para evitar que Neon suspenda la base de datos. */
+const KEEP_ALIVE_INTERVAL_MS = 4 * 60 * 1000;
 
 /**
  * Ping periódico mientras hay usuarios con la web abierta.
@@ -18,8 +18,8 @@ export class ApiKeepAliveService {
   private started = false;
 
   private wakeUrl(): string {
-    const base = environment.apiUrl.replace(/\/$/, '');
-    return `${base}/ping`;
+    const base = environment.apiUrl.replace(/\/api\/v1\/?$/, '').replace(/\/$/, '');
+    return `${base}/health/db`;
   }
 
   start(): void {

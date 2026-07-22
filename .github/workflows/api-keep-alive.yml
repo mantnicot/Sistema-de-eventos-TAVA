@@ -1,10 +1,10 @@
-# Mantiene despierta la API en Render (plan gratis duerme ~15 min sin tráfico).
+# Mantiene despiertos Render y Neon (Neon free duerme ~5 min sin consultas SQL).
 name: API keep-alive
 
 on:
   schedule:
-    # Cada 5 minutos (UTC)
-    - cron: '*/5 * * * *'
+    # Cada 4 minutos (UTC) — Neon free duerme ~5 min sin SQL
+    - cron: '*/4 * * * *'
   workflow_dispatch:
 
 jobs:
@@ -16,7 +16,7 @@ jobs:
         run: |
           set +e
           echo "Ping $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          curl -fsS --retry 1 --retry-delay 3 -m 25 \
-            "https://tava-api-1.onrender.com/api/v1/ping" \
+          curl -fsS --retry 1 --retry-delay 3 -m 45 \
+            "https://tava-api-1.onrender.com/health/db" \
             -o /dev/null -w "ping: %{http_code}\n" || true
           exit 0

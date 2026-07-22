@@ -34,14 +34,24 @@ def _prepare_asyncpg_url(database_url: str) -> tuple[str, dict]:
 settings = get_settings()
 _db_url, _connect_args = _prepare_asyncpg_url(settings.database_url)
 
+_is_production = settings.app_env.strip().lower() == "production"
+_pool_size = 3 if _is_production else 5
+_max_overflow = 5 if _is_production else 10
+
 engine = create_async_engine(
     _db_url,
     echo=settings.app_env == "development",
-    connect_args={**_connect_args, "command_timeout": 60},
+    connect_args={
+        **_connect_args,
+        # asyncpg: tiempo máximo para abrir conexión (Neon puede tardar al despertar)
+        "timeout": 120,
+        "command_timeout": 90,
+    },
     pool_pre_ping=True,
-    pool_recycle=300,
-    pool_size=5,
-    max_overflow=10,
+    pool_recycle=280,
+    pool_size=_pool_size,
+    max_overflow=_max_overflow,
+    pool_timeout=60,
 )
 AsyncSessionLocal = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
@@ -62,3 +72,15 @@ async def init_db() -> None:
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
         await apply_schema_upgrades(conn)
+
+
+async def ping_database() -> bool:
+    """SELECT 1 — también despierta Neon si estaba suspendida."""
+    from sqlalchemy import text
+
+    try:
+        async with engine.connect() as conn:
+            await conn.execute(text("SELECT 1"))
+        return True
+    except Exception:
+        return False

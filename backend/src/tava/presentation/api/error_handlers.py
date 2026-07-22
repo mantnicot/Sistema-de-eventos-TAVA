@@ -1,12 +1,27 @@
+import asyncio
 import logging
 from typing import Any
 
 from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from sqlalchemy.exc import SQLAlchemyError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 logger = logging.getLogger("tava.api")
+
+DATABASE_UNAVAILABLE_MESSAGE = (
+    "La base de datos está despertando. Espera unos segundos e intenta de nuevo."
+)
+
+
+def _is_database_timeout(exc: BaseException) -> bool:
+    if isinstance(exc, (TimeoutError, asyncio.TimeoutError)):
+        return True
+    if isinstance(exc, SQLAlchemyError):
+        cause = exc.__cause__ or exc.__context__
+        return isinstance(cause, (TimeoutError, asyncio.TimeoutError, asyncio.CancelledError))
+    return False
 
 
 def _error_body(
@@ -73,6 +88,19 @@ def register_exception_handlers(app: FastAPI) -> None:
 
     @app.exception_handler(Exception)
     async def unhandled_exception_handler(request: Request, exc: Exception):
+        if _is_database_timeout(exc) or (
+            isinstance(exc, SQLAlchemyError) and "timeout" in str(exc).lower()
+        ):
+            logger.warning("Base de datos no disponible %s %s: %s", request.method, request.url.path, exc)
+            return JSONResponse(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                content=_error_body(
+                    error_type="system",
+                    code="DATABASE_ERROR",
+                    message=DATABASE_UNAVAILABLE_MESSAGE,
+                    status_code=503,
+                ),
+            )
         logger.exception("Error no controlado %s %s", request.method, request.url.path)
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
