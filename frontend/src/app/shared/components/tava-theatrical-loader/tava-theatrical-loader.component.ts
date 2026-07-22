@@ -15,8 +15,6 @@ import { SiteSettingsService } from '../../../core/services/site-settings.servic
 import { resolveMediaUrl } from '../../../core/utils/media-url.util';
 import { randomTheatricalMessage } from '../../../core/utils/theatrical-messages.util';
 
-const DEFAULT_LOADER_VIDEO = '/assets/videos/tava-loader.mp4?v=20260716';
-
 @Component({
   selector: 'tava-theatrical-loader',
   standalone: true,
@@ -35,10 +33,10 @@ export class TavaTheatricalLoaderComponent implements OnInit, AfterViewInit, OnD
 
   readonly resolvedVideoSrc = computed(() => {
     const app = this.site.appearance();
+    if (!app) return '';
     if (app && !app.loader_video_enabled) return '';
     const url = app?.loader_video_url?.trim();
-    if (url) return resolveMediaUrl(url);
-    return DEFAULT_LOADER_VIDEO;
+    return url ? this.withCacheBuster(resolveMediaUrl(url)) : '';
   });
 
   private timer: ReturnType<typeof setInterval> | null = null;
@@ -105,5 +103,11 @@ export class TavaTheatricalLoaderComponent implements OnInit, AfterViewInit, OnD
         }, 400);
       });
     }
+  }
+
+  private withCacheBuster(src: string): string {
+    if (src.startsWith('blob:') || src.startsWith('data:')) return src;
+    const separator = src.includes('?') ? '&' : '?';
+    return `${src}${separator}loader=${encodeURIComponent(src)}`;
   }
 }
