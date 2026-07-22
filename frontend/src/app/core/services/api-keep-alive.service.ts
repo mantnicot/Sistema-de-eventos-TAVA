@@ -4,7 +4,7 @@ import { timeout } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { SKIP_RETRY } from '../interceptors/retry.interceptor';
 
-/** Intervalo < 5 min para evitar que Neon suspenda la base de datos. */
+/** Intervalo < 5 min para mantener tráfico hacia Render (Neon se despierta vía GitHub cron). */
 const KEEP_ALIVE_INTERVAL_MS = 4 * 60 * 1000;
 
 /**
@@ -18,8 +18,8 @@ export class ApiKeepAliveService {
   private started = false;
 
   private wakeUrl(): string {
-    const base = environment.apiUrl.replace(/\/api\/v1\/?$/, '').replace(/\/$/, '');
-    return `${base}/health/db`;
+    const base = environment.apiUrl.replace(/\/$/, '');
+    return `${base}/ping`;
   }
 
   start(): void {
@@ -43,7 +43,6 @@ export class ApiKeepAliveService {
     this.started = false;
   }
 
-  /** Ping ligero; ignora errores (solo mantiene tráfico hacia Render). */
   private readonly onVisibilityChange = (): void => {
     if (document.visibilityState === 'visible') {
       this.ping();
@@ -54,7 +53,7 @@ export class ApiKeepAliveService {
     const ctx = new HttpContext().set(SKIP_RETRY, true);
     this.http
       .get(this.wakeUrl(), { context: ctx })
-      .pipe(timeout(12000))
+      .pipe(timeout(8000))
       .subscribe({ error: () => undefined });
   }
 }

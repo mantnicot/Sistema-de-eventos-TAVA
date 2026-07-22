@@ -1,5 +1,6 @@
+import asyncio
 import logging
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 from pathlib import Path
 
 from fastapi import FastAPI, Request
@@ -41,9 +42,10 @@ def _rate_limit_key(request: Request) -> str:
 
 limiter = Limiter(key_func=_rate_limit_key)
 
+BOOTSTRAP_TIMEOUT_SECONDS = 90
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
+
+async def _startup_bootstrap() -> None:
     try:
         from tava.infrastructure.services.email import email_status_summary, email_transport_ready
 
@@ -65,12 +67,28 @@ async def lifespan(app: FastAPI):
             )
         else:
             logger.warning("Correo no configurado (desarrollo). Registro sin envío real.")
+    except Exception:
+        logger.exception("Diagnóstico de correo falló al arrancar")
 
-        await bootstrap_application()
+    try:
+        await asyncio.wait_for(bootstrap_application(), timeout=BOOTSTRAP_TIMEOUT_SECONDS)
         logger.info("Aplicación inicializada (tablas + datos demo)")
+    except asyncio.TimeoutError:
+        logger.error(
+            "Bootstrap superó %ss — la API responde; Neon puede estar despertando.",
+            BOOTSTRAP_TIMEOUT_SECONDS,
+        )
     except Exception:
         logger.exception("Bootstrap falló — revisar DATABASE_URL y Neon")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    bootstrap_task = asyncio.create_task(_startup_bootstrap())
     yield
+    bootstrap_task.cancel()
+    with suppress(asyncio.CancelledError):
+        await bootstrap_task
 
 
 app = FastAPI(

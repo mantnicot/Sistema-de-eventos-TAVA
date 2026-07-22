@@ -4,6 +4,7 @@ import logging
 from sqlalchemy import select
 
 from tava.domain.enums import UserRole
+from tava.config import get_settings
 from tava.infrastructure.demo_reset import (
     ADMIN_EMAIL,
     ADMIN_PASSWORD,
@@ -18,6 +19,7 @@ from tava.infrastructure.services.site_settings import ensure_default_settings
 from tava.infrastructure.security.password import hash_password, verify_password
 
 logger = logging.getLogger("tava.bootstrap")
+app_settings = get_settings()
 
 
 async def bootstrap_application() -> None:

@@ -4,7 +4,7 @@ import { firstValueFrom, timeout } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { SKIP_RETRY } from '../interceptors/retry.interceptor';
 
-/** Despierta la API antes de peticiones pesadas (no bloquea la UI). */
+/** Ping ligero — no espera bootstrap ni base de datos. */
 @Injectable({ providedIn: 'root' })
 export class ApiWarmupService {
   private readonly http = inject(HttpClient);
@@ -25,9 +25,9 @@ export class ApiWarmupService {
 
   private async pingOnce(): Promise<boolean> {
     try {
-      const ctx = new HttpContext().set(SKIP_RETRY, false);
+      const ctx = new HttpContext().set(SKIP_RETRY, true);
       await firstValueFrom(
-        this.http.get(this.wakeUrl(), { context: ctx }).pipe(timeout(25000))
+        this.http.get(this.wakeUrl(), { context: ctx }).pipe(timeout(8000))
       );
       return true;
     } catch {

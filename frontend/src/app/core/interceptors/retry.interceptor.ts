@@ -16,7 +16,6 @@ export const retryInterceptor: HttpInterceptorFn = (req, next) => {
     req.method === 'GET' ||
     req.method === 'HEAD' ||
     req.url.includes('/ping') ||
-    req.url.includes('/health/db') ||
     req.url.includes('/settings/appearance') ||
     req.url.includes('/events');
 
