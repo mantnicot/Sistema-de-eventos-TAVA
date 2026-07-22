@@ -36,15 +36,33 @@ interface TicketEventGroup {
   tickets: MyTicket[];
 }
 
-interface SellerSale {
+interface SellerTicket {
+  id: string;
   order_id: string;
+  event_id: string;
   event_name: string;
-  total: number;
-  quantity: number;
+  event_date: string;
+  event_time: string;
+  city: string;
+  holder_name: string | null;
+  ticket_type: string;
+  price: number;
+  ticket_code?: string | null;
+  is_used: boolean;
+  is_cancelled?: boolean;
+  claim_code?: string | null;
   created_at: string | null;
   pdf_url: string;
-  claim_code?: string | null;
-  holders: (string | null)[];
+  order_pdf_url: string;
+}
+
+interface SellerEventGroup {
+  event_id: string;
+  event_name: string;
+  event_date: string;
+  event_time: string;
+  city: string;
+  tickets: SellerTicket[];
 }
 
 interface ClaimTicketsResponse {
@@ -81,7 +99,7 @@ export class ProfileComponent implements OnInit {
   private readonly api = inject(ApiService);
   private readonly notify = inject(NotificationService);
   readonly tickets = signal<MyTicket[]>([]);
-  readonly sellerSales = signal<SellerSale[]>([]);
+  readonly sellerTickets = signal<SellerTicket[]>([]);
   readonly adminEvents = signal<TavaEvent[]>([]);
   readonly adminEventDetail = signal<TavaEventDetail | null>(null);
   readonly formatTime = formatEventTime;
@@ -93,6 +111,28 @@ export class ProfileComponent implements OnInit {
   adminBuyerName = '';
   adminBuyerEmail = '';
   adminIssuing = false;
+
+  readonly groupedSellerTickets = computed(() => {
+    const map = new Map<string, SellerEventGroup>();
+    for (const t of this.sellerTickets()) {
+      let group = map.get(t.event_id);
+      if (!group) {
+        group = {
+          event_id: t.event_id,
+          event_name: t.event_name,
+          event_date: t.event_date,
+          event_time: t.event_time,
+          city: t.city,
+          tickets: [],
+        };
+        map.set(t.event_id, group);
+      }
+      group.tickets.push(t);
+    }
+    return Array.from(map.values()).sort((a, b) => b.event_date.localeCompare(a.event_date));
+  });
+
+  readonly sellerTicketCount = computed(() => this.sellerTickets().length);
 
   readonly groupedTickets = computed(() => {
     const map = new Map<string, TicketEventGroup>();
@@ -135,9 +175,9 @@ export class ProfileComponent implements OnInit {
   }
 
   private loadSellerSales(): void {
-    this.api.get<SellerSale[]>('/tickets/seller/mine').subscribe({
-      next: (s) => this.sellerSales.set(s),
-      error: () => this.sellerSales.set([]),
+    this.api.get<SellerTicket[]>('/tickets/seller/mine').subscribe({
+      next: (s) => this.sellerTickets.set(s),
+      error: () => this.sellerTickets.set([]),
     });
   }
 
@@ -260,10 +300,17 @@ export class ProfileComponent implements OnInit {
     });
   }
 
-  ticketStatus(t: MyTicket): string {
+  ticketStatus(t: MyTicket | SellerTicket): string {
     if (t.is_cancelled) return 'Cancelada';
     if (t.is_used) return 'Usada';
     return 'Válida';
+  }
+
+  showClaimForTicket(tickets: SellerTicket[], index: number): boolean {
+    const current = tickets[index];
+    if (!current?.claim_code) return false;
+    if (index === 0) return true;
+    return current.order_id !== tickets[index - 1]?.order_id;
   }
 
   downloadPdf(pdfUrl: string, label: string): void {

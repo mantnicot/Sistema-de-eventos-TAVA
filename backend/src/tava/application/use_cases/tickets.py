@@ -810,27 +810,33 @@ class TicketUseCase:
 
     async def list_seller_sales(self, seller_id: UUID) -> list[dict]:
         result = await self._session.execute(
-            select(OrderModel, EventModel)
-            .join(EventModel, OrderModel.event_id == EventModel.id)
+            select(TicketModel, EventModel, TicketTypeModel, OrderModel)
+            .join(EventModel, TicketModel.event_id == EventModel.id)
+            .join(TicketTypeModel, TicketModel.ticket_type_id == TicketTypeModel.id)
+            .join(OrderModel, TicketModel.order_id == OrderModel.id)
             .where(OrderModel.seller_id == seller_id)
-            .order_by(OrderModel.created_at.desc())
+            .order_by(OrderModel.created_at.desc(), TicketModel.id.desc())
         )
-        out = []
-        for order, ev in result.all():
-            tix = await self._session.execute(
-                select(TicketModel).where(TicketModel.order_id == order.id)
-            )
-            tickets = tix.scalars().all()
-            out.append(
-                {
-                    "order_id": str(order.id),
-                    "event_name": ev.name,
-                    "total": float(order.total_amount),
-                    "quantity": len(tickets),
-                    "created_at": order.created_at.isoformat() if order.created_at else None,
-                    "pdf_url": f"/tickets/orders/{order.id}/pdf",
-                    "claim_code": order.claim_code,
-                    "holders": [t.holder_name for t in tickets],
-                }
-            )
-        return out
+        rows = result.all()
+        return [
+            {
+                "id": str(t.id),
+                "order_id": str(t.order_id),
+                "event_id": str(t.event_id),
+                "event_name": ev.name,
+                "event_date": ev.event_date.isoformat(),
+                "event_time": ev.event_time.isoformat(),
+                "city": ev.city,
+                "holder_name": t.holder_name,
+                "ticket_type": tt.name,
+                "price": float(tt.price),
+                "ticket_code": t.ticket_code,
+                "is_used": t.is_used,
+                "is_cancelled": t.is_cancelled,
+                "claim_code": order.claim_code,
+                "created_at": order.created_at.isoformat() if order.created_at else None,
+                "pdf_url": f"/tickets/{t.id}/pdf",
+                "order_pdf_url": f"/tickets/orders/{order.id}/pdf",
+            }
+            for t, ev, tt, order in rows
+        ]

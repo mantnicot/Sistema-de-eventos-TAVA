@@ -206,6 +206,15 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+
+    small.ticket-row__claim {
+      display: block;
+      margin-top: 0.15rem;
+      font-family: monospace;
+      font-size: 0.68rem;
+      color: var(--tava-gold-glow);
+      white-space: normal;
+    }
   }
 
   &__code {

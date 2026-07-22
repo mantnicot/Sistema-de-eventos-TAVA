@@ -135,23 +135,59 @@
       </div>
     </section>
 
-    @if (auth.isSeller() && sellerSales().length) {
+    @if (auth.isSeller()) {
       <section class="section">
         <h2>Ventas realizadas</h2>
-        <div class="sale-list">
-          @for (s of sellerSales(); track s.order_id) {
-            <article class="sale-row tava-card">
-              <div>
-                <strong>{{ s.event_name }}</strong>
-                @if (s.claim_code) {
-                  <p class="sale-row__code">Código de reclamo: {{ s.claim_code }}</p>
+        <p class="section__hint">
+          {{ sellerTicketCount() }} boleta(s) vendidas. Cada fila es una boleta con su titular.
+        </p>
+
+        <div class="event-groups">
+          @for (group of groupedSellerTickets(); track group.event_id) {
+            <article class="event-group tava-card">
+              <header class="event-group__head">
+                <div>
+                  <h3>{{ group.event_name }}</h3>
+                  <p class="event-group__meta">
+                    {{ group.event_date | date:'mediumDate' }} · {{ formatTime(group.event_time) }}
+                    · {{ group.city }}
+                  </p>
+                </div>
+              </header>
+              <ul class="ticket-rows">
+                @for (t of group.tickets; track t.id; let i = $index) {
+                  <li
+                    class="ticket-row"
+                    [class.ticket-row--used]="t.is_used"
+                    [class.ticket-row--cancelled]="t.is_cancelled"
+                  >
+                    <span class="ticket-row__type">{{ t.ticket_type }}</span>
+                    <span class="ticket-row__holder">
+                      {{ t.holder_name || 'Sin nombre' }}
+                      @if (showClaimForTicket(group.tickets, i) && t.claim_code) {
+                        <small class="ticket-row__claim">Reclamo: {{ t.claim_code }}</small>
+                      }
+                    </span>
+                    @if (t.ticket_code) {
+                      <span class="ticket-row__code">#{{ t.ticket_code }}</span>
+                    }
+                    <span class="ticket-row__price">${{ t.price | number:'1.0-0' }}</span>
+                    <span class="ticket-row__status">{{ ticketStatus(t) }}</span>
+                    @if (!t.is_cancelled) {
+                      <button
+                        type="button"
+                        class="ticket-row__pdf tava-btn-primary"
+                        (click)="downloadPdf(t.pdf_url, 'venta-' + (t.ticket_code || t.id))"
+                      >
+                        PDF
+                      </button>
+                    }
+                  </li>
                 }
-                <p class="muted">{{ s.quantity }} boleta(s) · ${{ s.total | number:'1.0-0' }}</p>
-              </div>
-              <button type="button" class="tava-btn-primary" (click)="downloadPdf(s.pdf_url, 'venta-' + s.event_name)">
-                PDF
-              </button>
+              </ul>
             </article>
+          } @empty {
+            <p class="muted">Aún no has registrado ventas.</p>
           }
         </div>
       </section>
