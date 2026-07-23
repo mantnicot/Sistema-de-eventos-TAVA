@@ -225,23 +225,28 @@
             </fieldset>
           }
 
-          @if (selectedTicketType(); as st) {
-            <div class="ticket-preview-buy">
-              <p class="muted">Vista previa</p>
-              <tava-ticket-preview
-                [eventName]="ev.name"
-                [eventDate]="ev.event_date"
-                [eventTime]="ev.event_time"
-                [city]="ev.city"
-                [address]="ev.address"
-                [typeName]="st.name"
-                [kind]="st.kind"
-                [price]="st.price"
-                [benefits]="st.benefits"
-                [imageUrl]="mediaUrl(ev.main_image_url)"
-                [holderName]="previewHolderName()"
-              />
-            </div>
+          @if (relatedEvents().length) {
+            <section class="detail__suggestions">
+              <h3>Podría interesarte</h3>
+              <ul class="detail__suggestions-list">
+                @for (item of relatedEvents(); track item.id) {
+                  <li>
+                    <a class="detail__suggestion-link" [routerLink]="['/eventos', item.id]">
+                      <img
+                        [src]="mediaUrl(item.main_image_url)"
+                        [alt]="item.name"
+                        loading="lazy"
+                        (error)="onImgError($event)"
+                      />
+                      <span class="detail__suggestion-copy">
+                        <strong>{{ item.name }}</strong>
+                        <small>{{ formatEventDateTime(item.event_date, item.event_time) }} · {{ item.city }}</small>
+                      </span>
+                    </a>
+                  </li>
+                }
+              </ul>
+            </section>
           }
 
           <label class="legal">
@@ -275,22 +280,6 @@
         }
       </aside>
     </div>
-
-    @if (relatedEvents().length) {
-      <section class="related-events">
-        <h2>Podría interesarte</h2>
-        <div class="related-events__grid">
-          @for (item of relatedEvents(); track item.id) {
-            <a class="related-events__card tava-card" [routerLink]="['/eventos', item.id]">
-              <img [src]="mediaUrl(item.main_image_url)" [alt]="item.name" loading="lazy" (error)="onImgError($event)" />
-              <span>{{ item.category }}</span>
-              <strong>{{ item.name }}</strong>
-              <small>{{ formatEventDateTime(item.event_date, item.event_time) }} · {{ item.city }}</small>
-            </a>
-          }
-        </div>
-      </section>
-    }
 
     <div class="detail__footer">
       <a routerLink="/eventos" class="back">← Volver a cartelera</a>

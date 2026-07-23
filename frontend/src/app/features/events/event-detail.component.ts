@@ -22,7 +22,6 @@ import { trailerEmbedUrl, trailerVideoSrc } from '../../core/utils/trailer-embed
 import { onEventImageError } from '../../core/utils/event-image.util';
 import { readEventsCache } from '../../core/utils/events-cache.util';
 import { TavaTheatricalVideoComponent } from '../../shared/components/tava-theatrical-video/tava-theatrical-video.component';
-import { TavaTicketPreviewComponent } from '../../shared/components/tava-ticket-preview/tava-ticket-preview.component';
 import { TavaCaptchaComponent } from '../../shared/components/tava-captcha/tava-captcha.component';
 import { TavaTheatricalLoaderComponent } from '../../shared/components/tava-theatrical-loader/tava-theatrical-loader.component';
 import {
@@ -40,7 +39,6 @@ import { parseHttpError } from '../../core/utils/http-error.util';
     FormsModule,
     DecimalPipe,
     TavaTheatricalVideoComponent,
-    TavaTicketPreviewComponent,
     TavaCaptchaComponent,
     TavaTheatricalLoaderComponent,
   ],
@@ -145,13 +143,6 @@ export class EventDetailComponent implements OnInit, OnDestroy {
     return `https://wa.me/${phone}?text=${encodeURIComponent(configured || fallback)}`;
   }
 
-  previewHolderName(): string {
-    if (this.singleHolderMode) {
-      return this.holderName.trim() || this.auth.user()?.full_name || 'Tu nombre';
-    }
-    return this.holderNames[0]?.trim() || this.auth.user()?.full_name || 'Tu nombre';
-  }
-
   ngOnInit(): void {
     this.holderName = this.auth.user()?.full_name ?? '';
     this.route.paramMap.subscribe(() => this.loadEvent());
@@ -202,21 +193,16 @@ export class EventDetailComponent implements OnInit, OnDestroy {
   }
 
   private loadRelatedEvents(currentEventId: string): void {
+    const pick = (events: TavaEvent[]) =>
+      events.filter((item) => item.id !== currentEventId && this.canBuy(item)).slice(0, 6);
+
     const cached = readEventsCache('', '');
     if (cached?.length) {
-      this.relatedEvents.set(
-        cached.filter((item) => item.id !== currentEventId && this.canBuy(item)).slice(0, 3)
-      );
+      this.relatedEvents.set(pick(cached));
       return;
     }
     this.api.get<TavaEvent[]>('/events').subscribe({
-      next: (events) => {
-        this.relatedEvents.set(
-          (events ?? [])
-            .filter((item) => item.id !== currentEventId && this.canBuy(item))
-            .slice(0, 3)
-        );
-      },
+      next: (events) => this.relatedEvents.set(pick(events ?? [])),
       error: () => this.relatedEvents.set([]),
     });
   }
