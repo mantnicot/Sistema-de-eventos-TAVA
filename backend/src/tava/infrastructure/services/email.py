@@ -455,12 +455,17 @@ def _tickets_email_html(
 ) -> str:
     role = "confirmación de venta" if is_seller_copy else "confirmación de compra"
     when = f"{event_date} · {event_time}" if event_date else "Consulta tu boleta adjunta"
+    frontend_url = settings.frontend_url.rstrip("/")
+    login_url = f"{frontend_url}/ingresar"
+    register_url = f"{frontend_url}/registro"
     claim_html = (
         f"""
             <div style="background:#fff8df;border:1px dashed #c9a227;border-radius:10px;padding:14px 18px;margin:0 0 20px;text-align:center;">
               <p style="margin:0 0 6px;font-size:13px;color:#6b5344;">Código para reclamar boletas en tu cuenta</p>
               <p style="margin:0;font-family:monospace;font-size:20px;font-weight:700;color:#6b1a2a;letter-spacing:0.08em;">{claim_code}</p>
-              <p style="margin:8px 0 0;font-size:12px;color:#6b5344;">Entra o regístrate en TAVA, abre Mi perfil y pega este código en el recuadro de reclamo.</p>
+              <p style="margin:8px 0 14px;font-size:12px;color:#6b5344;">No necesitas tener una cuenta para recibir o usar estas boletas. Si quieres guardarlas en tu perfil, ingresa o regístrate y pega este código en “Reclamar código”.</p>
+              <a href="{login_url}" style="background:#6b1a2a;color:#ffffff;padding:10px 18px;border-radius:999px;text-decoration:none;display:inline-block;margin:0 4px 6px;">Ingresar al sistema</a>
+              <a href="{register_url}" style="background:#c9a227;color:#3d2a14;padding:10px 18px;border-radius:999px;text-decoration:none;display:inline-block;margin:0 4px 6px;">Crear cuenta</a>
             </div>
         """
         if claim_code
@@ -531,7 +536,9 @@ async def send_tickets_confirmation_email(
     )
     claim_line = (
         f"\nCódigo para reclamar boletas en tu cuenta: {claim_code}\n"
-        "Entra o regístrate en TAVA, abre Mi perfil y pega este código en el recuadro de reclamo.\n"
+        "No necesitas una cuenta para usar las boletas. Para guardarlas en tu perfil, "
+        f"ingresa en {settings.frontend_url.rstrip('/')}/ingresar o regístrate en "
+        f"{settings.frontend_url.rstrip('/')}/registro y pega el código en Reclamar código.\n"
         if claim_code
         else ""
     )

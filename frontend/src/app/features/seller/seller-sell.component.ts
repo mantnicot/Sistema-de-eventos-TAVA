@@ -34,9 +34,17 @@ export class SellerSellComponent implements OnInit {
   captchaToken = '';
 
   ngOnInit(): void {
+    this.notify.loadingTheatrical('Cargando eventos', 'loader');
     this.api.get<TavaEvent[]>('/events/assigned/mine', { staff_role: 'seller' }).subscribe({
-      next: (e) => this.events.set(e),
-      error: () => this.events.set([]),
+      next: (e) => {
+        this.notify.hide();
+        this.events.set(e);
+      },
+      error: () => {
+        this.notify.hide();
+        this.events.set([]);
+        this.notify.error('Eventos', 'No se pudieron cargar los eventos asignados.');
+      },
     });
   }
 
@@ -44,8 +52,10 @@ export class SellerSellComponent implements OnInit {
     this.selectedTypeId = '';
     this.eventDetail.set(null);
     if (!this.selectedEventId) return;
+    this.notify.loadingTheatrical('Cargando evento', 'loader');
     this.api.get<TavaEventDetail>(`/events/${this.selectedEventId}`).subscribe({
       next: (d) => {
+        this.notify.hide();
         const detail: TavaEventDetail = {
           ...d,
           gallery: d.gallery ?? [],
@@ -56,7 +66,10 @@ export class SellerSellComponent implements OnInit {
           this.selectedTypeId = detail.ticket_types[0].id;
         }
       },
-      error: () => this.notify.error('Evento', 'No se pudo cargar el evento'),
+      error: () => {
+        this.notify.hide();
+        this.notify.error('Evento', 'No se pudo cargar el evento');
+      },
     });
   }
 
@@ -132,7 +145,7 @@ export class SellerSellComponent implements OnInit {
               this.notify.success(
                 'Venta registrada',
                 res.claim_code
-                  ? `Código de reclamo: ${res.claim_code}. Las boletas quedaron listas y enviaremos el PDF al correo.`
+                  ? `Código de reclamo: ${res.claim_code}. Enviaremos al correo el PDF, el código y los enlaces para ingresar o registrarse.`
                   : res.message ?? 'Las boletas quedaron listas y enviaremos el PDF al correo del comprador.'
               );
               this.buyerEmail = '';

@@ -1,7 +1,7 @@
 <section class="sell">
   <header class="sell__header tava-card">
     <h1 class="tava-glow-text">Vender boletas</h1>
-    <p>Registra la venta a nombre del asistente. El comprador y tú recibirán el PDF con QR por correo.</p>
+    <p>Registra la venta a nombre del asistente. El comprador y tú recibirán el PDF con QR por correo, aunque el comprador no tenga cuenta.</p>
   </header>
 
   <form class="sell__form tava-card" (ngSubmit)="vender()">
@@ -41,8 +41,9 @@
       </label>
 
       <label>
-        Correo del comprador (cuenta registrada)
+        Correo del comprador
         <input type="email" [(ngModel)]="buyerEmail" name="buyer" required placeholder="comprador@correo.com" />
+        <small>Puede ser cualquier correo válido: Gmail, Hotmail, iCloud, Yahoo u otro proveedor.</small>
       </label>
 
       <label class="check-row">

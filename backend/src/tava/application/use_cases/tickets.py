@@ -455,6 +455,7 @@ class TicketUseCase:
         ticket_type: TicketTypeModel,
         buyer_email: str,
         buyer_name: str,
+        seller: UserModel | None = None,
     ) -> None:
         age = None
         if event.theatrical_details and isinstance(event.theatrical_details, dict):
@@ -484,6 +485,18 @@ class TicketUseCase:
         )
         if not ok:
             raise ValueError(last_email_failure() or "No se pudo enviar el correo al comprador")
+        if seller and seller.email.lower() != buyer_email.lower():
+            await send_tickets_confirmation_email(
+                seller.email,
+                seller.full_name,
+                event.name,
+                len(tickets),
+                pdf,
+                is_seller_copy=True,
+                event_date=event.event_date.isoformat(),
+                event_time=event.event_time.strftime("%H:%M"),
+                claim_code=order.claim_code,
+            )
 
     async def send_order_confirmation_email(self, order_id: UUID) -> bool:
         result = await self._session.execute(
@@ -511,6 +524,25 @@ class TicketUseCase:
                 select(UserModel).where(UserModel.id == order.seller_id)
             )
             seller = seller_result.scalar_one_or_none()
+
+        external_buyer = order.pending_payload or {}
+        external_email = str(external_buyer.get("external_buyer_email") or "").strip()
+        if external_email:
+            external_name = str(
+                external_buyer.get("external_buyer_name")
+                or order.tickets[0].holder_name
+                or "Comprador"
+            ).strip()
+            await self._send_pdf_to_external_buyer(
+                order=order,
+                tickets=order.tickets,
+                event=event,
+                ticket_type=tt,
+                buyer_email=external_email,
+                buyer_name=external_name,
+                seller=seller,
+            )
+            return True
 
         await self._send_pdf_emails(order, order.tickets, event, tt, buyer, seller)
         return True
@@ -670,23 +702,36 @@ class TicketUseCase:
         quantity: int,
         holder_names: list[str],
     ) -> dict:
-        buyer = await self._users.get_model_by_email(buyer_email)
-        if not buyer:
-            raise ValueError("El comprador debe tener cuenta registrada con ese correo")
+        normalized_email = buyer_email.strip().lower()
+        buyer = await self._users.get_model_by_email(normalized_email)
+        buyer_name = buyer.full_name if buyer else (holder_names[0].strip() or "Comprador")
         event = await self._load_event(event_id)
         self._assert_tickets_on_sale(event)
         order, tickets, event, tt = await self.create_order(
             event_id=event_id,
             ticket_type_id=ticket_type_id,
             quantity=quantity,
-            buyer_id=buyer.id,
+            # Para invitados, el vendedor es el propietario temporal exigido por
+            # el esquema. El código de reclamo transfiere luego las boletas.
+            buyer_id=buyer.id if buyer else seller_id,
             seller_id=seller_id,
             holder_names=holder_names,
-            buyer_display_name=buyer.full_name,
+            buyer_display_name=buyer_name,
             mark_paid=True,
         )
+        if not buyer:
+            order.pending_payload = {
+                "external_buyer_email": normalized_email,
+                "external_buyer_name": buyer_name,
+            }
+            await self._session.flush()
         response = self._order_response(order, tickets, event, tt)
         response["email_pending"] = True
+        response["guest_buyer"] = buyer is None
+        response["message"] = (
+            "Boletas generadas. El comprador recibirá el PDF, el código de reclamo "
+            "y enlaces para ingresar o registrarse."
+        )
         return response
 
     def _order_response(
