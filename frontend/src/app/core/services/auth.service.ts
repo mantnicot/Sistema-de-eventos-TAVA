@@ -27,6 +27,7 @@ export class AuthService {
   private readonly httpBackend = inject(HttpBackend);
   private publicKeyPem: string | null = null;
   private publicKeyInflight: Promise<string> | null = null;
+  private refreshInflight: Promise<string | null> | null = null;
 
   private readonly _user = signal<TavaUser | null>(this.loadUser());
   readonly user = this._user.asReadonly();
@@ -161,17 +162,29 @@ export class AuthService {
 
   /** Renueva el access token si hay refresh guardado (p. ej. al volver a la app). */
   tryRefreshSession(): Promise<boolean> {
+    return this.refreshAccessToken().then((token) => !!token);
+  }
+
+  /** Una única renovación compartida para arranque e interceptor. */
+  refreshAccessToken(): Promise<string | null> {
+    if (this.refreshInflight) return this.refreshInflight;
     const refresh = this.getRefreshToken();
-    if (!refresh) return Promise.resolve(false);
+    if (!refresh) return Promise.resolve(null);
     const raw = new HttpClient(this.httpBackend);
     const url = `${environment.apiUrl}/auth/refresh?refresh_token=${encodeURIComponent(refresh)}`;
-    return firstValueFrom(raw.post<AuthResponse['tokens']>(url, {}))
+    this.refreshInflight = firstValueFrom(
+      raw.post<AuthResponse['tokens']>(url, {}).pipe(timeout(12000))
+    )
       .then((tokens) => {
         localStorage.setItem('tava_access', tokens.access_token);
         localStorage.setItem('tava_refresh', tokens.refresh_token);
-        return true;
+        return tokens.access_token;
       })
-      .catch(() => false);
+      .catch(() => null)
+      .finally(() => {
+        this.refreshInflight = null;
+      });
+    return this.refreshInflight;
   }
 
   private persist(res: AuthResponse): void {

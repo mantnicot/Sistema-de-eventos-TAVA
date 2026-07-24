@@ -1,4 +1,5 @@
 from datetime import UTC, datetime, timedelta
+from hashlib import sha256
 from uuid import UUID
 
 from sqlalchemy import select
@@ -198,7 +199,9 @@ class AuthUseCase:
     async def _issue_tokens(self, user_id: UUID, email: str, role: UserRole) -> dict:
         access = create_access_token(user_id, email, role)
         refresh_value = create_refresh_token_value()
-        token_hash = hash_password(refresh_value)
+        # El token ya tiene alta entropía. Un hash determinista permite búsqueda
+        # indexada O(1), evitando recorrer y verificar con bcrypt todo el historial.
+        token_hash = sha256(refresh_value.encode("utf-8")).hexdigest()
         expires = datetime.now(UTC) + timedelta(days=settings.refresh_token_expire_days)
         self._session.add(
             RefreshTokenModel(user_id=user_id, token_hash=token_hash, expires_at=expires)
@@ -207,17 +210,20 @@ class AuthUseCase:
         return {"access_token": access, "refresh_token": refresh_value, "token_type": "bearer"}
 
     async def refresh(self, refresh_token: str) -> dict:
+        token_hash = sha256(refresh_token.encode("utf-8")).hexdigest()
         result = await self._session.execute(
             select(RefreshTokenModel).where(
+                RefreshTokenModel.token_hash == token_hash,
                 RefreshTokenModel.revoked.is_(False),
                 RefreshTokenModel.expires_at > datetime.now(UTC),
             )
         )
-        for row in result.scalars().all():
-            if verify_password(refresh_token, row.token_hash):
-                user_result = await self._session.execute(
-                    select(UserModel).where(UserModel.id == row.user_id)
-                )
-                user = user_result.scalar_one()
-                return await self._issue_tokens(user.id, user.email, user.role)
-        raise ValueError("Refresh token inválido")
+        row = result.scalar_one_or_none()
+        if not row:
+            raise ValueError("Refresh token inválido")
+        row.revoked = True
+        user_result = await self._session.execute(
+            select(UserModel).where(UserModel.id == row.user_id)
+        )
+        user = user_result.scalar_one()
+        return await self._issue_tokens(user.id, user.email, user.role)
