@@ -129,7 +129,7 @@ export class SellerSellComponent implements OnInit {
         this.selling = true;
         this.notify.loadingTheatrical('Taquilla', 'purchase');
         this.api
-          .post<{ message?: string; claim_code?: string | null; email_sent?: boolean }>('/tickets/sell', {
+          .post<{ message?: string; claim_code?: string | null; email_queued?: boolean }>('/tickets/sell', {
             event_id: ev.id,
             ticket_type_id: this.selectedTypeId,
             quantity: this.quantity,
@@ -142,15 +142,15 @@ export class SellerSellComponent implements OnInit {
             next: (res) => {
               this.selling = false;
               this.notify.hide();
-              if (res.email_sent) {
+              if (res.email_queued) {
                 this.notify.success(
-                  'Boletas enviadas',
-                  `El PDF y los códigos fueron enviados al correo del comprador.${res.claim_code ? ` Código de reclamo: ${res.claim_code}.` : ''}`
+                  'Venta registrada',
+                  `Las boletas se generaron y el correo se está enviando. Puede tardar unos minutos en aparecer en la bandeja de entrada o en spam.${res.claim_code ? ` Código de reclamo: ${res.claim_code}.` : ''}`
                 );
               } else {
                 this.notify.warning(
                   'Venta registrada',
-                  `Las boletas se generaron, pero no pudimos confirmar el envío del correo.${res.claim_code ? ` Conserva el código de reclamo: ${res.claim_code}.` : ''}`
+                  `Las boletas se generaron, pero el correo no quedó en cola.${res.claim_code ? ` Conserva el código de reclamo: ${res.claim_code}.` : ''}`
                 );
               }
               this.buyerEmail = '';

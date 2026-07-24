@@ -1,4 +1,3 @@
-import logging
 from uuid import UUID
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
@@ -23,7 +22,6 @@ from tava.presentation.api.schemas import (
 )
 
 router = APIRouter(prefix="/tickets", tags=["Boletería"])
-logger = logging.getLogger("tava.tickets")
 
 
 @router.post("/types")
@@ -191,6 +189,7 @@ async def purchase(
 @router.post("/sell")
 async def sell_tickets(
     body: SellTicketRequest,
+    background_tasks: BackgroundTasks,
     user=Depends(require_roles(UserRole.SELLER, UserRole.ADMIN)),
     db: AsyncSession = Depends(get_db),
 ):
@@ -215,27 +214,20 @@ async def sell_tickets(
             holder_names=body.holder_names,
         )
         await db.commit()
+        email_queued = bool(result.get("email_pending") and result.get("order_id"))
+        if email_queued:
+            background_tasks.add_task(
+                send_order_confirmation_email_background,
+                UUID(str(result["order_id"])),
+            )
+        result["email_pending"] = email_queued
+        result["email_queued"] = email_queued
+        result["message"] = (
+            "Venta registrada. El correo con las boletas se está procesando."
+            if email_queued
+            else "Venta registrada."
+        )
+        return result
     except ValueError as e:
         await db.rollback()
         raise HTTPException(status_code=400, detail=str(e))
-
-    email_sent = False
-    if result.get("email_pending") and result.get("order_id"):
-        try:
-            email_sent = await uc.send_order_confirmation_email(
-                UUID(str(result["order_id"]))
-            )
-        except Exception:
-            logger.exception(
-                "Venta registrada, pero falló el correo order=%s",
-                result.get("order_id"),
-            )
-
-    result["email_pending"] = False
-    result["email_sent"] = email_sent
-    result["message"] = (
-        "Boletas generadas y correo enviado al comprador."
-        if email_sent
-        else "Boletas generadas, pero no se pudo confirmar el envío del correo."
-    )
-    return result
