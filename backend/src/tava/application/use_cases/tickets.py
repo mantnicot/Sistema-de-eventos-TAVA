@@ -1,3 +1,4 @@
+import asyncio
 from decimal import Decimal
 import secrets
 import string
@@ -420,7 +421,7 @@ class TicketUseCase:
             price=ticket_type.price,
             tickets=[(t.qr_token, t.holder_name or buyer.full_name, t.ticket_code or "") for t in tickets],
         )
-        ok_buyer = await send_tickets_confirmation_email(
+        buyer_send = send_tickets_confirmation_email(
             buyer.email,
             buyer.full_name,
             event.name,
@@ -431,10 +432,8 @@ class TicketUseCase:
             event_time=event.event_time.strftime("%H:%M"),
             claim_code=order.claim_code,
         )
-        if not ok_buyer:
-            raise ValueError(last_email_failure() or "No se pudo enviar el correo al comprador")
-        if seller and seller.email.lower() != buyer.email.lower():
-            await send_tickets_confirmation_email(
+        seller_send = (
+            send_tickets_confirmation_email(
                 seller.email,
                 seller.full_name,
                 event.name,
@@ -445,6 +444,14 @@ class TicketUseCase:
                 event_time=event.event_time.strftime("%H:%M"),
                 claim_code=order.claim_code,
             )
+            if seller and seller.email.lower() != buyer.email.lower()
+            else None
+        )
+        sends = [buyer_send, *([seller_send] if seller_send else [])]
+        send_results = await asyncio.gather(*sends, return_exceptions=True)
+        ok_buyer = send_results[0] is True
+        if not ok_buyer:
+            raise ValueError(last_email_failure() or "No se pudo enviar el correo al comprador")
 
     async def _send_pdf_to_external_buyer(
         self,
@@ -472,7 +479,7 @@ class TicketUseCase:
             price=ticket_type.price,
             tickets=[(t.qr_token, t.holder_name or buyer_name, t.ticket_code or "") for t in tickets],
         )
-        ok = await send_tickets_confirmation_email(
+        buyer_send = send_tickets_confirmation_email(
             buyer_email,
             buyer_name,
             event.name,
@@ -483,10 +490,8 @@ class TicketUseCase:
             event_time=event.event_time.strftime("%H:%M"),
             claim_code=order.claim_code,
         )
-        if not ok:
-            raise ValueError(last_email_failure() or "No se pudo enviar el correo al comprador")
-        if seller and seller.email.lower() != buyer_email.lower():
-            await send_tickets_confirmation_email(
+        seller_send = (
+            send_tickets_confirmation_email(
                 seller.email,
                 seller.full_name,
                 event.name,
@@ -497,6 +502,14 @@ class TicketUseCase:
                 event_time=event.event_time.strftime("%H:%M"),
                 claim_code=order.claim_code,
             )
+            if seller and seller.email.lower() != buyer_email.lower()
+            else None
+        )
+        sends = [buyer_send, *([seller_send] if seller_send else [])]
+        send_results = await asyncio.gather(*sends, return_exceptions=True)
+        ok = send_results[0] is True
+        if not ok:
+            raise ValueError(last_email_failure() or "No se pudo enviar el correo al comprador")
 
     async def send_order_confirmation_email(self, order_id: UUID) -> bool:
         result = await self._session.execute(
