@@ -58,7 +58,10 @@ interface AdminUser {
 
 interface AttendeeItem {
   ticket_id: string;
+  order_id: string;
   holder_name: string | null;
+  recipient_name: string | null;
+  recipient_email: string | null;
   ticket_code: string | null;
   is_used: boolean;
   is_cancelled: boolean;
@@ -609,6 +612,42 @@ export class AdminDashboardComponent implements OnInit {
     if (a.is_cancelled) return 'Cancelada';
     if (a.is_used) return 'Usada';
     return 'Válida';
+  }
+
+  isFirstOrderRow(attendee: AttendeeItem): boolean {
+    return (
+      this.attendeesData()?.attendees.find((item) => item.order_id === attendee.order_id)
+        ?.ticket_id === attendee.ticket_id
+    );
+  }
+
+  resendOrderEmail(attendee: AttendeeItem): void {
+    const destination = attendee.recipient_email || 'el correo original';
+    this.notify.confirm(
+      'Reenviar boletas',
+      `Se reenviará el PDF de toda la orden a ${destination}. ¿Continuar?`,
+      () => {
+        this.notify.loadingTheatrical('Reenviando boletas', 'admin');
+        this.api
+          .post<{ email_sent: boolean; message: string }>(
+            `/tickets/admin/orders/${attendee.order_id}/resend-email`,
+            {}
+          )
+          .subscribe({
+            next: (res) => {
+              this.notify.hide();
+              this.notify.success('Boletas', res.message || `Correo reenviado a ${destination}.`);
+            },
+            error: (err) => {
+              this.notify.hide();
+              this.notify.error(
+                'Boletas',
+                err.error?.detail ?? 'El proveedor no confirmó el reenvío.'
+              );
+            },
+          });
+      }
+    );
   }
 
   cancelAttendeeTicket(ticketId: string): void {

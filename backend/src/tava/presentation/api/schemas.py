@@ -257,7 +257,10 @@ class ValidationResponse(BaseModel):
 
 class AttendeeItem(BaseModel):
     ticket_id: UUID
+    order_id: UUID
     holder_name: str | None = None
+    recipient_name: str | None = None
+    recipient_email: str | None = None
     ticket_code: str | None = None
     is_used: bool
     is_cancelled: bool = False

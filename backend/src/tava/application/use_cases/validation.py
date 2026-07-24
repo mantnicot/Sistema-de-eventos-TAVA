@@ -7,7 +7,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from tava.config import get_settings
 from tava.domain.enums import EventStatus, UserRole, ValidationResult
 from tava.infrastructure.persistence.event_staff import can_access_event
-from tava.infrastructure.persistence.models import CheckInModel, EventModel, TicketModel
+from tava.infrastructure.persistence.models import (
+    CheckInModel,
+    EventModel,
+    OrderModel,
+    TicketModel,
+    UserModel,
+)
 from tava.infrastructure.security.ticket_tokens import verify_security_hash
 
 settings = get_settings()
@@ -115,11 +121,14 @@ class ValidationUseCase:
         if not event:
             return None
         tickets_result = await self._session.execute(
-            select(TicketModel)
+            select(TicketModel, OrderModel, UserModel)
+            .join(OrderModel, TicketModel.order_id == OrderModel.id)
+            .join(UserModel, OrderModel.buyer_id == UserModel.id)
             .where(TicketModel.event_id == event_id)
             .order_by(TicketModel.is_used.desc(), TicketModel.holder_name.asc())
         )
-        tickets = tickets_result.scalars().all()
+        rows = tickets_result.all()
+        tickets = [ticket for ticket, _order, _buyer in rows]
         ingresados = sum(1 for t in tickets if t.is_used)
         return {
             "event_id": event_id,
@@ -130,12 +139,25 @@ class ValidationUseCase:
             "attendees": [
                 {
                     "ticket_id": t.id,
+                    "order_id": order.id,
                     "holder_name": t.holder_name,
+                    "recipient_name": str(
+                        (order.pending_payload or {}).get("external_buyer_name")
+                        or (buyer.full_name if order.seller_id != order.buyer_id else "")
+                        or ""
+                    ).strip()
+                    or None,
+                    "recipient_email": str(
+                        (order.pending_payload or {}).get("external_buyer_email")
+                        or (buyer.email if order.seller_id != order.buyer_id else "")
+                        or ""
+                    ).strip()
+                    or None,
                     "ticket_code": t.ticket_code,
                     "is_used": t.is_used,
                     "is_cancelled": t.is_cancelled,
                     "used_at": t.used_at.isoformat() if t.used_at else None,
                 }
-                for t in tickets
+                for t, order, buyer in rows
             ],
         }

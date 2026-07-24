@@ -51,8 +51,9 @@ settings = get_settings()
 _db_url, _connect_args = _prepare_asyncpg_url(settings.database_url)
 
 _is_production = settings.app_env.strip().lower() == "production"
-_pool_size = 3 if _is_production else 5
-_max_overflow = 5 if _is_production else 10
+_pool_size = max(1, settings.database_pool_size if _is_production else 5)
+_max_overflow = max(0, settings.database_max_overflow if _is_production else 10)
+_pool_timeout = max(1, settings.database_pool_timeout_seconds)
 
 engine = create_async_engine(
     _db_url,
@@ -64,10 +65,11 @@ engine = create_async_engine(
         "command_timeout": 90,
     },
     pool_pre_ping=True,
+    pool_use_lifo=True,
     pool_recycle=280,
     pool_size=_pool_size,
     max_overflow=_max_overflow,
-    pool_timeout=60,
+    pool_timeout=_pool_timeout,
 )
 AsyncSessionLocal = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 

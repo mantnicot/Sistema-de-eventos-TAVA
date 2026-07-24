@@ -342,6 +342,7 @@
                     <tr>
                       <th>Titular</th>
                       <th>Código</th>
+                      <th>Correo</th>
                       <th>Estado</th>
                       <th>Acción</th>
                     </tr>
@@ -351,8 +352,14 @@
                       <tr [class.attendees-row--cancelled]="a.is_cancelled">
                         <td>{{ a.holder_name || '—' }}</td>
                         <td>{{ a.ticket_code || '—' }}</td>
+                        <td>{{ a.recipient_email || 'No disponible' }}</td>
                         <td>{{ attendeeStatusLabel(a) }}</td>
                         <td>
+                          @if (isFirstOrderRow(a) && a.recipient_email) {
+                            <button type="button" class="nav__btn-outline btn-sm" (click)="resendOrderEmail(a)">
+                              Reenviar correo
+                            </button>
+                          }
                           @if (!a.is_cancelled && !a.is_used) {
                             <button type="button" class="btn-danger btn-sm" (click)="cancelAttendeeTicket(a.ticket_id)">
                               Cancelar
@@ -364,7 +371,7 @@
                       </tr>
                     } @empty {
                       <tr>
-                        <td colspan="4" class="muted">Aún no hay boletas vendidas.</td>
+                        <td colspan="5" class="muted">Aún no hay boletas vendidas.</td>
                       </tr>
                     }
                   </tbody>

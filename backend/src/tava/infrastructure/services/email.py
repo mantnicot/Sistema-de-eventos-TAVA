@@ -295,7 +295,7 @@ async def _send_resend(
                 headers={"Authorization": f"Bearer {api_key}"},
                 json={
                     "from": from_addr,
-                    "to": [to_email],
+                    "to": [to_email.lower().strip()],
                     "subject": subject,
                     "html": html,
                     "text": text,
@@ -314,6 +314,16 @@ async def _send_resend(
                 },
             )
         if response.is_success:
+            try:
+                message_id = response.json().get("id")
+            except Exception:
+                message_id = None
+            logger.info(
+                "Resend OK → %s (messageId=%s, from=%s)",
+                to_email,
+                message_id,
+                from_addr,
+            )
             return True
         _set_failure(f"Resend HTTP {response.status_code}: {response.text[:400]}")
         return False

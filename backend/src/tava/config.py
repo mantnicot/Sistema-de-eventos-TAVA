@@ -12,6 +12,9 @@ class Settings(BaseSettings):
     app_name: str = "TAVA — Gestión de Eventos y Boletería"
     app_env: str = "development"
     database_url: str = "postgresql+asyncpg://tava:tava_secret@localhost:5432/tava_db"
+    database_pool_size: int = 3
+    database_max_overflow: int = 5
+    database_pool_timeout_seconds: int = 10
     jwt_secret_key: str = "dev-secret-change-in-production-min-32-chars"
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 30

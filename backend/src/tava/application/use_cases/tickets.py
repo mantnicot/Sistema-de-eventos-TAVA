@@ -538,6 +538,10 @@ class TicketUseCase:
             )
             seller = seller_result.scalar_one_or_none()
 
+        # Todo lo necesario ya está cargado: no ocupar una conexión mientras se
+        # construye el PDF y se espera la respuesta HTTP del proveedor de correo.
+        await self._session.close()
+
         external_buyer = order.pending_payload or {}
         external_email = str(external_buyer.get("external_buyer_email") or "").strip()
         if external_email:
@@ -614,6 +618,12 @@ class TicketUseCase:
             issue_tickets=True,
             payment_provider=PaymentProvider.MANUAL,
         )
+        # Conservar el destinatario para permitir reenvíos posteriores desde Boletas.
+        order.pending_payload = {
+            "external_buyer_email": buyer_email.strip().lower(),
+            "external_buyer_name": buyer_name.strip(),
+        }
+        await self._session.flush()
         await self._send_pdf_to_external_buyer(
             order=order,
             tickets=tickets,

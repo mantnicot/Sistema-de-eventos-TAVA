@@ -112,6 +112,29 @@ async def admin_cancel_ticket(
         raise HTTPException(status_code=400, detail=str(e))
 
 
+@router.post("/admin/orders/{order_id}/resend-email")
+async def admin_resend_order_email(
+    order_id: UUID,
+    _user=Depends(require_roles(UserRole.ADMIN)),
+    db: AsyncSession = Depends(get_db),
+):
+    try:
+        sent = await TicketUseCase(db).send_order_confirmation_email(order_id)
+        if not sent:
+            raise HTTPException(status_code=404, detail="La orden no tiene boletas para reenviar")
+        return {
+            "email_sent": True,
+            "order_id": str(order_id),
+            "message": "El proveedor confirmó el reenvío de las boletas.",
+        }
+    except HTTPException:
+        raise
+    except ValueError as exc:
+        raise HTTPException(status_code=502, detail=str(exc))
+    except Exception:
+        raise HTTPException(status_code=500, detail="No se pudo reenviar el correo de boletas")
+
+
 @router.get("/orders/{order_id}/pdf")
 async def download_order_pdf(
     order_id: UUID,
