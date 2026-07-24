@@ -409,7 +409,8 @@ class TicketUseCase:
         age = None
         if event.theatrical_details and isinstance(event.theatrical_details, dict):
             age = event.theatrical_details.get("age_rating")
-        pdf = build_tickets_pdf(
+        pdf = await asyncio.to_thread(
+            build_tickets_pdf,
             event_name=event.name,
             event_date=event.event_date,
             event_time=event.event_time,
@@ -467,7 +468,8 @@ class TicketUseCase:
         age = None
         if event.theatrical_details and isinstance(event.theatrical_details, dict):
             age = event.theatrical_details.get("age_rating")
-        pdf = build_tickets_pdf(
+        pdf = await asyncio.to_thread(
+            build_tickets_pdf,
             event_name=event.name,
             event_date=event.event_date,
             event_time=event.event_time,
@@ -798,7 +800,8 @@ class TicketUseCase:
         age = None
         if event.theatrical_details and isinstance(event.theatrical_details, dict):
             age = event.theatrical_details.get("age_rating")
-        return build_tickets_pdf(
+        return await asyncio.to_thread(
+            build_tickets_pdf,
             event_name=event.name,
             event_date=event.event_date,
             event_time=event.event_time,
@@ -830,7 +833,8 @@ class TicketUseCase:
         age = None
         if event.theatrical_details and isinstance(event.theatrical_details, dict):
             age = event.theatrical_details.get("age_rating")
-        return build_tickets_pdf(
+        return await asyncio.to_thread(
+            build_tickets_pdf,
             event_name=event.name,
             event_date=event.event_date,
             event_time=event.event_time,

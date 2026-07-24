@@ -1,6 +1,7 @@
 """Notificaciones a asistentes por cambios de evento y gestión de boletas."""
 from __future__ import annotations
 
+import asyncio
 from datetime import date, time
 from uuid import UUID
 
@@ -227,7 +228,8 @@ class EventNotificationUseCase:
                 )
                 ticket_type = tt.scalar_one_or_none()
                 if ticket_type:
-                    pdf_bytes = build_tickets_pdf(
+                    pdf_bytes = await asyncio.to_thread(
+                        build_tickets_pdf,
                         event_name=event.name,
                         event_date=event.event_date,
                         event_time=event.event_time,

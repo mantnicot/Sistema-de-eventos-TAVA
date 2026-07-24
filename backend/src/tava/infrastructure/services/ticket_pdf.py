@@ -2,6 +2,7 @@
 import io
 from datetime import date, time
 from decimal import Decimal
+from functools import lru_cache
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -59,6 +60,7 @@ Al comprar el boleto para <b>{event_name}</b> el cliente acepta y se compromete 
 cumplir con los términos y condiciones establecidos; en caso de no estar de acuerdo posee 2 días hábiles después de la compra de la boleta."""
 
 
+@lru_cache(maxsize=32)
 def _load_image_bytes(image_url: str | None) -> bytes | None:
     if not image_url:
         return None
@@ -68,7 +70,7 @@ def _load_image_bytes(image_url: str | None) -> bytes | None:
         try:
             import httpx
 
-            response = httpx.get(raw, timeout=15, follow_redirects=True)
+            response = httpx.get(raw, timeout=5, follow_redirects=True)
             if response.is_success and response.content:
                 return response.content
         except Exception:
