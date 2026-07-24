@@ -20,17 +20,92 @@
   }
 
   @if (tab() === 'kpis') {
+    <section class="report-workspace">
+      <header class="report-toolbar tava-card">
+        <div>
+          <span class="report-toolbar__eyebrow">Centro de reportes</span>
+          <h2>{{ reportTitle() }}</h2>
+          <p>{{ reportSubtitle() }}</p>
+        </div>
+        <label class="report-event-picker">
+          <span>Alcance del reporte</span>
+          <select
+            [(ngModel)]="selectedReportEventId"
+            name="reportEvent"
+            (ngModelChange)="onReportScopeChange()"
+            [disabled]="adminEventsLoading()"
+          >
+            <option value="">Reporte general · Todos los eventos</option>
+            @for (event of adminEvents(); track event.id) {
+              <option [value]="event.id">{{ event.name }} · {{ event.event_date }}</option>
+            }
+          </select>
+          <small>Selecciona un evento para ver únicamente sus resultados.</small>
+        </label>
+      </header>
+
+      @if (kpisLoading()) {
+        <div class="report-loading tava-card">
+          <span class="report-loading__pulse"></span>
+          <div>
+            <strong>Actualizando reporte</strong>
+            <p>Consultando ventas, ingresos y asistencia…</p>
+          </div>
+        </div>
+      }
+
     @if (kpis(); as k) {
-      <div class="kpi-grid">
-        <div class="kpi tava-card"><span>Eventos activos</span><strong>{{ k.eventos_activos }}</strong></div>
-        <div class="kpi tava-card"><span>Boletas vendidas</span><strong>{{ k.boletas_vendidas }}</strong></div>
-        <div class="kpi tava-card"><span>Ingresos</span><strong>${{ k.ingresos | number }}</strong></div>
-        <div class="kpi tava-card"><span>Asistentes</span><strong>{{ k.asistentes }}</strong></div>
-        <div class="kpi tava-card"><span>Conversión</span><strong>{{ k.conversion_porcentaje }}%</strong></div>
+      <div class="kpi-grid" [class.kpi-grid--loading]="kpisLoading()">
+        @if (k.scope === 'event') {
+          <article class="kpi kpi--featured tava-card">
+            <span>Ocupación</span>
+            <strong>{{ k.ocupacion_porcentaje || 0 }}%</strong>
+            <small>{{ k.boletas_vendidas }} de {{ k.capacity || 0 }} cupos</small>
+            <div class="metric-progress">
+              <span [style.width.%]="k.ocupacion_porcentaje || 0"></span>
+            </div>
+          </article>
+        } @else {
+          <article class="kpi tava-card">
+            <span>Eventos activos</span>
+            <strong>{{ k.eventos_activos }}</strong>
+            <small>Publicados o en curso</small>
+          </article>
+        }
+        <article class="kpi tava-card">
+          <span>Boletas vendidas</span>
+          <strong>{{ k.boletas_vendidas }}</strong>
+          <small>Boletas activas</small>
+        </article>
+        <article class="kpi kpi--revenue tava-card">
+          <span>Ingresos confirmados</span>
+          <strong>${{ k.ingresos | number }}</strong>
+          <small>Órdenes pagadas</small>
+        </article>
+        <article class="kpi tava-card">
+          <span>Asistentes</span>
+          <strong>{{ k.asistentes }}</strong>
+          <small>Ingresos validados</small>
+        </article>
+        <article class="kpi tava-card">
+          <span>Pendientes de ingreso</span>
+          <strong>{{ k.pendientes_ingreso || 0 }}</strong>
+          <small>Boletas aún sin validar</small>
+        </article>
+        <article class="kpi tava-card">
+          <span>Conversión de órdenes</span>
+          <strong>{{ k.conversion_porcentaje }}%</strong>
+          <small>{{ k.ordenes_pagadas || 0 }} pagadas de {{ k.ordenes_totales || 0 }}</small>
+        </article>
       </div>
-      <div class="report-actions">
-        <button type="button" class="tava-btn-primary" (click)="downloadReport('pdf')">Descargar PDF</button>
-        <button type="button" class="nav__btn-outline" (click)="downloadReport('xlsx')">Descargar Excel</button>
+
+      <div class="report-actions tava-card">
+        <div>
+          <strong>Exportar {{ k.event_name ? 'reporte del evento' : 'reporte general' }}</strong>
+          <p>Las descargas respetan el filtro seleccionado.</p>
+        </div>
+        <button type="button" class="tava-btn-primary" (click)="downloadReport('pdf')" [disabled]="kpisLoading()">Descargar PDF</button>
+        <button type="button" class="nav__btn-outline" (click)="downloadReport('xlsx')" [disabled]="kpisLoading()">Descargar Excel</button>
         <button type="button" class="nav__btn-outline" (click)="testAdminEmail()">Probar correo</button>
       </div>
     } @else {
@@ -43,6 +118,7 @@
         </div>
       }
     }
+    </section>
   }
 
   @if (tab() === 'events') {

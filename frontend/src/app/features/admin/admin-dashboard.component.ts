@@ -30,10 +30,20 @@ import {
 } from '../../core/models/seating.model';
 
 interface Kpis {
+  scope?: 'general' | 'event';
+  event_id?: string | null;
+  event_name?: string | null;
+  event_date?: string | null;
+  event_status?: string | null;
+  capacity?: number;
   eventos_activos: number;
   boletas_vendidas: number;
   ingresos: number;
   asistentes: number;
+  pendientes_ingreso?: number;
+  ocupacion_porcentaje?: number;
+  ordenes_totales?: number;
+  ordenes_pagadas?: number;
   conversion_porcentaje: number;
 }
 
@@ -102,6 +112,7 @@ export class AdminDashboardComponent implements OnInit {
   readonly galleryVideoSpec = GALLERY_VIDEO_SPEC;
   readonly videoLoaderSpec = VIDEO_LOADER_SPEC;
   readonly kpis = signal<Kpis | null>(null);
+  readonly kpisLoading = signal(false);
   readonly adminEvents = signal<TavaEvent[]>([]);
   readonly users = signal<AdminUser[]>([]);
   readonly editingId = signal<string | null>(null);
@@ -112,6 +123,7 @@ export class AdminDashboardComponent implements OnInit {
 
   roleEmail = '';
   rolePick = 'seller';
+  selectedReportEventId = '';
   castMembers: CastMember[] = [{ name: '', photo_url: '', role: '' }];
   staffValidatorIds: string[] = [];
   staffSellerIds: string[] = [];
@@ -302,8 +314,15 @@ export class AdminDashboardComponent implements OnInit {
   }
 
   downloadReport(format: 'pdf' | 'xlsx'): void {
-    const path = format === 'pdf' ? '/dashboard/report/pdf' : '/dashboard/report/xlsx';
-    const filename = format === 'pdf' ? 'tava-metricas.pdf' : 'tava-metricas.xlsx';
+    const basePath = format === 'pdf' ? '/dashboard/report/pdf' : '/dashboard/report/xlsx';
+    const path = this.selectedReportEventId
+      ? `${basePath}?event_id=${encodeURIComponent(this.selectedReportEventId)}`
+      : basePath;
+    const selectedEvent = this.adminEvents().find((event) => event.id === this.selectedReportEventId);
+    const scopeName = selectedEvent
+      ? selectedEvent.name.toLowerCase().replace(/[^a-z0-9áéíóúñ]+/gi, '-').replace(/^-|-$/g, '')
+      : 'general';
+    const filename = `tava-reporte-${scopeName}.${format}`;
     this.notify.loadingTheatrical('Generando reporte', 'admin');
     this.api.downloadBlob(path).subscribe({
       next: (blob) => {
@@ -324,10 +343,31 @@ export class AdminDashboardComponent implements OnInit {
   }
 
   loadKpis(): void {
-    this.api.get<Kpis>('/dashboard/kpis').subscribe({
+    this.kpisLoading.set(true);
+    const params = this.selectedReportEventId ? { event_id: this.selectedReportEventId } : undefined;
+    this.api.get<Kpis>('/dashboard/kpis', params).pipe(
+      finalize(() => this.kpisLoading.set(false))
+    ).subscribe({
       next: (k) => this.kpis.set(k),
-      error: () => this.notify.error('Métricas', 'No se pudieron cargar las métricas'),
+      error: () => this.notify.error('Métricas', 'No se pudo cargar el reporte seleccionado'),
     });
+  }
+
+  onReportScopeChange(): void {
+    this.loadKpis();
+  }
+
+  reportTitle(): string {
+    return this.kpis()?.event_name || 'Todos los eventos';
+  }
+
+  reportSubtitle(): string {
+    const report = this.kpis();
+    if (!report?.event_name) {
+      return 'Vista consolidada de toda la operación TAVA';
+    }
+    const selected = this.adminEvents().find((event) => event.id === report.event_id);
+    return `${selected?.category || 'Evento'} · ${report.event_date || selected?.event_date || ''} · ${selected?.city || ''}`;
   }
 
   loadAdminEvents(): void {
