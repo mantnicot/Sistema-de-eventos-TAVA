@@ -10,7 +10,6 @@ from tava.domain.enums import UserRole
 from tava.infrastructure.persistence.database import get_db
 from tava.infrastructure.persistence.event_staff import can_access_event
 from tava.infrastructure.persistence.models import TicketTypeModel
-from tava.infrastructure.services.captcha import verify_captcha
 from tava.presentation.api.dependencies import get_current_user, require_roles
 from tava.presentation.api.schemas import (
     AdminIssueTicketsRequest,
@@ -183,8 +182,6 @@ async def purchase(
 ):
     if not body.legal_accepted:
         raise HTTPException(status_code=400, detail="Debe aceptar los términos legales")
-    if not await verify_captcha(body.captcha_token):
-        raise HTTPException(status_code=400, detail="Captcha inválido")
     uc = TicketUseCase(db)
     try:
         result = await uc.purchase_for_user(
@@ -217,8 +214,6 @@ async def sell_tickets(
 ):
     if not body.legal_accepted:
         raise HTTPException(status_code=400, detail="Debe aceptar los términos legales")
-    if not await verify_captcha(body.captcha_token):
-        raise HTTPException(status_code=400, detail="Captcha inválido")
     if user.role != UserRole.ADMIN and not await can_access_event(
         db, user.id, user.role, body.event_id, "seller"
     ):

@@ -5,6 +5,43 @@
   min-height: 60vh;
 }
 
+.verify-pending--large {
+  max-width: 680px;
+  padding: clamp(1.75rem, 5vw, 3.5rem);
+  text-align: center;
+  border: 2px solid rgba(201, 162, 39, 0.55);
+  background:
+    radial-gradient(circle at top, rgba(201, 162, 39, 0.2), transparent 42%),
+    var(--tava-stage-mid);
+
+  h1 {
+    font-size: clamp(1.8rem, 6vw, 3rem);
+    line-height: 1.1;
+  }
+}
+
+.verify-pending__icon {
+  width: 76px;
+  height: 76px;
+  display: grid;
+  place-items: center;
+  margin: 0 auto 1rem;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--tava-gold), var(--tava-gold-glow));
+  color: #3d2a14;
+  font-size: 2.4rem;
+  box-shadow: 0 0 28px rgba(201, 162, 39, 0.4);
+}
+
+.verify-pending__eyebrow {
+  margin: 0;
+  color: var(--tava-gold-glow);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
 .auth-form {
   width: 100%;
   max-width: 420px;

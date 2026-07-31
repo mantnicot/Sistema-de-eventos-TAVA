@@ -62,13 +62,15 @@
       <p class="hint">¿Ya tienes cuenta? <a routerLink="/ingresar" [queryParams]="loginQuery">Ingresar</a></p>
     </form>
   } @else {
-    <div class="auth-form tava-form tava-card verify-pending">
-      <h1 class="tava-glow-text">Revisa tu correo</h1>
+    <div class="auth-form tava-form tava-card verify-pending verify-pending--large">
+      <div class="verify-pending__icon" aria-hidden="true">✉</div>
+      <p class="verify-pending__eyebrow">Registro completado</p>
+      <h1 class="tava-glow-text">¡Enviamos un correo para validar tu cuenta!</h1>
       <p class="ok-msg">
         Enviamos el enlace de activación a <strong>{{ email }}</strong>.
       </p>
       <p class="hint">
-        Abre tu correo y haz clic en el enlace para activar la cuenta. Si no aparece, revisa spam o espera unos minutos.
+        Debes abrir el correo y hacer clic en el enlace antes de ingresar o comprar boletas. Si no aparece, revisa spam, promociones o espera unos minutos.
       </p>
       @if (theatricalLine) {
         <p class="theatrical-line">{{ theatricalLine }}</p>

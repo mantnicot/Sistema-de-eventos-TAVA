@@ -70,13 +70,23 @@ export class RegisterComponent implements OnInit {
         captcha_token: this.captchaToken,
       })
       .subscribe({
-        next: () => {
+        next: (res) => {
           this.notify.hide();
           this.captcha?.reset();
           this.captchaToken = '';
           this.pendingVerify = true;
           this.theatricalLine = randomTheatricalMessage('resend');
-          this.notify.success('Correo enviado', 'Revisa tu bandeja: ahí está el enlace para activar tu cuenta.');
+          if (res.email_sent) {
+            this.notify.celebration(
+              '¡Correo de validación enviado!',
+              `Enviamos un correo a ${this.email}. Debes abrirlo y validar tu dirección antes de ingresar y comprar boletas.`
+            );
+          } else {
+            this.notify.warning(
+              'Cuenta creada',
+              'La cuenta fue creada, pero no pudimos confirmar el envío. Usa la opción de reenviar validación desde el ingreso.'
+            );
+          }
         },
         error: (err) => {
           this.notify.hide();

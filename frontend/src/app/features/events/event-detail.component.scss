@@ -92,7 +92,7 @@
   min-width: 0;
 
   @media (max-width: 900px) {
-    order: 1;
+    order: 2;
   }
 }
 
@@ -105,7 +105,7 @@
 
   @media (max-width: 900px) {
     position: static;
-    order: 2;
+    order: 1;
     margin-top: 0;
   }
 
@@ -121,6 +121,38 @@
     padding: 1rem 1.25rem;
     font-size: 1.1rem;
     margin-top: 0.75rem;
+  }
+}
+
+.purchase-register-gate {
+  margin: 0 0 1rem;
+  padding: 1rem;
+  border: 1px solid rgba(232, 185, 35, 0.65);
+  border-radius: 12px;
+  background: linear-gradient(145deg, rgba(123, 30, 58, 0.45), rgba(201, 162, 39, 0.16));
+
+  strong {
+    display: block;
+    color: #ffe082;
+    font-size: 1.05rem;
+  }
+
+  p {
+    margin: 0.45rem 0 0.85rem;
+    color: var(--tava-cream-muted);
+    font-size: 0.85rem;
+    line-height: 1.45;
+  }
+
+  div {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.85rem;
+  }
+
+  a {
+    text-decoration: none;
   }
 }
 

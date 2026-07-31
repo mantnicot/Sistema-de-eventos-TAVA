@@ -1,4 +1,4 @@
-import { Component, inject, OnDestroy, OnInit, signal, ViewChild } from '@angular/core';
+import { Component, inject, OnDestroy, OnInit, signal } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { FormsModule } from '@angular/forms';
@@ -22,7 +22,6 @@ import { trailerEmbedUrl, trailerVideoSrc } from '../../core/utils/trailer-embed
 import { onEventImageError } from '../../core/utils/event-image.util';
 import { readEventsCache } from '../../core/utils/events-cache.util';
 import { TavaTheatricalVideoComponent } from '../../shared/components/tava-theatrical-video/tava-theatrical-video.component';
-import { TavaCaptchaComponent } from '../../shared/components/tava-captcha/tava-captcha.component';
 import { TavaTheatricalLoaderComponent } from '../../shared/components/tava-theatrical-loader/tava-theatrical-loader.component';
 import {
   clearPurchaseDraft,
@@ -39,14 +38,12 @@ import { parseHttpError } from '../../core/utils/http-error.util';
     FormsModule,
     DecimalPipe,
     TavaTheatricalVideoComponent,
-    TavaCaptchaComponent,
     TavaTheatricalLoaderComponent,
   ],
   templateUrl: './event-detail.component.html',
   styleUrl: './event-detail.component.scss',
 })
 export class EventDetailComponent implements OnInit, OnDestroy {
-  @ViewChild(TavaCaptchaComponent) captcha?: TavaCaptchaComponent;
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly api = inject(ApiService);
@@ -63,7 +60,6 @@ export class EventDetailComponent implements OnInit, OnDestroy {
   readonly mediaBg = mediaBackgroundStyle;
   readonly trailerVideo = trailerVideoSrc;
   purchasing = false;
-  captchaToken = '';
 
   readonly formatEventDateTime = formatEventDateTime;
   readonly formatEventTime = formatEventTime;
@@ -249,16 +245,12 @@ export class EventDetailComponent implements OnInit, OnDestroy {
     return names;
   }
 
-  onCaptchaToken(token: string): void {
-    this.captchaToken = token;
-  }
-
   comprar(): void {
     if (!this.auth.isLoggedIn()) {
       this.persistDraft();
       this.notify.warning(
-        'Inicia sesión',
-        'Guardamos tu selección. Crea tu cuenta o ingresa para continuar justo donde ibas.'
+        'Registro obligatorio',
+        'Para comprar boletas debes registrarte sí o sí. Guardamos tu selección para que continúes después de validar tu correo.'
       );
       this.router.navigate(['/registro'], { queryParams: { returnUrl: this.router.url } });
       return;
@@ -274,11 +266,6 @@ export class EventDetailComponent implements OnInit, OnDestroy {
 
     if (!this.canBuy(ev)) {
       this.notify.warning('Evento finalizado', 'Esta función ya pasó. Puedes revisar otros eventos disponibles.');
-      return;
-    }
-
-    if (!this.captchaToken) {
-      this.notify.warning('Verificación', 'Completa la verificación para proteger tu compra.');
       return;
     }
 
@@ -316,15 +303,12 @@ export class EventDetailComponent implements OnInit, OnDestroy {
           quantity: this.quantity,
           holder_names: names,
           legal_accepted: true,
-          captcha_token: this.captchaToken,
         })
         .subscribe({
           next: (res) => {
             this.purchasing = false;
             this.notify.hide();
             clearPurchaseDraft();
-            this.captcha?.reset();
-            this.captchaToken = '';
             if (res.payment_required && res.checkout_url) {
               window.location.href = res.checkout_url;
               return;
@@ -341,8 +325,6 @@ export class EventDetailComponent implements OnInit, OnDestroy {
           error: (err) => {
             this.purchasing = false;
             this.notify.hide();
-            this.captcha?.reset();
-            this.captchaToken = '';
             this.notify.showHttpError(parseHttpError(err, 'compra'));
           },
         });

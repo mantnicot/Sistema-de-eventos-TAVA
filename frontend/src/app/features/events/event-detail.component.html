@@ -165,6 +165,17 @@
         } @else if (ev.ticket_types.length) {
           <p class="detail__funny-cta">{{ funnyCta(ev.id) }}</p>
 
+          @if (!auth.isLoggedIn()) {
+            <section class="purchase-register-gate">
+              <strong>Debes registrarte sí o sí para comprar</strong>
+              <p>Crea tu cuenta, valida el correo que recibirás y vuelve para terminar la compra. Guardaremos tu selección.</p>
+              <div>
+                <a routerLink="/registro" [queryParams]="{ returnUrl: '/eventos/' + ev.id }" class="tava-btn-primary">Registrarme</a>
+                <a routerLink="/ingresar" [queryParams]="{ returnUrl: '/eventos/' + ev.id }" class="back">Ya tengo cuenta</a>
+              </div>
+            </section>
+          }
+
           <div class="detail__tickets-meter" aria-label="Boletas disponibles">
             <span class="detail__tickets-num">{{ ticketsLeft(ev) }}</span>
             <span class="detail__tickets-label">boletas disponibles</span>
@@ -257,9 +268,6 @@
             <p class="hint hint--warn">Debes aceptar los términos y condiciones para poder comprar.</p>
           }
 
-          <tava-captcha (tokenChange)="onCaptchaToken($event)" />
-          <p class="hint">Resuelve el puzzle para confirmar que eres humano.</p>
-
           @if (selectedTicketType(); as st) {
             <p class="hint hint--total">
               Total estimado: <strong>${{ totalPrice() | number:'1.0-0' }} COP</strong>
@@ -271,9 +279,9 @@
             type="button"
             class="tava-btn-primary detail__buy-btn"
             (click)="comprar()"
-            [disabled]="!selectedTypeId() || !legalAccepted || !captchaToken || purchasing"
+            [disabled]="!selectedTypeId() || (auth.isLoggedIn() && !legalAccepted) || purchasing"
           >
-            {{ purchasing ? 'Procesando…' : 'Comprar boletas' }}
+            {{ purchasing ? 'Procesando…' : (auth.isLoggedIn() ? 'Comprar boletas' : 'Registrarme para comprar') }}
           </button>
         } @else {
           <p class="muted">Próximamente tipos de boleta para este evento.</p>

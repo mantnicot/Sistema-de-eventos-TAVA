@@ -123,15 +123,15 @@ export class AuthService {
     return this.api.get<{ message: string; success: boolean }>(`/auth/verify-email?token=${encodeURIComponent(token)}`);
   }
 
-  forgotPassword(email: string) {
+  forgotPassword(email: string, captchaToken: string) {
     const normalized = email.trim().toLowerCase();
     return this.api.post<{ message: string; success: boolean; email_sent?: boolean }>(
       '/auth/forgot-password',
-      { email: normalized }
+      { email: normalized, captcha_token: captchaToken }
     );
   }
 
-  resetPassword(token: string, password: string) {
+  resetPassword(token: string, password: string, captchaToken: string) {
     return from(this.getPublicKeyPem()).pipe(
       switchMap((public_key_pem) =>
         from(encryptPasswordForTransport(public_key_pem, password)).pipe(
@@ -139,6 +139,7 @@ export class AuthService {
             this.api.post<{ message: string; success: boolean }>('/auth/reset-password', {
               token,
               password_encrypted,
+              captcha_token: captchaToken,
             })
           )
         )

@@ -139,6 +139,8 @@ async def register(body: RegisterRequest, db: AsyncSession = Depends(get_db)):
 
 @router.post("/forgot-password")
 async def forgot_password(body: ForgotPasswordRequest, db: AsyncSession = Depends(get_db)):
+    if not await verify_captcha(body.captcha_token):
+        raise_user_error(400, "CAPTCHA_INVALID", "Verificación captcha inválida")
     try:
         uc = AuthUseCase(db)
         sent = await uc.request_password_reset(body.email)
@@ -168,6 +170,8 @@ async def forgot_password(body: ForgotPasswordRequest, db: AsyncSession = Depend
 
 @router.post("/reset-password")
 async def reset_password(body: ResetPasswordRequest, db: AsyncSession = Depends(get_db)):
+    if not await verify_captcha(body.captcha_token):
+        raise_user_error(400, "CAPTCHA_INVALID", "Verificación captcha inválida")
     try:
         plain_password = _resolve_password(body)
     except ValueError as e:
