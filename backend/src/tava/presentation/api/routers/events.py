@@ -301,14 +301,8 @@ async def sync_event_ticket_types(
     keep_ids: set[UUID] = set()
 
     for item in items:
-        sold_count = sold.get(item.id, 0) if item.id else 0
         if item.id and item.id in existing:
             model = existing[item.id]
-            if item.quantity_available < sold_count:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f'"{model.name}": cupo mínimo {sold_count} (ya vendidas)',
-                )
             model.name = item.name
             model.kind = item.kind
             model.price = item.price
