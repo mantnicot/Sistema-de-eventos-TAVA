@@ -4,7 +4,7 @@
     <nav class="admin__tabs">
       <button type="button" [class.active]="tab() === 'kpis'" (click)="tab.set('kpis')">Métricas</button>
       <button type="button" [class.active]="tab() === 'events'" (click)="tab.set('events')">Eventos</button>
-      <button type="button" [class.active]="tab() === 'users'" (click)="tab.set('users')">Usuarios</button>
+      <button type="button" [class.active]="tab() === 'users'" (click)="tab.set('users')">Personas</button>
       <button type="button" [class.active]="tab() === 'appearance'" (click)="tab.set('appearance')">Apariencia</button>
     </nav>
   </header>
@@ -126,6 +126,7 @@
       <div class="admin-events-main">
       <form class="tava-card admin-form admin-form--wide" (ngSubmit)="saveEvent()">
         <h2>{{ editingId() ? 'Editar evento' : 'Nuevo evento' }}</h2>
+        <p class="muted">El rol y las obras de cada vendedor o validador se asignan en la pestaña <button type="button" class="link-btn" (click)="tab.set('users')">Personas</button>.</p>
         <label>Nombre <input [(ngModel)]="eventForm.name" name="name" required /></label>
         <label>Descripción <textarea [(ngModel)]="eventForm.description" name="desc" rows="3" required></textarea></label>
         <label>Categoría <input [(ngModel)]="eventForm.category" name="cat" /></label>
@@ -254,70 +255,6 @@
         </div>
 
         @if (editingId()) {
-          <section class="staff-block">
-            <h3>Personal por evento</h3>
-            <p class="muted">Busca usuarios y asígnalos como validador, vendedor o ambos para esta obra.</p>
-            <label class="staff-search">
-              Buscar usuario
-              <input
-                type="search"
-                [(ngModel)]="staffSearch"
-                name="staffSearch"
-                placeholder="Nombre o correo..."
-              />
-            </label>
-            <div class="staff-table-wrap">
-              <table class="staff-table">
-                <thead>
-                  <tr>
-                    <th>Usuario</th>
-                    <th>Rol cuenta</th>
-                    <th>Asignación evento</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  @for (u of filteredStaffUsers(); track u.id) {
-                    <tr>
-                      <td>
-                        <strong>{{ u.full_name }}</strong>
-                        <span class="muted-inline">{{ u.email }}</span>
-                      </td>
-                      <td><span class="badge">{{ u.role }}</span></td>
-                      <td class="staff-table__actions">
-                        <button
-                          type="button"
-                          class="staff-pill"
-                          [class.staff-pill--on]="isStaffValidator(u.id)"
-                          (click)="toggleStaffValidatorBtn(u.id)"
-                        >
-                          Validador
-                        </button>
-                        <button
-                          type="button"
-                          class="staff-pill"
-                          [class.staff-pill--on]="isStaffSeller(u.id)"
-                          (click)="toggleStaffSellerBtn(u.id)"
-                        >
-                          Vendedor
-                        </button>
-                        @if (isStaffValidator(u.id) || isStaffSeller(u.id)) {
-                          <button type="button" class="link-btn" (click)="clearStaffUser(u.id)">Quitar</button>
-                        }
-                      </td>
-                    </tr>
-                  } @empty {
-                    <tr>
-                      <td colspan="3" class="muted">No hay usuarios que coincidan con la búsqueda.</td>
-                    </tr>
-                  }
-                </tbody>
-              </table>
-            </div>
-            <button type="button" class="tava-btn-primary staff-save" (click)="saveStaffOnly()">
-              Guardar asignación de personal
-            </button>
-          </section>
-
           <section class="attendees-block">
             <h3>Asistentes y boletas</h3>
             <p class="muted">
@@ -336,6 +273,13 @@
                 <input type="checkbox" [(ngModel)]="cancelNotifyHolder" name="cancelNotify" />
                 Avisar por correo al cancelar una boleta
               </label>
+              <tava-list-search
+                [query]="attendeesQuery()"
+                (queryChange)="attendeesQuery.set($event)"
+                placeholder="Buscar por titular, correo o código de boleta…"
+                [shown]="filteredAttendees().length"
+                [total]="data.attendees.length"
+              />
               <div class="staff-table-wrap">
                 <table class="staff-table attendees-table">
                   <thead>
@@ -348,7 +292,7 @@
                     </tr>
                   </thead>
                   <tbody>
-                    @for (a of data.attendees; track a.ticket_id) {
+                    @for (a of filteredAttendees(); track a.ticket_id) {
                       <tr [class.attendees-row--cancelled]="a.is_cancelled">
                         <td>{{ a.holder_name || '—' }}</td>
                         <td>{{ a.ticket_code || '—' }}</td>
@@ -371,7 +315,9 @@
                       </tr>
                     } @empty {
                       <tr>
-                        <td colspan="5" class="muted">Aún no hay boletas vendidas.</td>
+                        <td colspan="5" class="muted">
+                          {{ data.attendees.length ? 'Nadie coincide con esa búsqueda.' : 'Aún no hay boletas vendidas.' }}
+                        </td>
                       </tr>
                     }
                   </tbody>
@@ -462,8 +408,15 @@
       <aside class="admin-events-sidebar tava-card">
         <h2>Eventos registrados</h2>
         <p class="muted">Selecciona uno para editar sin bajar al final.</p>
+        <tava-list-search
+          [query]="eventsQuery()"
+          (queryChange)="eventsQuery.set($event)"
+          placeholder="Buscar obra, ciudad o estado…"
+          [shown]="filteredSidebarEvents().length"
+          [total]="adminEvents().length"
+        />
         <div class="admin-list admin-list--sidebar">
-          @for (ev of adminEvents(); track ev.id) {
+          @for (ev of filteredSidebarEvents(); track ev.id) {
             <article class="admin-list__item" [class.admin-list__item--active]="editingId() === ev.id">
               <div>
                 <strong>{{ ev.name }}</strong>
@@ -482,6 +435,8 @@
             } @else if (adminEventsError()) {
               <p class="muted">{{ adminEventsError() }}</p>
               <button type="button" class="nav__btn-outline" (click)="loadAdminEvents()">Reintentar eventos</button>
+            } @else if (adminEvents().length) {
+              <p class="muted">Ningún evento coincide con esa búsqueda.</p>
             } @else {
               <p class="muted">No hay eventos. Crea el primero.</p>
             }
@@ -492,45 +447,7 @@
   }
 
   @if (tab() === 'users') {
-    <div class="tava-card admin-form">
-      <h2>Asignar rol por correo</h2>
-      <p class="muted">Los validadores y vendedores se asignan a eventos específicos en la pestaña Eventos al editar cada obra.</p>
-      <label>Correo del usuario <input [(ngModel)]="roleEmail" name="roleEmail" type="email" /></label>
-      <label>Rol
-        <select [(ngModel)]="rolePick" name="rolePick">
-          <option value="general">General</option>
-          <option value="seller">Vendedor</option>
-          <option value="validator">Validador</option>
-          <option value="admin">Administrador</option>
-        </select>
-      </label>
-      <button type="button" class="tava-btn-primary" (click)="assignRole()">Guardar rol</button>
-    </div>
-    <div class="admin-list">
-      @for (u of users(); track u.id) {
-        <article class="tava-card admin-list__item">
-          <div>
-            <strong>{{ u.full_name }}</strong>
-            <p class="muted">{{ u.email }} · {{ u.role }}
-              @if (!u.email_verified) { · <em>sin verificar</em> }
-            </p>
-          </div>
-          <div class="admin-list__actions">
-            <select [value]="u.role" (change)="changeRole(u.id, $event)">
-              <option value="general">general</option>
-              <option value="seller">seller</option>
-              <option value="validator">validator</option>
-              <option value="admin">admin</option>
-            </select>
-            @if (!isCurrentUser(u)) {
-              <button type="button" class="btn-danger" (click)="deleteUser(u)">Eliminar</button>
-            } @else {
-              <span class="muted muted-inline" title="No puedes eliminar tu propia cuenta">Tú (sin eliminar)</span>
-            }
-          </div>
-        </article>
-      }
-    </div>
+    <tava-admin-users-panel />
   }
 
   @if (tab() === 'appearance') {

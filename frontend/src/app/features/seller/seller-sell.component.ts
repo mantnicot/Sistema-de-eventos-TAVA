@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../core/services/api.service';
@@ -6,11 +6,13 @@ import { AuthService } from '../../core/services/auth.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { TavaEvent, TavaEventDetail } from '../../core/models/event.model';
 import { parseHttpError } from '../../core/utils/http-error.util';
+import { matchesSearch } from '../../core/utils/list-search.util';
+import { TavaListSearchComponent } from '../../shared/components/tava-list-search/tava-list-search.component';
 
 @Component({
   selector: 'app-seller-sell',
   standalone: true,
-  imports: [FormsModule, DecimalPipe],
+  imports: [FormsModule, DecimalPipe, TavaListSearchComponent],
   templateUrl: './seller-sell.component.html',
   styleUrl: './seller-sell.component.scss',
 })
@@ -21,6 +23,10 @@ export class SellerSellComponent implements OnInit {
 
   readonly events = signal<TavaEvent[]>([]);
   readonly eventDetail = signal<TavaEventDetail | null>(null);
+  readonly eventQuery = signal('');
+  readonly filteredEvents = computed(() =>
+    this.events().filter((ev) => matchesSearch(this.eventQuery(), ev.name, ev.city, ev.event_date, ev.category))
+  );
 
   selectedEventId = '';
   selectedTypeId = '';

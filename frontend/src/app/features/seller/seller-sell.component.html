@@ -7,9 +7,16 @@
   <form class="sell__form tava-card" (ngSubmit)="vender()">
     <label>
       Evento
+      <tava-list-search
+        [query]="eventQuery()"
+        (queryChange)="eventQuery.set($event)"
+        placeholder="Filtrar obras asignadas…"
+        [shown]="filteredEvents().length"
+        [total]="events().length"
+      />
       <select [(ngModel)]="selectedEventId" name="event" (ngModelChange)="onEventChange()" required>
         <option value="">Selecciona un evento</option>
-        @for (ev of events(); track ev.id) {
+        @for (ev of filteredEvents(); track ev.id) {
           <option [value]="ev.id">{{ ev.name }} — {{ ev.event_date }}</option>
         }
       </select>

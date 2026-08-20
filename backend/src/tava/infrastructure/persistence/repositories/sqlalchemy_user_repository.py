@@ -83,7 +83,7 @@ class SQLAlchemyUserRepository(UserRepository):
         await self._session.flush()
         return True
 
-    async def list_by_role(self, role: UserRole | None = None, limit: int = 50, offset: int = 0) -> list[User]:
+    async def list_by_role(self, role: UserRole | None = None, limit: int = 200, offset: int = 0) -> list[User]:
         q = select(UserModel).order_by(UserModel.created_at.desc()).limit(limit).offset(offset)
         if role:
             q = q.where(UserModel.role == role)

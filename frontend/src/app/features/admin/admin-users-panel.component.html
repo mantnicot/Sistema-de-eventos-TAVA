@@ -1,0 +1,176 @@
+<section class="users" [class.users--editing]="selected()">
+  <header class="users__toolbar tava-card">
+    <div>
+      <span class="users__eyebrow">Elenco y permisos</span>
+      <h2>Administrar personas</h2>
+      <p>Asigna el rol y, si vende o valida, elige en qué obras puede trabajar.</p>
+    </div>
+    <div class="users__filters">
+      <label class="users__search">
+        <span>Buscar</span>
+        <input
+          type="search"
+          [ngModel]="query()"
+          (ngModelChange)="onQuery($event)"
+          name="userQuery"
+          placeholder="Nombre o correo…"
+        />
+      </label>
+      <label class="users__search">
+        <span>Rol</span>
+        <select [ngModel]="roleFilter()" (ngModelChange)="onRoleFilter($event)" name="roleFilter">
+          <option value="all">Todos</option>
+          @for (role of roles; track role.value) {
+            <option [value]="role.value">{{ role.label }}</option>
+          }
+        </select>
+      </label>
+    </div>
+  </header>
+
+  <div class="users__stats">
+    <article class="stat tava-card">
+      <span>Personas</span>
+      <strong>{{ counts().total }}</strong>
+    </article>
+    <article class="stat tava-card">
+      <span>Admins</span>
+      <strong>{{ counts().admin }}</strong>
+    </article>
+    <article class="stat tava-card">
+      <span>Vendedores</span>
+      <strong>{{ counts().seller }}</strong>
+    </article>
+    <article class="stat tava-card">
+      <span>Validadores</span>
+      <strong>{{ counts().validator }}</strong>
+    </article>
+  </div>
+
+  @if (loading()) {
+    <p class="muted users__status">Cargando elenco…</p>
+  } @else {
+    <div class="users__layout">
+      <div class="users__list">
+        @for (user of filteredUsers(); track user.id) {
+          <button
+            type="button"
+            class="person tava-card"
+            [class.person--active]="selectedId() === user.id"
+            [class.person--off]="!user.is_active"
+            (click)="selectUser(user)"
+          >
+            <span class="person__avatar" [attr.data-role]="user.role">{{ initials(user.full_name) }}</span>
+            <span class="person__body">
+              <strong>{{ user.full_name }}</strong>
+              <small>{{ user.email }}</small>
+              <span class="person__meta">
+                <span class="pill" [attr.data-role]="user.role">{{ roleLabel(user.role) }}</span>
+                <span class="person__events">{{ eventSummary(user) }}</span>
+                @if (!user.email_verified) {
+                  <span class="pill pill--warn">Sin verificar</span>
+                }
+                @if (!user.is_active) {
+                  <span class="pill pill--off">Inactivo</span>
+                }
+              </span>
+            </span>
+          </button>
+        } @empty {
+          <p class="muted users__status">Nadie coincide con esa búsqueda.</p>
+        }
+      </div>
+
+      <aside class="users__editor tava-card">
+        @if (selected(); as user) {
+          <header class="editor__head">
+            <button type="button" class="editor__back" (click)="closeEditor()">← Elenco</button>
+            <span class="person__avatar person__avatar--lg" [attr.data-role]="draftRole()">{{ initials(user.full_name) }}</span>
+            <div>
+              <h3>{{ user.full_name }}</h3>
+              <p>{{ user.email }}</p>
+            </div>
+          </header>
+
+          <section>
+            <h4>Rol</h4>
+            <div class="role-grid">
+              @for (role of roles; track role.value) {
+                <button
+                  type="button"
+                  class="role-card"
+                  [class.role-card--on]="draftRole() === role.value"
+                  [attr.data-role]="role.value"
+                  (click)="setDraftRole(role.value)"
+                >
+                  <span class="role-card__icon">{{ role.icon }}</span>
+                  <strong>{{ role.label }}</strong>
+                  <small>{{ role.hint }}</small>
+                </button>
+              }
+            </div>
+          </section>
+
+          <label class="toggle">
+            <input type="checkbox" [ngModel]="draftActive()" (ngModelChange)="onActiveChange($event)" name="isActive" [disabled]="isCurrentUser(user)" />
+            <span>Cuenta activa</span>
+          </label>
+
+          @if (needsEvents()) {
+            <section class="events-box">
+              <div class="events-box__head">
+                <h4>{{ draftRole() === 'seller' ? 'Obras donde puede vender' : 'Obras donde puede validar' }}</h4>
+                <div class="events-box__actions">
+                  <button type="button" class="ghost" (click)="selectAllVisibleEvents()">Todas</button>
+                  <button type="button" class="ghost" (click)="clearEvents()">Ninguna</button>
+                </div>
+              </div>
+              <p class="hint">Toca las obras para dar o quitar permiso. Si no eliges ninguna, tendrá el rol pero no podrá operar.</p>
+              <input
+                class="events-box__search"
+                type="search"
+                [ngModel]="eventQuery()"
+                (ngModelChange)="onEventQuery($event)"
+                name="eventQuery"
+                placeholder="Filtrar obras…"
+              />
+              <div class="chip-grid">
+                @for (ev of visibleEvents(); track ev.id) {
+                  <button
+                    type="button"
+                    class="chip"
+                    [class.chip--on]="isEventSelected(ev.id)"
+                    (click)="toggleEvent(ev.id)"
+                  >
+                    <strong>{{ ev.name }}</strong>
+                    <small>{{ ev.event_date }} · {{ ev.city }}</small>
+                  </button>
+                } @empty {
+                  <p class="muted">No hay obras para mostrar.</p>
+                }
+              </div>
+            </section>
+          } @else if (draftRole() === 'admin') {
+            <p class="hint hint--box">El admin ve y opera todas las obras. No hace falta asignarlas una a una.</p>
+          } @else {
+            <p class="hint hint--box">Esta persona solo compra y usa su perfil. Sin acceso a taquilla ni validación.</p>
+          }
+
+          <footer class="editor__footer">
+            <button type="button" class="tava-btn-primary" [disabled]="!dirty() || saving()" (click)="save()">
+              Guardar permisos
+            </button>
+            @if (!isCurrentUser(user)) {
+              <button type="button" class="btn-danger" [disabled]="saving()" (click)="deleteSelected()">Eliminar</button>
+            }
+          </footer>
+        } @else {
+          <div class="editor__empty">
+            <h3>Elige a alguien del elenco</h3>
+            <p>Ahí le das rol y, si vende o valida, las obras en las que puede trabajar.</p>
+          </div>
+        }
+      </aside>
+    </div>
+  }
+</section>

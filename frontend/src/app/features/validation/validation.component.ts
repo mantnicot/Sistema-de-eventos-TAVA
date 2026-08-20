@@ -1,9 +1,11 @@
-import { AfterViewInit, Component, inject, OnDestroy, signal } from '@angular/core';
+import { AfterViewInit, Component, computed, inject, OnDestroy, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Html5Qrcode } from 'html5-qrcode';
 import { ApiService } from '../../core/services/api.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { TavaEvent } from '../../core/models/event.model';
+import { matchesSearch } from '../../core/utils/list-search.util';
+import { TavaListSearchComponent } from '../../shared/components/tava-list-search/tava-list-search.component';
 
 interface ScanResponse {
   result: string;
@@ -19,6 +21,8 @@ interface ScanResponse {
 interface Attendee {
   ticket_id: string;
   holder_name: string | null;
+  recipient_name?: string | null;
+  recipient_email?: string | null;
   ticket_code?: string | null;
   is_used: boolean;
   used_at: string | null;
@@ -36,7 +40,7 @@ interface AttendeesResponse {
 @Component({
   selector: 'app-validation',
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, TavaListSearchComponent],
   templateUrl: './validation.component.html',
   styleUrl: './validation.component.scss',
 })
@@ -63,6 +67,20 @@ export class ValidationComponent implements AfterViewInit, OnDestroy {
   lastStatus: 'ok' | 'warn' | 'error' | '' = '';
   cameraError = '';
   cameraActive = false;
+  readonly attendeeQuery = signal('');
+
+  readonly filteredAttendees = computed(() =>
+    this.attendees().filter((a) =>
+      matchesSearch(
+        this.attendeeQuery(),
+        a.holder_name,
+        a.recipient_name,
+        a.recipient_email,
+        a.ticket_code,
+        a.is_used ? 'ingreso ingresó' : 'pendiente'
+      )
+    )
+  );
 
   ngAfterViewInit(): void {
     this.loadEvents();
@@ -92,6 +110,7 @@ export class ValidationComponent implements AfterViewInit, OnDestroy {
   loadAttendees(): void {
     if (!this.selectedEventId) {
       this.attendees.set([]);
+      this.attendeeQuery.set('');
       return;
     }
     this.api.get<AttendeesResponse>(`/validation/attendees/${this.selectedEventId}`).subscribe({

@@ -1,0 +1,22 @@
+<label class="list-search">
+  <span class="list-search__field">
+    <span class="list-search__icon" aria-hidden="true"></span>
+    <input
+      type="search"
+      [ngModel]="query()"
+      (ngModelChange)="onQuery($event)"
+      [placeholder]="placeholder()"
+      [attr.aria-label]="placeholder()"
+    />
+  </span>
+  @if (hint() || (shown() != null && total() != null)) {
+    <small>
+      @if (shown() != null && total() != null) {
+        {{ shown() }} de {{ total() }}
+      }
+      @if (hint()) {
+        {{ hint() }}
+      }
+    </small>
+  }
+</label>

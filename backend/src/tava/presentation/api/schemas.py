@@ -80,6 +80,14 @@ class UserResponse(BaseModel):
 
 class UserAdminResponse(UserResponse):
     is_active: bool = True
+    validator_event_ids: list[UUID] = Field(default_factory=list)
+    seller_event_ids: list[UUID] = Field(default_factory=list)
+
+
+class UserPermissionsUpdateRequest(BaseModel):
+    role: UserRole
+    is_active: bool | None = None
+    event_ids: list[UUID] = Field(default_factory=list)
 
 
 class CastMemberSchema(BaseModel):

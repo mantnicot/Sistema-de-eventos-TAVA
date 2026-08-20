@@ -128,7 +128,7 @@ async def list_events(
 @router.get("/admin/all", response_model=list[EventResponse])
 async def list_events_admin(
     status: EventStatus | None = None,
-    limit: int = Query(50, le=100),
+    limit: int = Query(200, le=500),
     offset: int = 0,
     _user=Depends(require_roles(UserRole.ADMIN)),
     db: AsyncSession = Depends(get_db),

@@ -483,6 +483,11 @@
   }
 }
 
+.attendees-block tava-list-search,
+.admin-events-sidebar tava-list-search {
+  margin: 0.35rem 0 0.65rem;
+}
+
 .attendees-row--cancelled {
   opacity: 0.55;
 }

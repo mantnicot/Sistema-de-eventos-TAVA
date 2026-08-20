@@ -1,10 +1,9 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { catchError, finalize, of, timeout } from 'rxjs';
 import { ApiService } from '../../core/services/api.service';
 import { ApiWarmupService } from '../../core/services/api-warmup.service';
-import { AuthService } from '../../core/services/auth.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { SiteAppearance, SiteSettingsService } from '../../core/services/site-settings.service';
 import {
@@ -15,9 +14,12 @@ import {
   VIDEO_TRAILER_SPEC,
 } from '../../core/constants/media-upload-specs.const';
 import { TavaFileUploadComponent } from '../../shared/components/tava-file-upload/tava-file-upload.component';
+import { TavaListSearchComponent } from '../../shared/components/tava-list-search/tava-list-search.component';
+import { AdminUsersPanelComponent } from './admin-users-panel.component';
 import { TavaEvent, TavaEventDetail, TheatricalDetails, CastMember } from '../../core/models/event.model';
 import { TicketKind, TicketTypeDraft } from '../../core/models/ticket-type.model';
 import { resolveMediaUrl } from '../../core/utils/media-url.util';
+import { matchesSearch } from '../../core/utils/list-search.util';
 import { mergeSeatingPreview, applyBlockTicketType, applySeatTicketType } from '../../core/utils/seating-preview.util';
 import {
   countLayoutSeats,
@@ -45,15 +47,6 @@ interface Kpis {
   ordenes_totales?: number;
   ordenes_pagadas?: number;
   conversion_porcentaje: number;
-}
-
-interface AdminUser {
-  id: string;
-  email: string;
-  full_name: string;
-  role: string;
-  email_verified: boolean;
-  is_active: boolean;
 }
 
 interface AttendeeItem {
@@ -97,14 +90,13 @@ const ADMIN_EVENTS_TIMEOUT_MS = 55000;
 @Component({
   selector: 'app-admin-dashboard',
   standalone: true,
-  imports: [DecimalPipe, FormsModule, TavaFileUploadComponent],
+  imports: [DecimalPipe, FormsModule, TavaFileUploadComponent, AdminUsersPanelComponent, TavaListSearchComponent],
   templateUrl: './admin-dashboard.component.html',
   styleUrl: './admin-dashboard.component.scss',
 })
 export class AdminDashboardComponent implements OnInit {
   private readonly api = inject(ApiService);
   private readonly warmup = inject(ApiWarmupService);
-  private readonly auth = inject(AuthService);
   private readonly notify = inject(NotificationService);
   private readonly site = inject(SiteSettingsService);
 
@@ -117,22 +109,18 @@ export class AdminDashboardComponent implements OnInit {
   readonly kpis = signal<Kpis | null>(null);
   readonly kpisLoading = signal(false);
   readonly adminEvents = signal<TavaEvent[]>([]);
-  readonly users = signal<AdminUser[]>([]);
   readonly editingId = signal<string | null>(null);
   readonly adminLoading = signal(true);
   readonly adminApiError = signal<string | null>(null);
   readonly adminEventsLoading = signal(false);
   readonly adminEventsError = signal<string | null>(null);
 
-  roleEmail = '';
-  rolePick = 'seller';
   selectedReportEventId = '';
   castMembers: CastMember[] = [{ name: '', photo_url: '', role: '' }];
-  staffValidatorIds: string[] = [];
-  staffSellerIds: string[] = [];
-  staffSearch = '';
   readonly attendeesData = signal<AttendeesResponse | null>(null);
   readonly attendeesLoading = signal(false);
+  readonly attendeesQuery = signal('');
+  readonly eventsQuery = signal('');
   broadcastSubject = '';
   broadcastMessage = '';
   cancelNotifyHolder = true;
@@ -173,6 +161,27 @@ export class AdminDashboardComponent implements OnInit {
     { value: 'cortesia', label: 'Cortesía' },
   ];
 
+  readonly filteredAttendees = computed(() => {
+    const data = this.attendeesData();
+    if (!data) return [];
+    return data.attendees.filter((a) =>
+      matchesSearch(
+        this.attendeesQuery(),
+        a.holder_name,
+        a.recipient_name,
+        a.recipient_email,
+        a.ticket_code,
+        this.attendeeStatusLabel(a)
+      )
+    );
+  });
+
+  readonly filteredSidebarEvents = computed(() =>
+    this.adminEvents().filter((ev) =>
+      matchesSearch(this.eventsQuery(), ev.name, ev.city, ev.event_date, ev.category, ev.status)
+    )
+  );
+
   ngOnInit(): void {
     void this.bootstrapAdmin();
   }
@@ -188,50 +197,26 @@ export class AdminDashboardComponent implements OnInit {
   }
 
   private loadAdminData(): void {
-    let pending = 2;
-    let failures = 0;
-    const done = () => {
-      pending -= 1;
-      if (pending === 0) {
-        this.adminLoading.set(false);
-        if (failures) {
-          this.adminApiError.set(
-            'Algunos datos no cargaron a tiempo. Puedes entrar a Eventos o pulsar Reintentar.'
-          );
-        }
-        this.loadAppearanceForm();
-      }
-    };
-
     this.api
       .get<Kpis>('/dashboard/kpis')
       .pipe(
         timeout(ADMIN_REQUEST_TIMEOUT_MS),
         catchError(() => {
-          failures += 1;
+          this.adminApiError.set(
+            'Algunos datos no cargaron a tiempo. Puedes entrar a Eventos o pulsar Reintentar.'
+          );
           return of(null);
         }),
-        finalize(done)
+        finalize(() => {
+          this.adminLoading.set(false);
+          this.loadAppearanceForm();
+        })
       )
       .subscribe((kpis) => {
         if (kpis) this.kpis.set(kpis);
       });
 
     this.loadAdminEvents();
-
-    this.api
-      .get<AdminUser[]>('/users')
-      .pipe(
-        timeout(ADMIN_REQUEST_TIMEOUT_MS),
-        catchError(() => {
-          failures += 1;
-          return of([] as AdminUser[]);
-        }),
-        finalize(done)
-      )
-      .subscribe((users) => {
-        this.users.set(users ?? []);
-      });
   }
 
   private loadAppearanceForm(): void {
@@ -245,75 +230,6 @@ export class AdminDashboardComponent implements OnInit {
       const a = this.site.appearance();
       if (a) this.appearanceForm = { ...a };
     }, 400);
-  }
-
-  isCurrentUser(u: AdminUser): boolean {
-    return u.id === this.auth.user()?.id;
-  }
-
-  filteredStaffUsers(): AdminUser[] {
-    const q = this.staffSearch.trim().toLowerCase();
-    const list = this.users().filter((u) => u.role !== 'admin');
-    if (!q) return list;
-    return list.filter(
-      (u) =>
-        u.full_name.toLowerCase().includes(q) ||
-        u.email.toLowerCase().includes(q) ||
-        u.role.toLowerCase().includes(q)
-    );
-  }
-
-  isStaffValidator(id: string): boolean {
-    return this.staffValidatorIds.includes(id);
-  }
-
-  isStaffSeller(id: string): boolean {
-    return this.staffSellerIds.includes(id);
-  }
-
-  toggleStaffValidatorBtn(id: string): void {
-    if (this.staffValidatorIds.includes(id)) {
-      this.staffValidatorIds = this.staffValidatorIds.filter((x) => x !== id);
-    } else {
-      this.staffValidatorIds = [...this.staffValidatorIds, id];
-    }
-  }
-
-  toggleStaffSellerBtn(id: string): void {
-    if (this.staffSellerIds.includes(id)) {
-      this.staffSellerIds = this.staffSellerIds.filter((x) => x !== id);
-    } else {
-      this.staffSellerIds = [...this.staffSellerIds, id];
-    }
-  }
-
-  clearStaffUser(id: string): void {
-    this.staffValidatorIds = this.staffValidatorIds.filter((x) => x !== id);
-    this.staffSellerIds = this.staffSellerIds.filter((x) => x !== id);
-  }
-
-  saveStaffOnly(): void {
-    const eventId = this.editingId();
-    if (!eventId) {
-      this.notify.warning('Personal', 'Primero guarda el evento o selecciona uno para editar');
-      return;
-    }
-    this.notify.loadingTheatrical('Asignando personal', 'admin');
-    this.api
-      .put(`/events/${eventId}/staff`, {
-        validator_ids: this.staffValidatorIds,
-        seller_ids: this.staffSellerIds,
-      })
-      .subscribe({
-        next: () => {
-          this.notify.hide();
-          this.notify.success('Personal', 'Asignación guardada');
-        },
-        error: () => {
-          this.notify.hide();
-          this.notify.error('Personal', 'No se pudo guardar la asignación');
-        },
-      });
   }
 
   downloadReport(format: 'pdf' | 'xlsx'): void {
@@ -389,10 +305,6 @@ export class AdminDashboardComponent implements OnInit {
       .subscribe((events) => {
         if (events) this.adminEvents.set(events);
       });
-  }
-
-  loadUsers(): void {
-    this.api.get<AdminUser[]>('/users').subscribe({ next: (u) => this.users.set(u) });
   }
 
   ticketsAllocated(): number {
@@ -583,9 +495,8 @@ export class AdminDashboardComponent implements OnInit {
       main_image_url: '',
       trailer_url: '',
     };
-    this.staffValidatorIds = [];
-    this.staffSellerIds = [];
     this.attendeesData.set(null);
+    this.attendeesQuery.set('');
     this.broadcastSubject = '';
     this.broadcastMessage = '';
     this.seatingDraft = structuredClone(DEFAULT_SEATING);
@@ -596,6 +507,7 @@ export class AdminDashboardComponent implements OnInit {
 
   loadAttendees(eventId: string): void {
     this.attendeesLoading.set(true);
+    this.attendeesQuery.set('');
     this.api.get<AttendeesResponse>(`/validation/attendees/${eventId}`).subscribe({
       next: (data) => {
         this.attendeesData.set(data);
@@ -615,10 +527,7 @@ export class AdminDashboardComponent implements OnInit {
   }
 
   isFirstOrderRow(attendee: AttendeeItem): boolean {
-    return (
-      this.attendeesData()?.attendees.find((item) => item.order_id === attendee.order_id)
-        ?.ticket_id === attendee.ticket_id
-    );
+    return this.filteredAttendees().find((item) => item.order_id === attendee.order_id)?.ticket_id === attendee.ticket_id;
   }
 
   resendOrderEmail(attendee: AttendeeItem): void {
@@ -845,8 +754,6 @@ export class AdminDashboardComponent implements OnInit {
     } else {
       this.castMembers = [{ name: '', photo_url: '', role: '' }];
     }
-    this.staffValidatorIds = [];
-    this.staffSellerIds = [];
     const seating = ev.theatrical_details?.seating;
     this.seatingDraft = seating
       ? {
@@ -857,14 +764,6 @@ export class AdminDashboardComponent implements OnInit {
         }
       : structuredClone(DEFAULT_SEATING);
     this.loadEventSeating(ev.id);
-    this.api
-      .get<{ validator_ids: string[]; seller_ids: string[] }>(`/events/${ev.id}/staff`)
-      .subscribe({
-        next: (staff) => {
-          this.staffValidatorIds = (staff.validator_ids ?? []).map(String);
-          this.staffSellerIds = (staff.seller_ids ?? []).map(String);
-        },
-      });
     this.loadAttendees(ev.id);
   }
 
@@ -910,8 +809,6 @@ export class AdminDashboardComponent implements OnInit {
         }));
         this.ticketTypesTouched = true;
         this.duplicateGalleryDraft = [...(detail.gallery ?? [])];
-        this.staffValidatorIds = [];
-        this.staffSellerIds = [];
         this.attendeesData.set(null);
         this.broadcastSubject = '';
         this.broadcastMessage = '';
@@ -969,22 +866,13 @@ export class AdminDashboardComponent implements OnInit {
           ? (saved as EventUpdateResponse).attendee_notification
           : undefined;
         const finish = () => {
-          if (id) {
-            this.saveEventStaff(eventId, () => {
-              this.notify.hide();
-              this.notify.success('Eventos', 'Evento actualizado');
-              if (attendeeNotification) {
-                this.showAttendeeNotification(attendeeNotification);
-              }
-              this.resetEventForm();
-              this.loadAdminEvents();
-            });
-          } else {
-            this.notify.hide();
-            this.notify.success('Eventos', 'Evento creado');
-            this.resetEventForm();
-            this.loadAdminEvents();
+          this.notify.hide();
+          this.notify.success('Eventos', id ? 'Evento actualizado' : 'Evento creado');
+          if (attendeeNotification) {
+            this.showAttendeeNotification(attendeeNotification);
           }
+          this.resetEventForm();
+          this.loadAdminEvents();
         };
         const finishAfterGallery = () => {
           if (id || !this.duplicateGalleryDraft.length) {
@@ -1037,23 +925,6 @@ export class AdminDashboardComponent implements OnInit {
     }
   }
 
-  private saveEventStaff(eventId: string, onDone: () => void): void {
-    this.api
-      .put(`/events/${eventId}/staff`, {
-        validator_ids: this.staffValidatorIds,
-        seller_ids: this.staffSellerIds,
-      })
-      .subscribe({
-        next: () => onDone(),
-        error: () => {
-          this.notify.hide();
-          this.notify.warning('Personal', 'Evento guardado pero no se pudo asignar el personal');
-          this.resetEventForm();
-          this.loadAdminEvents();
-        },
-      });
-  }
-
   private syncTicketTypes(eventId: string, onDone: () => void): void {
     const ticketTypes = this.ticketTypesDraft
       .map((t) => ({
@@ -1083,30 +954,6 @@ export class AdminDashboardComponent implements OnInit {
     });
   }
 
-  assignRole(): void {
-    const user = this.users().find((u) => u.email.toLowerCase() === this.roleEmail.toLowerCase());
-    if (!user) {
-      this.notify.warning('Usuarios', 'Primero carga la lista y usa un correo existente');
-      return;
-    }
-    this.patchRole(user.id, this.rolePick);
-  }
-
-  changeRole(userId: string, ev: Event): void {
-    const role = (ev.target as HTMLSelectElement).value;
-    this.patchRole(userId, role);
-  }
-
-  private patchRole(userId: string, role: string): void {
-    this.api.patch<AdminUser>(`/users/${userId}/role`, { role }).subscribe({
-      next: () => {
-        this.notify.success('Usuarios', 'Rol actualizado');
-        this.loadUsers();
-      },
-      error: () => this.notify.error('Usuarios', 'No se pudo cambiar el rol'),
-    });
-  }
-
   addGalleryMedia(eventId: string, url: string, mediaType: string): void {
     this.api
       .post(`/events/${eventId}/media`, { media_type: mediaType, url, sort_order: 0 })
@@ -1129,30 +976,6 @@ export class AdminDashboardComponent implements OnInit {
         error: () => {
           this.notify.hide();
           this.notify.error('Eventos', 'No se pudo eliminar (puede tener boletas)');
-        },
-      });
-    });
-  }
-
-  deleteUser(u: AdminUser): void {
-    if (this.isCurrentUser(u)) {
-      this.notify.warning(
-        '¡Alto en escena!',
-        'El director no puede eliminarse a sí mismo del reparto. Pide a otro admin si hace falta.'
-      );
-      return;
-    }
-    this.notify.confirm('Eliminar usuario', `¿Eliminar a ${u.full_name}?`, () => {
-      this.notify.loadingTheatrical('Fuera de escena', 'delete');
-      this.api.delete(`/users/${u.id}`).subscribe({
-        next: () => {
-          this.notify.hide();
-          this.notify.success('Usuarios', 'Usuario eliminado');
-          this.loadUsers();
-        },
-        error: () => {
-          this.notify.hide();
-          this.notify.error('Usuarios', 'No se pudo eliminar el usuario');
         },
       });
     });

@@ -71,3 +71,61 @@ async def set_event_staff(
             EventStaffAssignmentModel(user_id=uid, event_id=event_id, staff_role="seller")
         )
     await session.flush()
+
+
+def _empty_user_access() -> dict[str, list[UUID]]:
+    return {"validator_event_ids": [], "seller_event_ids": []}
+
+
+async def map_user_event_access(session: AsyncSession) -> dict[UUID, dict[str, list[UUID]]]:
+    result = await session.execute(select(EventStaffAssignmentModel))
+    mapping: dict[UUID, dict[str, list[UUID]]] = {}
+    for row in result.scalars().all():
+        bucket = mapping.setdefault(row.user_id, _empty_user_access())
+        if row.staff_role == "validator":
+            bucket["validator_event_ids"].append(row.event_id)
+        elif row.staff_role == "seller":
+            bucket["seller_event_ids"].append(row.event_id)
+    return mapping
+
+
+async def get_user_event_access(session: AsyncSession, user_id: UUID) -> dict[str, list[UUID]]:
+    result = await session.execute(
+        select(EventStaffAssignmentModel).where(EventStaffAssignmentModel.user_id == user_id)
+    )
+    access = _empty_user_access()
+    for row in result.scalars().all():
+        if row.staff_role == "validator":
+            access["validator_event_ids"].append(row.event_id)
+        elif row.staff_role == "seller":
+            access["seller_event_ids"].append(row.event_id)
+    return access
+
+
+async def set_user_event_access(
+    session: AsyncSession,
+    user_id: UUID,
+    *,
+    seller_event_ids: list[UUID],
+    validator_event_ids: list[UUID],
+) -> None:
+    await session.execute(
+        delete(EventStaffAssignmentModel).where(EventStaffAssignmentModel.user_id == user_id)
+    )
+    seen_seller: set[UUID] = set()
+    seen_validator: set[UUID] = set()
+    for event_id in seller_event_ids:
+        if event_id in seen_seller:
+            continue
+        seen_seller.add(event_id)
+        session.add(
+            EventStaffAssignmentModel(user_id=user_id, event_id=event_id, staff_role="seller")
+        )
+    for event_id in validator_event_ids:
+        if event_id in seen_validator:
+            continue
+        seen_validator.add(event_id)
+        session.add(
+            EventStaffAssignmentModel(user_id=user_id, event_id=event_id, staff_role="validator")
+        )
+    await session.flush()

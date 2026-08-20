@@ -65,8 +65,15 @@
       <div class="attendees tava-card">
         <h2>Asistentes</h2>
         <p class="muted">{{ stats().ingresados }} de {{ stats().boletas_vendidas }} han ingresado</p>
+        <tava-list-search
+          [query]="attendeeQuery()"
+          (queryChange)="attendeeQuery.set($event)"
+          placeholder="Buscar por nombre, correo o código…"
+          [shown]="filteredAttendees().length"
+          [total]="attendees().length"
+        />
         <ul class="attendees__list">
-          @for (a of attendees(); track a.ticket_id) {
+          @for (a of filteredAttendees(); track a.ticket_id) {
             <li class="attendees__item" [class.attendees__item--in]="a.is_used">
               <span class="attendees__dot" aria-hidden="true"></span>
               <span class="attendees__name">
@@ -74,11 +81,16 @@
                 @if (a.ticket_code) {
                   <small class="attendees__code">#{{ a.ticket_code }}</small>
                 }
+                @if (a.recipient_email) {
+                  <small class="attendees__code">{{ a.recipient_email }}</small>
+                }
               </span>
               <span class="attendees__status">{{ a.is_used ? 'Ingresó' : 'Pendiente' }}</span>
             </li>
           } @empty {
-            <li class="muted">No hay boletas vendidas para este evento.</li>
+            <li class="muted">
+              {{ attendees().length ? 'Nadie coincide con esa búsqueda.' : 'No hay boletas vendidas para este evento.' }}
+            </li>
           }
         </ul>
       </div>

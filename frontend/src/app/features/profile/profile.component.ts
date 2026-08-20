@@ -6,7 +6,9 @@ import { AuthService } from '../../core/services/auth.service';
 import { ApiService } from '../../core/services/api.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { formatEventTime } from '../../core/utils/event-timing.util';
+import { matchesSearch } from '../../core/utils/list-search.util';
 import { TavaEvent, TavaEventDetail } from '../../core/models/event.model';
+import { TavaListSearchComponent } from '../../shared/components/tava-list-search/tava-list-search.component';
 
 interface MyTicket {
   id: string;
@@ -51,6 +53,7 @@ interface SellerTicket {
   is_used: boolean;
   is_cancelled?: boolean;
   claim_code?: string | null;
+  buyer_email?: string | null;
   created_at: string | null;
   pdf_url: string;
   order_pdf_url: string;
@@ -90,7 +93,7 @@ interface AdminIssueResponse {
 @Component({
   selector: 'app-profile',
   standalone: true,
-  imports: [RouterLink, DatePipe, DecimalPipe, FormsModule],
+  imports: [RouterLink, DatePipe, DecimalPipe, FormsModule, TavaListSearchComponent],
   templateUrl: './profile.component.html',
   styleUrl: './profile.component.scss',
 })
@@ -111,10 +114,36 @@ export class ProfileComponent implements OnInit {
   adminBuyerName = '';
   adminBuyerEmail = '';
   adminIssuing = false;
+  readonly ticketQuery = signal('');
+  readonly salesQuery = signal('');
+  readonly issueEventQuery = signal('');
+
+  readonly filteredAdminEvents = computed(() => {
+    const q = this.issueEventQuery();
+    return this.adminEvents().filter((event) =>
+      matchesSearch(q, event.name, event.city, event.event_date, event.category, event.status)
+    );
+  });
 
   readonly groupedSellerTickets = computed(() => {
     const map = new Map<string, SellerEventGroup>();
+    const q = this.salesQuery();
     for (const t of this.sellerTickets()) {
+      if (
+        !matchesSearch(
+          q,
+          t.event_name,
+          t.city,
+          t.holder_name,
+          t.ticket_type,
+          t.ticket_code,
+          t.claim_code,
+          t.buyer_email,
+          t.event_date
+        )
+      ) {
+        continue;
+      }
       let group = map.get(t.event_id);
       if (!group) {
         group = {
@@ -133,10 +162,31 @@ export class ProfileComponent implements OnInit {
   });
 
   readonly sellerTicketCount = computed(() => this.sellerTickets().length);
+  readonly filteredTicketCount = computed(() =>
+    this.groupedTickets().reduce((count, group) => count + group.tickets.length, 0)
+  );
+  readonly filteredSellerCount = computed(() =>
+    this.groupedSellerTickets().reduce((count, group) => count + group.tickets.length, 0)
+  );
 
   readonly groupedTickets = computed(() => {
     const map = new Map<string, TicketEventGroup>();
+    const q = this.ticketQuery();
     for (const t of this.tickets()) {
+      if (
+        !matchesSearch(
+          q,
+          t.event_name,
+          t.city,
+          t.holder_name,
+          t.ticket_type,
+          t.ticket_code,
+          t.event_date,
+          this.ticketStatus(t)
+        )
+      ) {
+        continue;
+      }
       let group = map.get(t.event_id);
       if (!group) {
         group = {

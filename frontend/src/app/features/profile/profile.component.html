@@ -17,9 +17,16 @@
         <form class="admin-issue__form" (ngSubmit)="issueAdminTickets()">
           <label>
             Evento
+            <tava-list-search
+              [query]="issueEventQuery()"
+              (queryChange)="issueEventQuery.set($event)"
+              placeholder="Filtrar eventos por nombre, ciudad o fecha…"
+              [shown]="filteredAdminEvents().length"
+              [total]="adminEvents().length"
+            />
             <select name="adminEvent" [(ngModel)]="adminEventId" (ngModelChange)="onAdminEventChange()" required>
               <option value="">Selecciona un evento</option>
-              @for (event of adminEvents(); track event.id) {
+              @for (event of filteredAdminEvents(); track event.id) {
                 <option [value]="event.id">{{ event.name }} - {{ event.event_date }}</option>
               }
             </select>
@@ -89,6 +96,13 @@
     <section class="section">
       <h2>Mis boletas</h2>
       <p class="section__hint">Agrupadas por evento. Descarga cada boleta en PDF individual.</p>
+      <tava-list-search
+        [query]="ticketQuery()"
+        (queryChange)="ticketQuery.set($event)"
+        placeholder="Buscar por obra, titular, código o ciudad…"
+        [shown]="filteredTicketCount()"
+        [total]="tickets().length"
+      />
 
       <div class="event-groups">
         @for (group of groupedTickets(); track group.event_id) {
@@ -130,7 +144,11 @@
             </ul>
           </article>
         } @empty {
-          <p class="muted">Aún no tienes boletas. <a routerLink="/eventos">Explorar eventos</a></p>
+          @if (tickets().length) {
+            <p class="muted">No hay boletas que coincidan con esa búsqueda.</p>
+          } @else {
+            <p class="muted">Aún no tienes boletas. <a routerLink="/eventos">Explorar eventos</a></p>
+          }
         }
       </div>
     </section>
@@ -141,6 +159,13 @@
         <p class="section__hint">
           {{ sellerTicketCount() }} boleta(s) vendidas. Cada fila es una boleta con su titular.
         </p>
+        <tava-list-search
+          [query]="salesQuery()"
+          (queryChange)="salesQuery.set($event)"
+          placeholder="Buscar por obra, titular, correo, código o reclamo…"
+          [shown]="filteredSellerCount()"
+          [total]="sellerTicketCount()"
+        />
 
         <div class="event-groups">
           @for (group of groupedSellerTickets(); track group.event_id) {
@@ -164,6 +189,9 @@
                     <span class="ticket-row__type">{{ t.ticket_type }}</span>
                     <span class="ticket-row__holder">
                       {{ t.holder_name || 'Sin nombre' }}
+                      @if (t.buyer_email) {
+                        <small class="ticket-row__claim">{{ t.buyer_email }}</small>
+                      }
                       @if (showClaimForTicket(group.tickets, i) && t.claim_code) {
                         <small class="ticket-row__claim">Reclamo: {{ t.claim_code }}</small>
                       }
@@ -187,7 +215,11 @@
               </ul>
             </article>
           } @empty {
-            <p class="muted">Aún no has registrado ventas.</p>
+            @if (sellerTicketCount()) {
+              <p class="muted">No hay ventas que coincidan con esa búsqueda.</p>
+            } @else {
+              <p class="muted">Aún no has registrado ventas.</p>
+            }
           }
         </div>
       </section>

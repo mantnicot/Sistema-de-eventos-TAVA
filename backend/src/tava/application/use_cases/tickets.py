@@ -906,6 +906,7 @@ class TicketUseCase:
                 "is_used": t.is_used,
                 "is_cancelled": t.is_cancelled,
                 "claim_code": order.claim_code,
+                "buyer_email": str((order.pending_payload or {}).get("external_buyer_email") or "").strip() or None,
                 "created_at": order.created_at.isoformat() if order.created_at else None,
                 "pdf_url": f"/tickets/{t.id}/pdf",
                 "order_pdf_url": f"/tickets/orders/{order.id}/pdf",
