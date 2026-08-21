@@ -66,6 +66,11 @@ export const routes: Routes = [
         canActivate: [authGuard, roleGuard(['seller', 'admin'])],
         loadComponent: () => import('./features/seller/seller-sell.component').then((m) => m.SellerSellComponent),
       },
+      {
+        path: 'ventas',
+        canActivate: [authGuard, roleGuard(['seller', 'admin'])],
+        loadComponent: () => import('./features/sales/sales-list.component').then((m) => m.SalesListComponent),
+      },
     ],
   },
   { path: '**', redirectTo: '' },

@@ -1,6 +1,7 @@
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { ApiService } from '../../core/services/api.service';
 import { AuthService } from '../../core/services/auth.service';
 import { NotificationService } from '../../core/services/notification.service';
@@ -12,7 +13,7 @@ import { TavaListSearchComponent } from '../../shared/components/tava-list-searc
 @Component({
   selector: 'app-seller-sell',
   standalone: true,
-  imports: [FormsModule, DecimalPipe, TavaListSearchComponent],
+  imports: [FormsModule, DecimalPipe, TavaListSearchComponent, RouterLink],
   templateUrl: './seller-sell.component.html',
   styleUrl: './seller-sell.component.scss',
 })

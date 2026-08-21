@@ -43,6 +43,25 @@
   }
 }
 
+.sales-cta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.1rem;
+
+  .section__hint {
+    margin-bottom: 0;
+  }
+
+  .tava-btn-primary {
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+  }
+}
+
 .event-groups {
   display: flex;
   flex-direction: column;

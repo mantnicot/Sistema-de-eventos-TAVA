@@ -10,7 +10,7 @@ from sqlalchemy.orm import selectinload
 
 from tava.application.use_cases.seating import SeatingUseCase, seating_enabled
 from tava.config import get_settings
-from tava.domain.enums import PaymentProvider, PaymentStatus
+from tava.domain.enums import PaymentProvider, PaymentStatus, UserRole
 from tava.domain.event_timing import tickets_purchase_allowed
 from tava.infrastructure.persistence.models import EventModel, OrderModel, TicketModel, TicketTypeModel, UserModel
 from tava.infrastructure.persistence.repositories.sqlalchemy_user_repository import SQLAlchemyUserRepository
@@ -26,10 +26,30 @@ from tava.infrastructure.services.wompi import (
 
 settings = get_settings()
 CLAIM_CODE_ALPHABET = string.ascii_uppercase + string.digits
+PLATFORM_FEE_RATE = Decimal("0.06")
 
 
 def _normalize_claim_code(code: str) -> str:
     return code.strip().upper().replace(" ", "").replace("-", "")
+
+
+def _sale_channel(order: OrderModel) -> str:
+    if order.seller_id:
+        return "taquilla"
+    if order.payment_provider == PaymentProvider.WOMPI:
+        return "online"
+    if order.payment_provider == PaymentProvider.MANUAL:
+        return "manual"
+    return "otro"
+
+
+def _buyer_contact(order: OrderModel, buyer: UserModel | None) -> tuple[str | None, str | None]:
+    payload = order.pending_payload or {}
+    external_name = str(payload.get("external_buyer_name") or "").strip() or None
+    external_email = str(payload.get("external_buyer_email") or "").strip() or None
+    name = external_name or (buyer.full_name if buyer else None)
+    email = external_email or (buyer.email if buyer else None)
+    return name, email
 
 
 class TicketUseCase:
@@ -913,3 +933,99 @@ class TicketUseCase:
             }
             for t, ev, tt, order in rows
         ]
+
+    async def list_sales_ledger(
+        self,
+        *,
+        user_id: UUID,
+        user_role: UserRole,
+        event_id: UUID | None = None,
+    ) -> dict:
+        """Lista de personas/boletas vendidas para admin, vendedor u organizador del evento."""
+        q = (
+            select(TicketModel, EventModel, TicketTypeModel, OrderModel, UserModel)
+            .join(EventModel, TicketModel.event_id == EventModel.id)
+            .join(TicketTypeModel, TicketModel.ticket_type_id == TicketTypeModel.id)
+            .join(OrderModel, TicketModel.order_id == OrderModel.id)
+            .join(UserModel, OrderModel.buyer_id == UserModel.id)
+            .where(OrderModel.payment_status == PaymentStatus.PAID)
+            .order_by(OrderModel.created_at.desc(), TicketModel.id.desc())
+        )
+        if event_id:
+            q = q.where(TicketModel.event_id == event_id)
+
+        if user_role == UserRole.ADMIN:
+            pass
+        elif user_role == UserRole.SELLER:
+            q = q.where(
+                (OrderModel.seller_id == user_id) | (EventModel.organizer_id == user_id)
+            )
+        else:
+            q = q.where(EventModel.organizer_id == user_id)
+
+        rows = (await self._session.execute(q)).all()
+
+        items: list[dict] = []
+        bruto = Decimal("0")
+        active_count = 0
+        people_keys: set[str] = set()
+        events_map: dict[str, str] = {}
+
+        for ticket, event, ticket_type, order, buyer in rows:
+            price = Decimal(str(ticket_type.price or 0))
+            fee = (price * PLATFORM_FEE_RATE).quantize(Decimal("0.01"))
+            net = (price - fee).quantize(Decimal("0.01"))
+            buyer_name, buyer_email = _buyer_contact(order, buyer)
+            status = "cancelada" if ticket.is_cancelled else ("usada" if ticket.is_used else "valida")
+            if not ticket.is_cancelled:
+                bruto += price
+                active_count += 1
+                people_keys.add((buyer_email or buyer_name or str(ticket.id)).lower())
+
+            events_map[str(event.id)] = event.name
+            items.append(
+                {
+                    "ticket_id": str(ticket.id),
+                    "order_id": str(order.id),
+                    "event_id": str(event.id),
+                    "event_name": event.name,
+                    "event_date": event.event_date.isoformat(),
+                    "event_time": event.event_time.isoformat(),
+                    "city": event.city,
+                    "holder_name": ticket.holder_name,
+                    "buyer_name": buyer_name,
+                    "buyer_email": buyer_email,
+                    "ticket_type": ticket_type.name,
+                    "price": float(price),
+                    "platform_fee": float(fee),
+                    "organizer_net": float(net),
+                    "ticket_code": ticket.ticket_code,
+                    "claim_code": order.claim_code,
+                    "status": status,
+                    "is_used": ticket.is_used,
+                    "is_cancelled": ticket.is_cancelled,
+                    "channel": _sale_channel(order),
+                    "payment_provider": order.payment_provider.value if order.payment_provider else None,
+                    "sold_at": order.created_at.isoformat() if order.created_at else None,
+                    "pdf_url": f"/tickets/{ticket.id}/pdf",
+                }
+            )
+
+        fee_total = (bruto * PLATFORM_FEE_RATE).quantize(Decimal("0.01"))
+        net_total = (bruto - fee_total).quantize(Decimal("0.01"))
+        return {
+            "fee_rate": float(PLATFORM_FEE_RATE),
+            "items": items,
+            "summary": {
+                "boletas": active_count,
+                "boletas_totales": len(items),
+                "personas": len(people_keys),
+                "bruto": float(bruto),
+                "comision_plataforma": float(fee_total),
+                "neto_organizador": float(net_total),
+            },
+            "events": [
+                {"id": eid, "name": name}
+                for eid, name in sorted(events_map.items(), key=lambda x: x[1].lower())
+            ],
+        }

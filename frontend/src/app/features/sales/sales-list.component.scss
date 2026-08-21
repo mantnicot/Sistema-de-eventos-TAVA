@@ -1,0 +1,236 @@
+.sales {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 1.25rem 1rem 3rem;
+  display: grid;
+  gap: 1rem;
+}
+
+.sales__head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  justify-content: space-between;
+  align-items: end;
+  padding: clamp(1rem, 2.5vw, 1.4rem);
+
+  h1 {
+    margin: 0.15rem 0 0.35rem;
+    font-family: var(--tava-font-display);
+    font-size: clamp(1.5rem, 3vw, 2rem);
+  }
+
+  p {
+    margin: 0;
+    color: #766657;
+    max-width: 46rem;
+  }
+}
+
+.sales__eyebrow {
+  color: #9a7510;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.sales__stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+
+  @media (min-width: 720px) {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
+
+.stat {
+  padding: 0.85rem 1rem;
+
+  span {
+    display: block;
+    color: #766657;
+    font-size: 0.78rem;
+  }
+
+  strong {
+    display: block;
+    margin-top: 0.2rem;
+    font-size: clamp(1.15rem, 2.5vw, 1.45rem);
+    color: var(--tava-gold-glow);
+  }
+
+  &--net strong {
+    color: var(--tava-burgundy);
+  }
+}
+
+.sales__filters {
+  display: grid;
+  gap: 0.75rem;
+  padding: 1rem;
+
+  @media (min-width: 900px) {
+    grid-template-columns: minmax(0, 1.2fr) minmax(120px, 0.7fr) minmax(120px, 0.7fr) minmax(0, 1.4fr);
+    align-items: end;
+  }
+
+  label {
+    display: grid;
+    gap: 0.35rem;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--tava-burgundy);
+  }
+
+  select {
+    min-height: 44px;
+    border: 1px solid rgba(201, 162, 39, 0.5);
+    border-radius: 12px;
+    background: #fff;
+    padding: 0.55rem 0.8rem;
+    font: inherit;
+    text-transform: none;
+    font-weight: 400;
+    letter-spacing: normal;
+    color: #3d2a14;
+  }
+}
+
+.sales__table-wrap {
+  overflow: auto;
+  padding: 0;
+}
+
+.sales__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.84rem;
+
+  th,
+  td {
+    padding: 0.7rem 0.8rem;
+    text-align: left;
+    vertical-align: top;
+    border-bottom: 1px solid rgba(201, 162, 39, 0.14);
+  }
+
+  th {
+    position: sticky;
+    top: 0;
+    background: #faf6ee;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #7a6c61;
+    white-space: nowrap;
+  }
+
+  strong {
+    display: block;
+  }
+
+  small {
+    display: block;
+    margin-top: 0.15rem;
+    color: #7a6c61;
+    font-size: 0.75rem;
+  }
+}
+
+.sales__row--off {
+  opacity: 0.58;
+}
+
+.sales__empty {
+  text-align: center;
+  padding: 1.5rem !important;
+}
+
+.pill {
+  display: inline-flex;
+  border-radius: 999px;
+  padding: 0.15rem 0.55rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  background: rgba(201, 162, 39, 0.18);
+  color: #5a4316;
+
+  &[data-status='usada'] {
+    background: #eee8df;
+    color: #5b524a;
+  }
+
+  &[data-status='cancelada'] {
+    background: #f3d4d4;
+    color: #8a3030;
+  }
+}
+
+.ghost {
+  border: 1px solid rgba(201, 162, 39, 0.45);
+  background: #fff;
+  border-radius: 999px;
+  padding: 0.25rem 0.7rem;
+  font: inherit;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.muted {
+  color: var(--tava-cream-muted);
+  font-size: 0.9rem;
+}
+
+.nav__btn-outline {
+  border: 1px solid rgba(201, 162, 39, 0.55);
+  background: #fff;
+  border-radius: 999px;
+  padding: 0.55rem 1rem;
+  font: inherit;
+  cursor: pointer;
+  color: var(--tava-burgundy);
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+@media (max-width: 820px) {
+  .sales__table thead {
+    display: none;
+  }
+
+  .sales__table,
+  .sales__table tbody,
+  .sales__table tr,
+  .sales__table td {
+    display: block;
+    width: 100%;
+  }
+
+  .sales__table tr {
+    padding: 0.85rem 1rem;
+    border-bottom: 1px solid rgba(201, 162, 39, 0.18);
+  }
+
+  .sales__table td {
+    display: grid;
+    grid-template-columns: 7.5rem minmax(0, 1fr);
+    gap: 0.5rem;
+    border: 0;
+    padding: 0.25rem 0;
+  }
+
+  .sales__table td::before {
+    content: attr(data-label);
+    color: #7a6c61;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+}

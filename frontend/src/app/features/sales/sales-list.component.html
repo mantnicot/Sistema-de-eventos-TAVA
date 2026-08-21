@@ -1,0 +1,144 @@
+<section class="sales">
+  <header class="sales__head tava-card">
+    <div>
+      <span class="sales__eyebrow">Lista de personas</span>
+      <h1 class="tava-glow-text">Mis ventas</h1>
+      <p>
+        @if (auth.isAdmin()) {
+          Todas las boletas pagadas de la plataforma, con correo y totales.
+        } @else {
+          Las boletas que vendiste o de eventos que organizas.
+        }
+      </p>
+    </div>
+    <button type="button" class="nav__btn-outline" (click)="reload()" [disabled]="loading()">
+      Actualizar
+    </button>
+  </header>
+
+  <div class="sales__stats">
+    <article class="stat tava-card">
+      <span>Boletas</span>
+      <strong>{{ filteredSummary().boletas }}</strong>
+    </article>
+    <article class="stat tava-card">
+      <span>Personas</span>
+      <strong>{{ filteredSummary().personas }}</strong>
+    </article>
+    <article class="stat tava-card">
+      <span>Bruto</span>
+      <strong>${{ filteredSummary().bruto | number:'1.0-0' }}</strong>
+    </article>
+    <article class="stat tava-card">
+      <span>Comisión {{ feeRate() * 100 | number:'1.0-0' }}%</span>
+      <strong>${{ filteredSummary().comision_plataforma | number:'1.0-0' }}</strong>
+    </article>
+    <article class="stat tava-card stat--net">
+      <span>Neto organizador</span>
+      <strong>${{ filteredSummary().neto_organizador | number:'1.0-0' }}</strong>
+    </article>
+  </div>
+
+  <div class="sales__filters tava-card">
+    <label>
+      Evento
+      <select [ngModel]="eventFilter()" (ngModelChange)="onEventFilter($event)" name="eventFilter">
+        <option value="">Todos los eventos</option>
+        @for (ev of events(); track ev.id) {
+          <option [value]="ev.id">{{ ev.name }}</option>
+        }
+      </select>
+    </label>
+    <label>
+      Estado
+      <select [ngModel]="statusFilter()" (ngModelChange)="onStatusFilter($event)" name="statusFilter">
+        <option value="all">Todos</option>
+        <option value="valida">Válidas</option>
+        <option value="usada">Usadas</option>
+        <option value="cancelada">Canceladas</option>
+      </select>
+    </label>
+    <label>
+      Canal
+      <select [ngModel]="channelFilter()" (ngModelChange)="onChannelFilter($event)" name="channelFilter">
+        <option value="all">Todos</option>
+        <option value="online">Online</option>
+        <option value="taquilla">Taquilla</option>
+        <option value="manual">Manual</option>
+      </select>
+    </label>
+    <tava-list-search
+      [query]="query()"
+      (queryChange)="query.set($event)"
+      placeholder="Buscar por nombre, correo, código u obra…"
+      [shown]="filteredItems().length"
+      [total]="items().length"
+    />
+  </div>
+
+  @if (loading()) {
+    <p class="muted">Cargando ventas…</p>
+  } @else {
+    <div class="sales__table-wrap tava-card">
+      <table class="sales__table">
+        <thead>
+          <tr>
+            <th>Fecha</th>
+            <th>Evento</th>
+            <th>Persona</th>
+            <th>Correo</th>
+            <th>Tipo</th>
+            <th>Código</th>
+            <th>Canal</th>
+            <th>Valor</th>
+            <th>Estado</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (item of filteredItems(); track item.ticket_id) {
+            <tr [class.sales__row--off]="item.is_cancelled || item.is_used">
+              <td data-label="Fecha">{{ formatSoldAt(item.sold_at) }}</td>
+              <td data-label="Evento">
+                <strong>{{ item.event_name }}</strong>
+                <small>{{ item.event_date }} · {{ item.city }}</small>
+              </td>
+              <td data-label="Persona">
+                <strong>{{ item.holder_name || item.buyer_name || 'Sin nombre' }}</strong>
+                @if (item.buyer_name && item.holder_name && item.buyer_name !== item.holder_name) {
+                  <small>Compra: {{ item.buyer_name }}</small>
+                }
+              </td>
+              <td data-label="Correo">{{ item.buyer_email || '—' }}</td>
+              <td data-label="Tipo">{{ item.ticket_type }}</td>
+              <td data-label="Código">
+                {{ item.ticket_code ? '#' + item.ticket_code : '—' }}
+                @if (item.claim_code) {
+                  <small>Reclamo: {{ item.claim_code }}</small>
+                }
+              </td>
+              <td data-label="Canal">{{ channelLabel(item.channel) }}</td>
+              <td data-label="Valor">${{ item.price | number:'1.0-0' }}</td>
+              <td data-label="Estado">
+                <span class="pill" [attr.data-status]="item.status">{{ statusLabel(item.status) }}</span>
+              </td>
+              <td data-label="PDF">
+                @if (!item.is_cancelled) {
+                  <button type="button" class="ghost" (click)="downloadPdf(item)">PDF</button>
+                } @else {
+                  —
+                }
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="10" class="muted sales__empty">
+                {{ items().length ? 'Nadie coincide con esos filtros.' : 'Aún no hay ventas pagadas para mostrar.' }}
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</section>

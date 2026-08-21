@@ -91,6 +91,17 @@ async def seller_sales(
     return await uc.list_seller_sales(user.id)
 
 
+@router.get("/sales")
+async def sales_ledger(
+    event_id: UUID | None = None,
+    user=Depends(require_roles(UserRole.SELLER, UserRole.ADMIN)),
+    db: AsyncSession = Depends(get_db),
+):
+    """Lista de personas y boletas vendidas (admin: todas; vendedor: propias o de eventos que organiza)."""
+    uc = TicketUseCase(db)
+    return await uc.list_sales_ledger(user_id=user.id, user_role=user.role, event_id=event_id)
+
+
 @router.post("/admin/{ticket_id}/cancel")
 async def admin_cancel_ticket(
     ticket_id: UUID,

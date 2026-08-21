@@ -38,36 +38,6 @@ interface TicketEventGroup {
   tickets: MyTicket[];
 }
 
-interface SellerTicket {
-  id: string;
-  order_id: string;
-  event_id: string;
-  event_name: string;
-  event_date: string;
-  event_time: string;
-  city: string;
-  holder_name: string | null;
-  ticket_type: string;
-  price: number;
-  ticket_code?: string | null;
-  is_used: boolean;
-  is_cancelled?: boolean;
-  claim_code?: string | null;
-  buyer_email?: string | null;
-  created_at: string | null;
-  pdf_url: string;
-  order_pdf_url: string;
-}
-
-interface SellerEventGroup {
-  event_id: string;
-  event_name: string;
-  event_date: string;
-  event_time: string;
-  city: string;
-  tickets: SellerTicket[];
-}
-
 interface ClaimTicketsResponse {
   message: string;
   order_id: string;
@@ -102,7 +72,6 @@ export class ProfileComponent implements OnInit {
   private readonly api = inject(ApiService);
   private readonly notify = inject(NotificationService);
   readonly tickets = signal<MyTicket[]>([]);
-  readonly sellerTickets = signal<SellerTicket[]>([]);
   readonly adminEvents = signal<TavaEvent[]>([]);
   readonly adminEventDetail = signal<TavaEventDetail | null>(null);
   readonly formatTime = formatEventTime;
@@ -115,7 +84,6 @@ export class ProfileComponent implements OnInit {
   adminBuyerEmail = '';
   adminIssuing = false;
   readonly ticketQuery = signal('');
-  readonly salesQuery = signal('');
   readonly issueEventQuery = signal('');
 
   readonly filteredAdminEvents = computed(() => {
@@ -125,48 +93,8 @@ export class ProfileComponent implements OnInit {
     );
   });
 
-  readonly groupedSellerTickets = computed(() => {
-    const map = new Map<string, SellerEventGroup>();
-    const q = this.salesQuery();
-    for (const t of this.sellerTickets()) {
-      if (
-        !matchesSearch(
-          q,
-          t.event_name,
-          t.city,
-          t.holder_name,
-          t.ticket_type,
-          t.ticket_code,
-          t.claim_code,
-          t.buyer_email,
-          t.event_date
-        )
-      ) {
-        continue;
-      }
-      let group = map.get(t.event_id);
-      if (!group) {
-        group = {
-          event_id: t.event_id,
-          event_name: t.event_name,
-          event_date: t.event_date,
-          event_time: t.event_time,
-          city: t.city,
-          tickets: [],
-        };
-        map.set(t.event_id, group);
-      }
-      group.tickets.push(t);
-    }
-    return Array.from(map.values()).sort((a, b) => b.event_date.localeCompare(a.event_date));
-  });
-
-  readonly sellerTicketCount = computed(() => this.sellerTickets().length);
   readonly filteredTicketCount = computed(() =>
     this.groupedTickets().reduce((count, group) => count + group.tickets.length, 0)
-  );
-  readonly filteredSellerCount = computed(() =>
-    this.groupedSellerTickets().reduce((count, group) => count + group.tickets.length, 0)
   );
 
   readonly groupedTickets = computed(() => {
@@ -209,9 +137,6 @@ export class ProfileComponent implements OnInit {
   ngOnInit(): void {
     if (!this.auth.isLoggedIn()) return;
     this.loadTickets();
-    if (this.auth.isSeller()) {
-      this.loadSellerSales();
-    }
     if (this.auth.isAdmin()) {
       this.loadAdminEvents();
     }
@@ -221,13 +146,6 @@ export class ProfileComponent implements OnInit {
     this.api.get<MyTicket[]>('/tickets/mine').subscribe({
       next: (t) => this.tickets.set(t),
       error: () => this.tickets.set([]),
-    });
-  }
-
-  private loadSellerSales(): void {
-    this.api.get<SellerTicket[]>('/tickets/seller/mine').subscribe({
-      next: (s) => this.sellerTickets.set(s),
-      error: () => this.sellerTickets.set([]),
     });
   }
 
@@ -311,7 +229,6 @@ export class ProfileComponent implements OnInit {
               this.adminBuyerEmail = '';
               this.adminQuantity = 1;
               this.onAdminEventChange();
-              this.loadSellerSales();
             },
             error: (err) => {
               this.adminIssuing = false;
@@ -350,17 +267,10 @@ export class ProfileComponent implements OnInit {
     });
   }
 
-  ticketStatus(t: MyTicket | SellerTicket): string {
+  ticketStatus(t: MyTicket): string {
     if (t.is_cancelled) return 'Cancelada';
     if (t.is_used) return 'Usada';
     return 'Válida';
-  }
-
-  showClaimForTicket(tickets: SellerTicket[], index: number): boolean {
-    const current = tickets[index];
-    if (!current?.claim_code) return false;
-    if (index === 0) return true;
-    return current.order_id !== tickets[index - 1]?.order_id;
   }
 
   downloadPdf(pdfUrl: string, label: string): void {
