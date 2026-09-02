@@ -1,11 +1,21 @@
 <section class="admin">
   <header class="admin__head">
-    <h1 class="tava-glow-text">Panel administrativo TAVA</h1>
+    <h1 class="tava-glow-text">{{ isPlatformAdmin() ? 'Panel administrativo TAVA' : 'Mis eventos' }}</h1>
     <nav class="admin__tabs">
-      <button type="button" [class.active]="tab() === 'kpis'" (click)="tab.set('kpis')">Métricas</button>
+      @if (isPlatformAdmin()) {
+        <button type="button" [class.active]="tab() === 'kpis'" (click)="tab.set('kpis')">Métricas</button>
+        <button type="button" [class.active]="tab() === 'review'" (click)="tab.set('review')">
+          Revisión
+          @if (reviewQueue().length) {
+            <span class="admin__tab-badge">{{ reviewQueue().length }}</span>
+          }
+        </button>
+      }
       <button type="button" [class.active]="tab() === 'events'" (click)="tab.set('events')">Eventos</button>
-      <button type="button" [class.active]="tab() === 'users'" (click)="tab.set('users')">Personas</button>
-      <button type="button" [class.active]="tab() === 'appearance'" (click)="tab.set('appearance')">Apariencia</button>
+      @if (isPlatformAdmin()) {
+        <button type="button" [class.active]="tab() === 'users'" (click)="tab.set('users')">Personas</button>
+        <button type="button" [class.active]="tab() === 'appearance'" (click)="tab.set('appearance')">Apariencia</button>
+      }
     </nav>
   </header>
 
@@ -19,7 +29,46 @@
     <p class="muted">Conectando con el servidor… (puede tardar hasta 1 minuto si estaba inactivo)</p>
   }
 
-  @if (tab() === 'kpis') {
+  @if (tab() === 'review' && isPlatformAdmin()) {
+    <section class="review-workspace tava-card">
+      <h2>Eventos pendientes de aprobación</h2>
+      <p class="muted">Los organizadores envían sus obras aquí. Aprueba para publicar en cartelera o rechaza con un motivo.</p>
+      @if (reviewLoading()) {
+        <p class="muted">Cargando cola de revisión…</p>
+      } @else if (reviewQueue().length) {
+        <div class="admin-list">
+          @for (ev of reviewQueue(); track ev.id) {
+            <article class="admin-list__item">
+              <div>
+                <strong>{{ ev.name }}</strong>
+                <span class="badge badge--pending">Pendiente</span>
+                <p class="muted">{{ ev.event_date }} · {{ ev.city }} · {{ ev.organizer_name || 'Organizador' }}</p>
+              </div>
+              <div class="admin-list__actions">
+                <button type="button" class="tava-btn-primary" (click)="approveEvent(ev)">Aprobar</button>
+                <button type="button" class="btn-danger" (click)="rejectingId.set(ev.id)">Rechazar</button>
+                <button type="button" (click)="editEvent(ev); tab.set('events')">Ver detalle</button>
+              </div>
+              @if (rejectingId() === ev.id) {
+                <label class="reject-box">
+                  Motivo del rechazo
+                  <textarea [(ngModel)]="rejectReasonText" rows="2" placeholder="Indica qué debe corregir el organizador"></textarea>
+                  <div class="reject-box__actions">
+                    <button type="button" class="btn-danger" (click)="rejectEvent(ev)">Confirmar rechazo</button>
+                    <button type="button" class="link-btn" (click)="rejectingId.set(null)">Cancelar</button>
+                  </div>
+                </label>
+              }
+            </article>
+          }
+        </div>
+      } @else {
+        <p class="muted">No hay eventos esperando revisión.</p>
+      }
+    </section>
+  }
+
+  @if (tab() === 'kpis' && isPlatformAdmin()) {
     <section class="report-workspace">
       <header class="report-toolbar tava-card">
         <div>
@@ -142,11 +191,18 @@
         <label>Estado
           <select [(ngModel)]="eventForm.status" name="status">
             <option value="borrador">Borrador</option>
-            <option value="publicado">Publicado</option>
+            @if (isPlatformAdmin()) {
+              <option value="publicado">Publicado</option>
+            }
             <option value="programado">Programado</option>
-            <option value="agotado">Agotado</option>
+            @if (isPlatformAdmin()) {
+              <option value="agotado">Agotado</option>
+            }
           </select>
         </label>
+        @if (!isPlatformAdmin()) {
+          <p class="muted">Para publicar en cartelera, guarda los cambios y usa «Enviar a revisión».</p>
+        }
         <section class="ticketing-block">
           <h3>Modo de venta</h3>
           <label>
@@ -399,6 +455,9 @@
           }
         </section>
         <button type="submit" class="tava-btn-primary">{{ editingId() ? 'Guardar cambios' : 'Crear evento' }}</button>
+        @if (editingId() && !isPlatformAdmin()) {
+          <button type="button" class="nav__btn-outline" (click)="submitForReview()">Enviar a revisión</button>
+        }
         @if (editingId()) {
           <button type="button" class="link-btn" (click)="resetEventForm()">Cancelar edición</button>
         }
@@ -421,11 +480,29 @@
               <div>
                 <strong>{{ ev.name }}</strong>
                 <span class="badge">{{ ev.status }}</span>
+                @if (ev.review_status) {
+                  <span class="badge" [class.badge--pending]="ev.review_status === 'pendiente'" [class.badge--ok]="ev.review_status === 'aprobado'">{{ reviewStatusLabel(ev.review_status) }}</span>
+                }
+                @if (isPlatformAdmin() && ev.review_status === 'aprobado') {
+                  <span class="badge" [class.badge--ok]="ev.cartelera_visible">{{ ev.cartelera_visible ? 'En cartelera' : 'Oculto' }}</span>
+                }
                 <p class="muted">{{ ev.event_date }} · {{ ev.city }}</p>
+                @if (isPlatformAdmin() && ev.organizer_name) {
+                  <p class="muted">Organizador: {{ ev.organizer_name }}</p>
+                }
               </div>
               <div class="admin-list__actions">
                 <button type="button" (click)="editEvent(ev)">Editar</button>
-                <button type="button" (click)="duplicateEvent(ev)">Duplicar</button>
+                @if (isPlatformAdmin()) {
+                  <button type="button" (click)="duplicateEvent(ev)">Duplicar</button>
+                  @if (ev.review_status === 'aprobado') {
+                    <button type="button" (click)="toggleCartelera(ev, !ev.cartelera_visible)">
+                      {{ ev.cartelera_visible ? 'Quitar de cartelera' : 'Mostrar en cartelera' }}
+                    </button>
+                  }
+                } @else {
+                  <button type="button" (click)="duplicateEvent(ev)">Duplicar</button>
+                }
                 <button type="button" class="btn-danger" (click)="deleteEvent(ev)">Eliminar</button>
               </div>
             </article>
@@ -446,11 +523,11 @@
     </div>
   }
 
-  @if (tab() === 'users') {
+  @if (tab() === 'users' && isPlatformAdmin()) {
     <tava-admin-users-panel />
   }
 
-  @if (tab() === 'appearance') {
+  @if (tab() === 'appearance' && isPlatformAdmin()) {
     <form class="tava-card admin-form" (ngSubmit)="saveAppearance()">
       <h2>Video del loader</h2>
       <p class="muted">Sube un MP4 corto de una obra o escena. Se reproducirá al cargar cartelera, eventos y ventanas de espera.</p>

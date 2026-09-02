@@ -14,5 +14,6 @@ class User:
     email_verified: bool
     is_active: bool
     created_at: datetime
+    is_platform_admin: bool = False
     phone: str | None = None
     document_id: str | None = None

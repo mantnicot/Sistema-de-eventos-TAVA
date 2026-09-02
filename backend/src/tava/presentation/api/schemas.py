@@ -4,7 +4,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, EmailStr, Field, model_validator
 
-from tava.domain.enums import EventStatus, TicketKind, UserRole, VenueType
+from tava.domain.enums import EventReviewStatus, EventStatus, TicketKind, UserRole, VenueType
 
 
 class RegisterRequest(BaseModel):
@@ -73,6 +73,7 @@ class UserResponse(BaseModel):
     role: UserRole
     phone: str | None = None
     email_verified: bool = False
+    is_platform_admin: bool = False
 
     class Config:
         from_attributes = True
@@ -82,6 +83,16 @@ class UserAdminResponse(UserResponse):
     is_active: bool = True
     validator_event_ids: list[UUID] = Field(default_factory=list)
     seller_event_ids: list[UUID] = Field(default_factory=list)
+
+
+class EventReviewRequest(BaseModel):
+    action: str = Field(pattern="^(approve|reject)$")
+    rejection_reason: str | None = Field(default=None, max_length=1000)
+    cartelera_visible: bool | None = None
+
+
+class EventCarteleraRequest(BaseModel):
+    visible: bool
 
 
 class UserPermissionsUpdateRequest(BaseModel):
@@ -188,6 +199,11 @@ class EventResponse(BaseModel):
     trailer_url: str | None = None
     theatrical_details: TheatricalDetailsSchema | None = None
     tickets_available: int = 0
+    review_status: EventReviewStatus | None = None
+    cartelera_visible: bool | None = None
+    organizer_id: UUID | None = None
+    organizer_name: str | None = None
+    rejection_reason: str | None = None
 
 
 class EventDetailResponse(EventResponse):

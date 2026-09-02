@@ -38,11 +38,14 @@ async def bootstrap_application() -> None:
                     password_hash=hash_password(ADMIN_PASSWORD),
                     full_name="Administrador TAVA",
                     role=UserRole.ADMIN,
+                    is_platform_admin=True,
                     email_verified=True,
                 )
                 session.add(admin)
             else:
                 admin.email_verified = True
+                admin.is_platform_admin = True
+                admin.role = UserRole.ADMIN
                 if not verify_password(ADMIN_PASSWORD, admin.password_hash):
                     admin.password_hash = hash_password(ADMIN_PASSWORD)
 

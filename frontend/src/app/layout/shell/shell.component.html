@@ -56,12 +56,19 @@
       <div class="nav__divider" aria-hidden="true"></div>
     }
 
-    @if (auth.isAdmin()) {
+    @if (auth.canManageEvents()) {
       <div class="nav__cluster">
-        <span class="nav__heading">Administración</span>
+        <span class="nav__heading">{{ auth.isPlatformAdmin() ? 'Administración' : 'Mis eventos' }}</span>
         <div class="nav__links">
-          <a routerLink="/admin" routerLinkActive="active" (click)="closeMenu()">Panel admin</a>
-          <a routerLink="/ventas" routerLinkActive="active" (click)="closeMenu()">Ventas y personas</a>
+          <a routerLink="/admin" routerLinkActive="active" (click)="closeMenu()">
+            {{ auth.isPlatformAdmin() ? 'Panel admin' : 'Gestionar eventos' }}
+            @if (auth.isPlatformAdmin() && pendingReviewCount() > 0) {
+              <span class="nav__badge">{{ pendingReviewCount() }}</span>
+            }
+          </a>
+          @if (auth.isPlatformAdmin()) {
+            <a routerLink="/ventas" routerLinkActive="active" (click)="closeMenu()">Ventas y personas</a>
+          }
         </div>
       </div>
       <div class="nav__divider" aria-hidden="true"></div>

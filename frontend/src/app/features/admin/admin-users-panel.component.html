@@ -34,8 +34,8 @@
       <strong>{{ counts().total }}</strong>
     </article>
     <article class="stat tava-card">
-      <span>Admins</span>
-      <strong>{{ counts().admin }}</strong>
+      <span>Organizadores</span>
+      <strong>{{ counts().organizer }}</strong>
     </article>
     <article class="stat tava-card">
       <span>Vendedores</span>
@@ -150,8 +150,8 @@
                 }
               </div>
             </section>
-          } @else if (draftRole() === 'admin') {
-            <p class="hint hint--box">El admin ve y opera todas las obras. No hace falta asignarlas una a una.</p>
+          } @else if (draftRole() === 'organizer') {
+            <p class="hint hint--box">El organizador crea y gestiona solo sus eventos. Debes aprobarlos para publicarlos en cartelera.</p>
           } @else {
             <p class="hint hint--box">Esta persona solo compra y usa su perfil. Sin acceso a taquilla ni validación.</p>
           }

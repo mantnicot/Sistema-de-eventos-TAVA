@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 logger = logging.getLogger("tava.schema")
 
 SCHEMA_MARKER_KEY = "schema_upgrade_marker"
-SCHEMA_MARKER_VALUE = "2026-07-fast-start-v1"
+SCHEMA_MARKER_VALUE = "2026-09-platform-admin-v1"
 
 
 async def apply_schema_upgrades(conn: AsyncConnection) -> None:
@@ -95,6 +95,29 @@ async def apply_schema_upgrades(conn: AsyncConnection) -> None:
         "CREATE INDEX IF NOT EXISTS ix_tickets_event_used ON tickets(event_id, is_used)",
         "CREATE INDEX IF NOT EXISTS ix_orders_buyer_id ON orders(buyer_id)",
         "CREATE INDEX IF NOT EXISTS ix_event_staff_user_role ON event_staff_assignments(user_id, staff_role)",
+        "ALTER TYPE userrole ADD VALUE IF NOT EXISTS 'organizer'",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_platform_admin BOOLEAN NOT NULL DEFAULT FALSE",
+        """
+        UPDATE users
+        SET is_platform_admin = TRUE
+        WHERE email = 'admin@tavateatro.com'
+        """,
+        """
+        UPDATE users
+        SET role = 'organizer'
+        WHERE role = 'admin' AND is_platform_admin = FALSE
+        """,
+        "ALTER TABLE events ADD COLUMN IF NOT EXISTS review_status VARCHAR(20) NOT NULL DEFAULT 'pendiente'",
+        "ALTER TABLE events ADD COLUMN IF NOT EXISTS cartelera_visible BOOLEAN NOT NULL DEFAULT FALSE",
+        "ALTER TABLE events ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMPTZ",
+        "ALTER TABLE events ADD COLUMN IF NOT EXISTS reviewed_by UUID REFERENCES users(id)",
+        "ALTER TABLE events ADD COLUMN IF NOT EXISTS rejection_reason TEXT",
+        """
+        UPDATE events
+        SET review_status = 'aprobado', cartelera_visible = TRUE
+        WHERE status IN ('publicado', 'en_curso', 'agotado', 'finalizado', 'programado')
+        """,
+        "CREATE INDEX IF NOT EXISTS ix_events_cartelera ON events(cartelera_visible, review_status, event_date)",
     ]
     for sql in statements:
         await conn.execute(text(sql.strip()))

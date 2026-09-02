@@ -11,6 +11,7 @@ from tava.domain.enums import UserRole
 from tava.infrastructure.persistence.database import get_db
 from tava.infrastructure.services.wompi import fetch_transaction, verify_event_checksum, wompi_configured
 from tava.presentation.api.dependencies import get_current_user, require_roles
+from tava.presentation.api.platform_auth import is_platform_admin, require_platform_admin
 
 logger = logging.getLogger("tava.payments")
 router = APIRouter(prefix="/payments", tags=["Pagos Wompi"])
@@ -34,8 +35,7 @@ async def order_payment_status(
 ):
     uc = TicketUseCase(db)
     try:
-        is_admin = user.role == UserRole.ADMIN
-        return await uc.get_order_status(order_id, user.id, is_admin)
+        return await uc.get_order_status(order_id, user.id, is_platform_admin(user))
     except ValueError as e:
         raise HTTPException(status_code=404 if "encontrada" in str(e).lower() else 403, detail=str(e))
 
@@ -96,7 +96,7 @@ async def wompi_confirm_from_redirect(
         raise HTTPException(status_code=503, detail="Wompi no configurado")
     uc = TicketUseCase(db)
     try:
-        status_data = await uc.get_order_status(order_id, user.id, user.role == UserRole.ADMIN)
+        status_data = await uc.get_order_status(order_id, user.id, is_platform_admin(user))
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
@@ -124,7 +124,7 @@ async def wompi_confirm_from_redirect(
                 send_order_confirmation_email_background,
                 UUID(str(result["order_id"])),
             )
-        final = await uc.get_order_status(order_id, user.id, user.role == UserRole.ADMIN)
+        final = await uc.get_order_status(order_id, user.id, is_platform_admin(user))
         return {**final, "wompi_sync": result}
     except ValueError as e:
         await db.rollback()
@@ -139,7 +139,7 @@ async def wompi_confirm_from_redirect(
 async def wompi_simulate_approved(
     payment_reference: str,
     background_tasks: BackgroundTasks,
-    _user=Depends(require_roles(UserRole.ADMIN)),
+    _user=Depends(require_platform_admin),
     db: AsyncSession = Depends(get_db),
 ):
     """Solo desarrollo: simula pago aprobado sin webhook (admin)."""

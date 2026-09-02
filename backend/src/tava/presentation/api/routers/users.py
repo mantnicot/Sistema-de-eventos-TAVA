@@ -19,8 +19,8 @@ from tava.infrastructure.persistence.models import (
     UserModel,
 )
 from tava.infrastructure.persistence.repositories.sqlalchemy_user_repository import SQLAlchemyUserRepository
-from tava.presentation.api.dependencies import require_roles
 from tava.presentation.api.http_errors import raise_user_error
+from tava.presentation.api.platform_auth import is_platform_admin, require_platform_admin
 from tava.presentation.api.schemas import UserAdminResponse, UserPermissionsUpdateRequest
 
 router = APIRouter(prefix="/users", tags=["Usuarios (Admin)"])
@@ -44,14 +44,15 @@ def _to_admin_response(user, access: dict | None = None) -> UserAdminResponse:
         phone=user.phone,
         email_verified=user.email_verified,
         is_active=user.is_active,
+        is_platform_admin=bool(getattr(user, "is_platform_admin", False)),
         validator_event_ids=list(access.get("validator_event_ids") or []),
         seller_event_ids=list(access.get("seller_event_ids") or []),
     )
 
 
-async def _count_admins(db) -> int:
+async def _count_platform_admins(db) -> int:
     result = await db.execute(
-        select(func.count()).select_from(UserModel).where(UserModel.role == UserRole.ADMIN)
+        select(func.count()).select_from(UserModel).where(UserModel.is_platform_admin.is_(True))
     )
     return int(result.scalar_one() or 0)
 
@@ -69,7 +70,7 @@ async def _validated_event_ids(db, event_ids: list[UUID]) -> list[UUID]:
 
 
 async def _apply_role_event_access(db, user_id: UUID, role: UserRole, event_ids: list[UUID]) -> dict:
-    if role in (UserRole.ADMIN, UserRole.GENERAL):
+    if role in (UserRole.ADMIN, UserRole.ORGANIZER, UserRole.GENERAL):
         await set_user_event_access(db, user_id, seller_event_ids=[], validator_event_ids=[])
         return await get_user_event_access(db, user_id)
 
@@ -85,13 +86,19 @@ async def _apply_role_event_access(db, user_id: UUID, role: UserRole, event_ids:
     return await get_user_event_access(db, user_id)
 
 
+def _normalize_assignable_role(role: UserRole) -> UserRole:
+    if role == UserRole.ADMIN:
+        return UserRole.ORGANIZER
+    return role
+
+
 @router.get("", response_model=list[UserAdminResponse])
 async def list_users(
     role: UserRole | None = None,
     search: str | None = None,
     limit: int = Query(200, le=500),
     offset: int = 0,
-    _user=Depends(require_roles(UserRole.ADMIN)),
+    _user=Depends(require_platform_admin),
     db=Depends(get_db),
 ):
     repo = SQLAlchemyUserRepository(db)
@@ -107,30 +114,35 @@ async def list_users(
 async def set_user_permissions(
     user_id: UUID,
     body: UserPermissionsUpdateRequest,
-    admin=Depends(require_roles(UserRole.ADMIN)),
+    admin=Depends(require_platform_admin),
     db=Depends(get_db),
 ):
-    if admin.id == user_id and body.role != UserRole.ADMIN:
-        raise_user_error(400, "CANNOT_DEMOTE_SELF", "No puedes quitarte el rol de administrador")
+    if body.role == UserRole.ADMIN:
+        raise_user_error(400, "ADMIN_ROLE_LOCKED", "Solo puede existir un administrador global de la plataforma")
+
+    target_role = _normalize_assignable_role(body.role)
+
+    if admin.id == user_id and target_role != UserRole.ADMIN:
+        raise_user_error(400, "CANNOT_DEMOTE_SELF", "No puedes quitarte el rol de administrador global")
 
     repo = SQLAlchemyUserRepository(db)
     current = await repo.get_by_id(user_id)
     if not current:
         raise_user_error(404, "USER_NOT_FOUND", "Usuario no encontrado")
 
-    if current.role == UserRole.ADMIN and body.role != UserRole.ADMIN:
-        if await _count_admins(db) <= 1:
-            raise_user_error(400, "LAST_ADMIN", "Debe quedar al menos un administrador")
+    if getattr(current, "is_platform_admin", False) and target_role != UserRole.ADMIN:
+        if await _count_platform_admins(db) <= 1:
+            raise_user_error(400, "LAST_ADMIN", "Debe quedar al menos un administrador global")
 
     updated = await repo.update_user(
         user_id,
-        role=body.role,
+        role=target_role,
         is_active=body.is_active,
     )
     if not updated:
         raise_user_error(404, "USER_NOT_FOUND", "Usuario no encontrado")
 
-    access = await _apply_role_event_access(db, user_id, body.role, body.event_ids)
+    access = await _apply_role_event_access(db, user_id, target_role, body.event_ids)
     return _to_admin_response(updated, access)
 
 
@@ -138,30 +150,35 @@ async def set_user_permissions(
 async def set_user_role(
     user_id: UUID,
     body: UserRoleUpdateRequest,
-    admin=Depends(require_roles(UserRole.ADMIN)),
+    admin=Depends(require_platform_admin),
     db=Depends(get_db),
 ):
-    if admin.id == user_id and body.role != UserRole.ADMIN:
-        raise_user_error(400, "CANNOT_DEMOTE_SELF", "No puedes quitarte el rol de administrador")
+    if body.role == UserRole.ADMIN:
+        raise_user_error(400, "ADMIN_ROLE_LOCKED", "Solo puede existir un administrador global de la plataforma")
+
+    target_role = _normalize_assignable_role(body.role)
+
+    if admin.id == user_id and target_role != UserRole.ADMIN:
+        raise_user_error(400, "CANNOT_DEMOTE_SELF", "No puedes quitarte el rol de administrador global")
     repo = SQLAlchemyUserRepository(db)
     current = await repo.get_by_id(user_id)
     if not current:
         raise_user_error(404, "USER_NOT_FOUND", "Usuario no encontrado")
-    if current.role == UserRole.ADMIN and body.role != UserRole.ADMIN:
-        if await _count_admins(db) <= 1:
-            raise_user_error(400, "LAST_ADMIN", "Debe quedar al menos un administrador")
-    updated = await repo.update_user(user_id, role=body.role)
+    if getattr(current, "is_platform_admin", False) and target_role != UserRole.ADMIN:
+        if await _count_platform_admins(db) <= 1:
+            raise_user_error(400, "LAST_ADMIN", "Debe quedar al menos un administrador global")
+    updated = await repo.update_user(user_id, role=target_role)
     if not updated:
         raise_user_error(404, "USER_NOT_FOUND", "Usuario no encontrado")
     current_access = await get_user_event_access(db, user_id)
     keep_ids = (
         current_access["seller_event_ids"]
-        if body.role == UserRole.SELLER
+        if target_role == UserRole.SELLER
         else current_access["validator_event_ids"]
-        if body.role == UserRole.VALIDATOR
+        if target_role == UserRole.VALIDATOR
         else []
     )
-    access = await _apply_role_event_access(db, user_id, body.role, keep_ids)
+    access = await _apply_role_event_access(db, user_id, target_role, keep_ids)
     return _to_admin_response(updated, access)
 
 
@@ -169,7 +186,7 @@ async def set_user_role(
 async def set_user_status(
     user_id: UUID,
     body: UserStatusUpdateRequest,
-    admin=Depends(require_roles(UserRole.ADMIN)),
+    admin=Depends(require_platform_admin),
     db=Depends(get_db),
 ):
     if admin.id == user_id and not body.is_active:
@@ -185,7 +202,7 @@ async def set_user_status(
 @router.delete("/{user_id}")
 async def delete_user(
     user_id: UUID,
-    admin=Depends(require_roles(UserRole.ADMIN)),
+    admin=Depends(require_platform_admin),
     db=Depends(get_db),
 ):
     if admin.id == user_id:
@@ -194,8 +211,8 @@ async def delete_user(
     target = result.scalar_one_or_none()
     if not target:
         raise_user_error(404, "USER_NOT_FOUND", "Usuario no encontrado")
-    if target.role == UserRole.ADMIN:
-        raise_user_error(400, "CANNOT_DELETE_ADMIN", "No se puede eliminar un administrador")
+    if getattr(target, "is_platform_admin", False):
+        raise_user_error(400, "CANNOT_DELETE_ADMIN", "No se puede eliminar al administrador global")
     tickets = await db.execute(select(TicketModel.id).where(TicketModel.owner_id == user_id).limit(1))
     if tickets.scalar_one_or_none():
         raise_user_error(

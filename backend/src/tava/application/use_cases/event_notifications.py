@@ -24,6 +24,7 @@ from tava.infrastructure.services.email import (
     last_email_failure,
     send_event_broadcast_email,
     send_event_change_email,
+    send_event_review_request_email,
     send_ticket_cancelled_email,
 )
 from tava.infrastructure.services.ticket_pdf import build_tickets_pdf
@@ -61,6 +62,66 @@ def describe_event_changes(before: EventModel, after: EventModel) -> list[str]:
 class EventNotificationUseCase:
     def __init__(self, session: AsyncSession):
         self._session = session
+
+    async def notify_platform_admin_review_request(
+        self,
+        event: EventModel,
+        *,
+        organizer: UserModel | None = None,
+    ) -> dict:
+        if organizer is None:
+            result = await self._session.execute(
+                select(UserModel).where(UserModel.id == event.organizer_id)
+            )
+            organizer = result.scalar_one_or_none()
+        if not organizer:
+            return {"notified": False, "reason": "organizador_no_encontrado"}
+
+        if not email_transport_ready():
+            return {
+                "notified": False,
+                "reason": "correo_no_configurado",
+                "email_error": last_email_failure() or None,
+            }
+
+        admins_result = await self._session.execute(
+            select(UserModel).where(
+                UserModel.is_platform_admin.is_(True),
+                UserModel.is_active.is_(True),
+            )
+        )
+        admins = list(admins_result.scalars().all())
+        if not admins:
+            return {"notified": False, "reason": "sin_admin_global"}
+
+        admin_url = f"{settings.frontend_url.rstrip('/')}/admin"
+        sent = 0
+        last_err: str | None = None
+        for admin in admins:
+            ok = await send_event_review_request_email(
+                admin.email,
+                admin.full_name,
+                event.name,
+                organizer_name=organizer.full_name,
+                organizer_email=organizer.email,
+                event_date=_fmt_date(event.event_date),
+                event_time=_fmt_time(event.event_time),
+                city=event.city,
+                category=event.category,
+                admin_url=admin_url,
+            )
+            if ok:
+                sent += 1
+            else:
+                last_err = last_email_failure() or last_err
+
+        return {
+            "notified": sent > 0,
+            "reason": "envio_fallido" if sent == 0 else None,
+            "emails_sent": sent,
+            "recipients": len(admins),
+            "email_error": last_err,
+        }
 
     async def on_event_updated(self, before: EventModel, after: EventModel) -> dict:
         changes = describe_event_changes(before, after)

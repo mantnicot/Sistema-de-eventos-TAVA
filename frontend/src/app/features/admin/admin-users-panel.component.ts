@@ -7,7 +7,7 @@ import { NotificationService } from '../../core/services/notification.service';
 import { TavaEvent } from '../../core/models/event.model';
 import { parseHttpError } from '../../core/utils/http-error.util';
 
-export type StaffRole = 'general' | 'seller' | 'validator' | 'admin';
+export type StaffRole = 'general' | 'seller' | 'validator' | 'organizer' | 'admin';
 
 export interface AdminUser {
   id: string;
@@ -16,6 +16,7 @@ export interface AdminUser {
   role: StaffRole;
   email_verified: boolean;
   is_active: boolean;
+  is_platform_admin?: boolean;
   validator_event_ids?: string[];
   seller_event_ids?: string[];
 }
@@ -43,7 +44,7 @@ export class AdminUsersPanelComponent implements OnInit {
     { value: 'general', label: 'Público', hint: 'Compra boletas y usa su perfil', icon: 'P' },
     { value: 'seller', label: 'Vendedor', hint: 'Vende en las obras asignadas', icon: 'V' },
     { value: 'validator', label: 'Validador', hint: 'Controla el ingreso con QR', icon: 'Q' },
-    { value: 'admin', label: 'Admin', hint: 'Acceso total al panel TAVA', icon: 'A' },
+    { value: 'organizer', label: 'Organizador', hint: 'Crea y gestiona sus propios eventos', icon: 'O' },
   ];
 
   readonly users = signal<AdminUser[]>([]);
@@ -86,7 +87,7 @@ export class AdminUsersPanelComponent implements OnInit {
     const list = this.users();
     return {
       total: list.length,
-      admin: list.filter((u) => u.role === 'admin').length,
+      organizer: list.filter((u) => u.role === 'organizer').length,
       seller: list.filter((u) => u.role === 'seller').length,
       validator: list.filter((u) => u.role === 'validator').length,
     };
@@ -161,8 +162,13 @@ export class AdminUsersPanelComponent implements OnInit {
   }
 
   setDraftRole(role: StaffRole): void {
-    if (this.isCurrentUser(this.selected()) && role !== 'admin') {
-      this.notify.warning('Tu cuenta', 'No puedes quitarte el rol de administrador.');
+    const user = this.selected();
+    if (user?.is_platform_admin) {
+      this.notify.warning('Administrador global', 'La cuenta principal no puede cambiar de rol.');
+      return;
+    }
+    if (this.isCurrentUser(user) && role !== 'admin') {
+      this.notify.warning('Tu cuenta', 'No puedes quitarte el rol de administrador global.');
       return;
     }
     this.draftRole.set(role);
@@ -190,6 +196,7 @@ export class AdminUsersPanelComponent implements OnInit {
   }
 
   roleLabel(role: StaffRole): string {
+    if (role === 'admin') return 'Admin global';
     return this.roles.find((r) => r.value === role)?.label ?? role;
   }
 
@@ -211,7 +218,8 @@ export class AdminUsersPanelComponent implements OnInit {
   }
 
   eventSummary(user: AdminUser): string {
-    if (user.role === 'admin') return 'Todas las obras';
+    if (user.is_platform_admin) return 'Administrador global';
+    if (user.role === 'organizer') return 'Gestiona sus propios eventos';
     if (user.role === 'general') return 'Sin acceso de personal';
     const n = this.eventCount(user);
     if (!n) return 'Sin obras asignadas';

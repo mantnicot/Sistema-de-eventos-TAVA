@@ -14,12 +14,14 @@ async def can_access_event(
     user_role: UserRole,
     event_id: UUID,
     staff_role: str,
+    *,
+    is_platform_admin: bool = False,
 ) -> bool:
-    if user_role == UserRole.ADMIN:
+    if is_platform_admin:
         return True
     if staff_role == "validator" and user_role != UserRole.VALIDATOR:
         return False
-    if staff_role == "seller" and user_role not in (UserRole.SELLER, UserRole.ADMIN):
+    if staff_role == "seller" and user_role not in (UserRole.SELLER,):
         return False
     result = await session.execute(
         select(EventStaffAssignmentModel.id).where(

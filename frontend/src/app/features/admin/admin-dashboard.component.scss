@@ -780,3 +780,51 @@
     justify-self: start;
   }
 }
+
+.admin__tab-badge,
+.badge--pending {
+  background: rgba(201, 162, 39, 0.2);
+  color: #6b4e00;
+}
+
+.badge--ok {
+  background: rgba(46, 125, 50, 0.15);
+  color: #2e7d32;
+}
+
+.admin__tab-badge {
+  display: inline-flex;
+  min-width: 1.1rem;
+  height: 1.1rem;
+  align-items: center;
+  justify-content: center;
+  margin-left: 0.35rem;
+  padding: 0 0.3rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.review-workspace {
+  padding: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+.reject-box {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  width: 100%;
+
+  textarea {
+    width: 100%;
+    min-height: 4rem;
+  }
+
+  &__actions {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+  }
+}

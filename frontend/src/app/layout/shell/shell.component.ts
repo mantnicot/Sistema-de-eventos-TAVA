@@ -1,7 +1,8 @@
-import { Component, inject, OnDestroy, OnInit } from '@angular/core';
+import { Component, inject, OnDestroy, OnInit, signal } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet, NavigationEnd } from '@angular/router';
 import { filter, Subscription } from 'rxjs';
 import { AuthService } from '../../core/services/auth.service';
+import { ApiService } from '../../core/services/api.service';
 import { SiteSettingsService } from '../../core/services/site-settings.service';
 import { TavaContactFabComponent } from '../../shared/components/tava-contact-fab/tava-contact-fab.component';
 import { TavaPopupComponent } from '../../shared/components/tava-popup/tava-popup.component';
@@ -25,6 +26,7 @@ import { EventsPrefetchService } from '../../core/services/events-prefetch.servi
 })
 export class ShellComponent implements OnInit, OnDestroy {
   readonly auth = inject(AuthService);
+  private readonly api = inject(ApiService);
   private readonly site = inject(SiteSettingsService);
   private readonly router = inject(Router);
   private readonly idle = inject(SessionIdleService);
@@ -34,6 +36,7 @@ export class ShellComponent implements OnInit, OnDestroy {
   private navSub?: Subscription;
 
   menuOpen = false;
+  readonly pendingReviewCount = signal(0);
 
   ngOnInit(): void {
     void this.warmup.wake();
@@ -41,9 +44,24 @@ export class ShellComponent implements OnInit, OnDestroy {
     this.eventsPrefetch.prefetch();
     this.keepAlive.start();
     this.idle.start();
+    this.loadPendingReviewCount();
     this.navSub = this.router.events
       .pipe(filter((e) => e instanceof NavigationEnd))
-      .subscribe(() => this.closeMenu());
+      .subscribe(() => {
+        this.closeMenu();
+        this.loadPendingReviewCount();
+      });
+  }
+
+  private loadPendingReviewCount(): void {
+    if (!this.auth.isPlatformAdmin()) {
+      this.pendingReviewCount.set(0);
+      return;
+    }
+    this.api.get<{ count: number }>('/events/admin/review-pending-count').subscribe({
+      next: (res) => this.pendingReviewCount.set(res.count ?? 0),
+      error: () => this.pendingReviewCount.set(0),
+    });
   }
 
   ngOnDestroy(): void {

@@ -10,6 +10,7 @@ from tava.infrastructure.persistence.database import get_db
 from tava.infrastructure.persistence.repositories.sqlalchemy_user_repository import SQLAlchemyUserRepository
 from tava.infrastructure.security.jwt import decode_access_token
 from tava.presentation.api.http_errors import raise_system_error
+from tava.presentation.api.platform_auth import is_platform_admin
 
 security = HTTPBearer(auto_error=False)
 
@@ -39,7 +40,7 @@ async def get_current_user(
 
 def require_roles(*roles: UserRole):
     async def checker(user=Depends(get_current_user)):
-        if user.role == UserRole.ADMIN:
+        if is_platform_admin(user):
             return user
         if user.role not in roles:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Sin permisos")

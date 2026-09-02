@@ -10,7 +10,8 @@ export interface TavaUser {
   id: string;
   email: string;
   full_name: string;
-  role: 'general' | 'admin' | 'validator' | 'seller';
+  role: 'general' | 'admin' | 'organizer' | 'validator' | 'seller';
+  is_platform_admin?: boolean;
 }
 
 interface AuthResponse {
@@ -32,9 +33,18 @@ export class AuthService {
   private readonly _user = signal<TavaUser | null>(this.loadUser());
   readonly user = this._user.asReadonly();
   readonly isLoggedIn = computed(() => !!this._user());
-  readonly isAdmin = computed(() => this._user()?.role === 'admin');
-  readonly isValidator = computed(() => ['validator', 'admin'].includes(this._user()?.role ?? ''));
-  readonly isSeller = computed(() => ['seller', 'admin'].includes(this._user()?.role ?? ''));
+  readonly isPlatformAdmin = computed(() => !!this._user()?.is_platform_admin);
+  readonly isOrganizer = computed(() => this._user()?.role === 'organizer');
+  readonly canManageEvents = computed(() => this.isPlatformAdmin() || this.isOrganizer());
+  readonly isAdmin = computed(() => this.isPlatformAdmin());
+  readonly isValidator = computed(() => {
+    const role = this._user()?.role ?? '';
+    return role === 'validator' || this.isPlatformAdmin();
+  });
+  readonly isSeller = computed(() => {
+    const role = this._user()?.role ?? '';
+    return role === 'seller' || this.isPlatformAdmin();
+  });
 
   constructor() {
     this.recoverStoredSession();

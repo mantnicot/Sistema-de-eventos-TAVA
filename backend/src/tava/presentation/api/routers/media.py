@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from tava.config import get_settings
 from tava.domain.enums import UserRole
 from tava.infrastructure.services.cloudinary_storage import cloudinary_configured, upload_bytes
-from tava.presentation.api.dependencies import require_roles
+from tava.presentation.api.platform_auth import require_event_manager, require_platform_admin
 
 logger = logging.getLogger("tava.media")
 
@@ -32,7 +32,7 @@ def _public_url(relative_path: str) -> str:
 async def upload_media(
     file: UploadFile = File(...),
     kind: str = Query("image", pattern="^(image|video)$"),
-    _user=Depends(require_roles(UserRole.ADMIN)),
+    _user=Depends(require_event_manager),
 ):
     settings = get_settings()
     suffix = Path(file.filename or "").suffix.lower()

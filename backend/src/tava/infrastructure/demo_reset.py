@@ -145,11 +145,13 @@ async def reset_demo_data(session, *, force: bool = False) -> bool:
             password_hash=hash_password(ADMIN_PASSWORD),
             full_name="Administrador TAVA",
             role=UserRole.ADMIN,
+            is_platform_admin=True,
             email_verified=True,
         )
         session.add(admin)
     else:
         admin.role = UserRole.ADMIN
+        admin.is_platform_admin = True
         admin.email_verified = True
         admin.password_hash = hash_password(ADMIN_PASSWORD)
 

@@ -4,7 +4,7 @@ from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from tava.domain.entities.event import Event
-from tava.domain.enums import EventStatus
+from tava.domain.enums import EventReviewStatus, EventStatus
 from tava.domain.repositories.event_repository import EventRepository
 from tava.infrastructure.persistence.models import EventModel
 
@@ -42,11 +42,21 @@ class SQLAlchemyEventRepository(EventRepository):
         self,
         search: str | None = None,
         category: str | None = None,
-        status: EventStatus | None = EventStatus.PUBLISHED,
+        status: EventStatus | None = None,
         limit: int = 20,
         offset: int = 0,
     ) -> list[Event]:
-        q = select(EventModel).order_by(EventModel.event_date.asc()).limit(limit).offset(offset)
+        q = (
+            select(EventModel)
+            .where(
+                EventModel.review_status == EventReviewStatus.APPROVED,
+                EventModel.cartelera_visible.is_(True),
+                EventModel.status.notin_([EventStatus.DRAFT, EventStatus.CANCELLED]),
+            )
+            .order_by(EventModel.event_date.asc())
+            .limit(limit)
+            .offset(offset)
+        )
         if status:
             q = q.where(EventModel.status == status)
         if category:

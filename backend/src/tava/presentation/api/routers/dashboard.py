@@ -9,7 +9,7 @@ from tava.domain.enums import EventStatus, PaymentStatus, UserRole
 from tava.infrastructure.persistence.database import get_db
 from tava.infrastructure.persistence.models import EventModel, OrderModel, TicketModel
 from tava.infrastructure.services.dashboard_report import build_kpis_pdf, build_kpis_xlsx
-from tava.presentation.api.dependencies import require_roles
+from tava.presentation.api.platform_auth import is_platform_admin, require_platform_admin
 
 router = APIRouter(prefix="/dashboard", tags=["Dashboard Administrativo"])
 
@@ -85,7 +85,7 @@ async def _collect_kpis(db: AsyncSession, event_id: UUID | None = None) -> dict:
 @router.get("/kpis")
 async def kpis(
     event_id: UUID | None = None,
-    user=Depends(require_roles(UserRole.ADMIN)),
+    user=Depends(require_platform_admin),
     db: AsyncSession = Depends(get_db),
 ):
     return await _collect_kpis(db, event_id)
@@ -94,7 +94,7 @@ async def kpis(
 @router.get("/report/pdf")
 async def report_pdf(
     event_id: UUID | None = None,
-    user=Depends(require_roles(UserRole.ADMIN)),
+    user=Depends(require_platform_admin),
     db: AsyncSession = Depends(get_db),
 ):
     data = await _collect_kpis(db, event_id)
@@ -109,7 +109,7 @@ async def report_pdf(
 @router.get("/report/xlsx")
 async def report_xlsx(
     event_id: UUID | None = None,
-    user=Depends(require_roles(UserRole.ADMIN)),
+    user=Depends(require_platform_admin),
     db: AsyncSession = Depends(get_db),
 ):
     data = await _collect_kpis(db, event_id)
@@ -123,7 +123,7 @@ async def report_xlsx(
 
 @router.post("/test-email")
 async def test_email(
-    user=Depends(require_roles(UserRole.ADMIN)),
+    user=Depends(require_platform_admin),
 ):
     from tava.infrastructure.services.email import (
         email_config_hint,

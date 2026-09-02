@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from tava.domain.enums import SeatStatus, UserRole
 from tava.infrastructure.persistence.models import SeatModel, SectorModel, VenueModel
-from tava.presentation.api.dependencies import require_roles
+from tava.presentation.api.platform_auth import require_platform_admin
 from tava.presentation.api.schemas import SectorCreateRequest, VenueCreateRequest
 
 router = APIRouter(prefix="/venues", tags=["Escenarios y Silletería"])
@@ -17,7 +17,7 @@ router = APIRouter(prefix="/venues", tags=["Escenarios y Silletería"])
 @router.post("")
 async def create_venue(
     body: VenueCreateRequest,
-    user=Depends(require_roles(UserRole.ADMIN)),
+    user=Depends(require_platform_admin),
     db: AsyncSession = Depends(get_db),
 ):
     venue = VenueModel(**body.model_dump())
@@ -31,7 +31,7 @@ async def create_venue(
 async def create_sector_with_seats(
     venue_id: UUID,
     body: SectorCreateRequest,
-    user=Depends(require_roles(UserRole.ADMIN)),
+    user=Depends(require_platform_admin),
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(select(VenueModel).where(VenueModel.id == venue_id))

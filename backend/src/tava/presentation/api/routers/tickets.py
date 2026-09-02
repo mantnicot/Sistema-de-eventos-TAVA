@@ -11,6 +11,7 @@ from tava.infrastructure.persistence.database import get_db
 from tava.infrastructure.persistence.event_staff import can_access_event
 from tava.infrastructure.persistence.models import TicketTypeModel
 from tava.presentation.api.dependencies import get_current_user, require_roles
+from tava.presentation.api.platform_auth import is_platform_admin, require_platform_admin
 from tava.presentation.api.schemas import (
     AdminIssueTicketsRequest,
     ClaimTicketsRequest,
@@ -26,7 +27,7 @@ router = APIRouter(prefix="/tickets", tags=["Boletería"])
 @router.post("/types")
 async def create_ticket_type(
     body: TicketTypeCreateRequest,
-    user=Depends(require_roles(UserRole.ADMIN)),
+    user=Depends(require_platform_admin),
     db: AsyncSession = Depends(get_db),
 ):
     tt = TicketTypeModel(**body.model_dump())
@@ -61,7 +62,7 @@ async def claim_tickets(
 @router.post("/admin/issue-claim")
 async def admin_issue_claim_tickets(
     body: AdminIssueTicketsRequest,
-    user=Depends(require_roles(UserRole.ADMIN)),
+    user=Depends(require_platform_admin),
     db: AsyncSession = Depends(get_db),
 ):
     uc = TicketUseCase(db)
@@ -106,7 +107,7 @@ async def sales_ledger(
 async def admin_cancel_ticket(
     ticket_id: UUID,
     body: CancelTicketRequest | None = None,
-    _user=Depends(require_roles(UserRole.ADMIN)),
+    _user=Depends(require_platform_admin),
     db: AsyncSession = Depends(get_db),
 ):
     from tava.application.use_cases.event_notifications import EventNotificationUseCase
@@ -125,7 +126,7 @@ async def admin_cancel_ticket(
 @router.post("/admin/orders/{order_id}/resend-email")
 async def admin_resend_order_email(
     order_id: UUID,
-    _user=Depends(require_roles(UserRole.ADMIN)),
+    _user=Depends(require_platform_admin),
     db: AsyncSession = Depends(get_db),
 ):
     try:
@@ -152,8 +153,8 @@ async def download_order_pdf(
     db: AsyncSession = Depends(get_db),
 ):
     uc = TicketUseCase(db)
-    is_admin = user.role == UserRole.ADMIN
-    is_seller = user.role in (UserRole.SELLER, UserRole.ADMIN)
+    is_admin = is_platform_admin(user)
+    is_seller = user.role == UserRole.SELLER or is_admin
     try:
         pdf = await uc.get_order_pdf_bytes(order_id, user.id, is_admin, is_seller)
     except ValueError as e:
@@ -172,7 +173,7 @@ async def download_ticket_pdf(
     db: AsyncSession = Depends(get_db),
 ):
     uc = TicketUseCase(db)
-    is_admin = user.role == UserRole.ADMIN
+    is_admin = is_platform_admin(user)
     try:
         pdf = await uc.get_ticket_pdf_bytes(ticket_id, user.id, is_admin)
     except ValueError as e:
@@ -225,8 +226,8 @@ async def sell_tickets(
 ):
     if not body.legal_accepted:
         raise HTTPException(status_code=400, detail="Debe aceptar los términos legales")
-    if user.role != UserRole.ADMIN and not await can_access_event(
-        db, user.id, user.role, body.event_id, "seller"
+    if not is_platform_admin(user) and not await can_access_event(
+        db, user.id, user.role, body.event_id, "seller", is_platform_admin=is_platform_admin(user)
     ):
         raise HTTPException(status_code=403, detail="No autorizado para vender en este evento")
     uc = TicketUseCase(db)

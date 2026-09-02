@@ -10,6 +10,7 @@ from tava.infrastructure.persistence.database import get_db
 from tava.infrastructure.persistence.event_staff import can_access_event
 from tava.infrastructure.persistence.models import EventModel, TicketModel
 from tava.presentation.api.dependencies import require_roles
+from tava.presentation.api.platform_auth import can_manage_event, is_platform_admin
 from tava.presentation.api.schemas import (
     AttendeesListResponse,
     AttendeeItem,
@@ -27,6 +28,21 @@ MESSAGES = {
     ValidationResult.INVALID: "Boleta inválida",
     ValidationResult.NOT_AUTHORIZED: "No estás autorizado para validar este evento",
 }
+
+
+async def _require_event_ops_access(db: AsyncSession, user, event_id: UUID, staff_role: str) -> None:
+    if is_platform_admin(user):
+        return
+    if user.role == UserRole.ORGANIZER:
+        result = await db.execute(select(EventModel).where(EventModel.id == event_id))
+        event = result.scalar_one_or_none()
+        if event and can_manage_event(user, event):
+            return
+        raise HTTPException(status_code=403, detail="No autorizado para este evento")
+    if not await can_access_event(
+        db, user.id, user.role, event_id, staff_role, is_platform_admin=is_platform_admin(user)
+    ):
+        raise HTTPException(status_code=403, detail="No autorizado para este evento")
 
 
 async def _build_validation_response(
@@ -78,11 +94,10 @@ async def scan_qr(
 @router.get("/aforo/{event_id}")
 async def aforo(
     event_id: UUID,
-    user=Depends(require_roles(UserRole.VALIDATOR, UserRole.ADMIN)),
+    user=Depends(require_roles(UserRole.VALIDATOR, UserRole.ADMIN, UserRole.ORGANIZER)),
     db: AsyncSession = Depends(get_db),
 ):
-    if not await can_access_event(db, user.id, user.role, event_id, "validator"):
-        raise HTTPException(status_code=403, detail="No autorizado para este evento")
+    await _require_event_ops_access(db, user, event_id, "validator")
     uc = ValidationUseCase(db)
     stats = await uc.get_capacity_stats(event_id)
     if not stats:
@@ -93,11 +108,10 @@ async def aforo(
 @router.get("/attendees/{event_id}", response_model=AttendeesListResponse)
 async def list_attendees(
     event_id: UUID,
-    user=Depends(require_roles(UserRole.VALIDATOR, UserRole.ADMIN)),
+    user=Depends(require_roles(UserRole.VALIDATOR, UserRole.ADMIN, UserRole.ORGANIZER)),
     db: AsyncSession = Depends(get_db),
 ):
-    if not await can_access_event(db, user.id, user.role, event_id, "validator"):
-        raise HTTPException(status_code=403, detail="No autorizado para este evento")
+    await _require_event_ops_access(db, user, event_id, "validator")
     uc = ValidationUseCase(db)
     data = await uc.list_attendees(event_id)
     if not data:

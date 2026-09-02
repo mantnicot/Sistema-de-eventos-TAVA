@@ -20,6 +20,7 @@ from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 from tava.domain.enums import (
+    EventReviewStatus,
     EventStatus,
     PaymentProvider,
     PaymentStatus,
@@ -44,6 +45,7 @@ class UserModel(Base):
     phone: Mapped[str | None] = mapped_column(String(30), nullable=True)
     document_id: Mapped[str | None] = mapped_column(String(50), nullable=True)
     role: Mapped[UserRole] = mapped_column(Enum(UserRole), default=UserRole.GENERAL)
+    is_platform_admin: Mapped[bool] = mapped_column(Boolean, default=False)
     email_verified: Mapped[bool] = mapped_column(Boolean, default=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     privacy_accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -76,6 +78,13 @@ class EventModel(Base):
     address: Mapped[str] = mapped_column(String(300))
     category: Mapped[str] = mapped_column(String(100))
     status: Mapped[EventStatus] = mapped_column(Enum(EventStatus), default=EventStatus.DRAFT)
+    review_status: Mapped[EventReviewStatus] = mapped_column(
+        Enum(EventReviewStatus), default=EventReviewStatus.PENDING
+    )
+    cartelera_visible: Mapped[bool] = mapped_column(Boolean, default=False)
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    reviewed_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    rejection_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     capacity: Mapped[int] = mapped_column(Integer, default=0)
     main_image_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     trailer_url: Mapped[str | None] = mapped_column(String(500), nullable=True)

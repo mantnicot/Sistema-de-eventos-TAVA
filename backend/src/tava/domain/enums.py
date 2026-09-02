@@ -4,8 +4,15 @@ import enum
 class UserRole(str, enum.Enum):
     GENERAL = "general"
     ADMIN = "admin"
+    ORGANIZER = "organizer"
     VALIDATOR = "validator"
     SELLER = "seller"
+
+
+class EventReviewStatus(str, enum.Enum):
+    PENDING = "pendiente"
+    APPROVED = "aprobado"
+    REJECTED = "rechazado"
 
 
 class EventStatus(str, enum.Enum):

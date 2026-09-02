@@ -37,6 +37,11 @@ export interface TavaEvent {
   main_image_url?: string;
   trailer_url?: string;
   theatrical_details?: TheatricalDetails;
+  review_status?: 'pendiente' | 'aprobado' | 'rechazado';
+  cartelera_visible?: boolean;
+  organizer_id?: string;
+  organizer_name?: string;
+  rejection_reason?: string;
 }
 
 export interface TavaEventDetail extends TavaEvent {

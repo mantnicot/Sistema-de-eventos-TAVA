@@ -1,3 +1,4 @@
+from datetime import UTC, datetime
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -5,25 +6,33 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from tava.domain.enums import EventStatus, UserRole
+from tava.domain.enums import EventReviewStatus, EventStatus, UserRole
 from tava.infrastructure.persistence.database import get_db
 from tava.infrastructure.persistence.event_staff import get_event_staff, list_assigned_event_ids, set_event_staff
-from tava.infrastructure.persistence.models import EventMediaModel, EventModel, TicketModel, TicketTypeModel
+from tava.infrastructure.persistence.models import EventMediaModel, EventModel, TicketModel, TicketTypeModel, UserModel
 from tava.infrastructure.persistence.repositories.sqlalchemy_event_repository import SQLAlchemyEventRepository
 from tava.presentation.api.dependencies import get_current_user, require_roles
+from tava.presentation.api.platform_auth import (
+    can_manage_event,
+    is_platform_admin,
+    require_event_manager,
+    require_platform_admin,
+)
 from tava.presentation.api.schemas import (
+    BroadcastEmailRequest,
+    EventCarteleraRequest,
     EventCreateRequest,
     EventDetailResponse,
     EventMediaCreateRequest,
     EventMediaResponse,
     EventResponse,
+    EventReviewRequest,
     EventStaffResponse,
     EventStaffUpdateRequest,
+    SeatingSyncRequest,
     TheatricalDetailsSchema,
     TicketTypePublicResponse,
     TicketTypesSyncRequest,
-    BroadcastEmailRequest,
-    SeatingSyncRequest,
 )
 from tava.application.use_cases.seating import SeatingUseCase, seating_enabled
 
@@ -36,8 +45,14 @@ def _theatrical(details: dict | None) -> TheatricalDetailsSchema | None:
     return TheatricalDetailsSchema.model_validate(details)
 
 
-def _event_response(model: EventModel, *, tickets_available: int = 0) -> EventResponse:
-    return EventResponse(
+def _event_response(
+    model: EventModel,
+    *,
+    tickets_available: int = 0,
+    organizer_name: str | None = None,
+    include_admin_fields: bool = False,
+) -> EventResponse:
+    payload = EventResponse(
         id=model.id,
         name=model.name,
         description=model.description,
@@ -53,6 +68,48 @@ def _event_response(model: EventModel, *, tickets_available: int = 0) -> EventRe
         theatrical_details=_theatrical(model.theatrical_details),
         tickets_available=tickets_available,
     )
+    if include_admin_fields:
+        payload.review_status = model.review_status
+        payload.cartelera_visible = model.cartelera_visible
+        payload.organizer_id = model.organizer_id
+        payload.organizer_name = organizer_name
+        payload.rejection_reason = model.rejection_reason
+    return payload
+
+
+async def _organizer_names(db: AsyncSession, organizer_ids: list[UUID]) -> dict[UUID, str]:
+    if not organizer_ids:
+        return {}
+    result = await db.execute(
+        select(UserModel.id, UserModel.full_name).where(UserModel.id.in_(organizer_ids))
+    )
+    return {row[0]: row[1] for row in result.all()}
+
+
+def _apply_organizer_publish_rules(user, data: dict, existing: EventModel | None = None) -> dict:
+    if is_platform_admin(user):
+        return data
+    status = data.get("status", existing.status if existing else EventStatus.DRAFT)
+    if status in (EventStatus.PUBLISHED, EventStatus.IN_PROGRESS, EventStatus.SOLD_OUT):
+        data["status"] = EventStatus.SCHEDULED
+        data["review_status"] = EventReviewStatus.PENDING
+        data["cartelera_visible"] = False
+    return data
+
+
+async def _get_event_or_404(db: AsyncSession, event_id: UUID) -> EventModel:
+    result = await db.execute(select(EventModel).where(EventModel.id == event_id))
+    model = result.scalar_one_or_none()
+    if not model:
+        raise HTTPException(status_code=404, detail="Evento no encontrado")
+    return model
+
+
+async def _require_manage_event(db: AsyncSession, event_id: UUID, user) -> EventModel:
+    model = await _get_event_or_404(db, event_id)
+    if not can_manage_event(user, model):
+        raise HTTPException(status_code=403, detail="No puedes gestionar este evento")
+    return model
 
 
 async def _tickets_available_by_event(db: AsyncSession, event_ids: list[UUID]) -> dict[UUID, int]:
@@ -95,7 +152,7 @@ def _event_detail(model: EventModel) -> EventDetailResponse:
 async def list_events(
     search: str | None = None,
     category: str | None = None,
-    status: EventStatus | None = EventStatus.PUBLISHED,
+    status: EventStatus | None = None,
     limit: int = Query(20, le=100),
     offset: int = 0,
     db: AsyncSession = Depends(get_db),
@@ -130,14 +187,158 @@ async def list_events_admin(
     status: EventStatus | None = None,
     limit: int = Query(200, le=500),
     offset: int = 0,
-    _user=Depends(require_roles(UserRole.ADMIN)),
+    user=Depends(require_event_manager),
     db: AsyncSession = Depends(get_db),
 ):
     q = select(EventModel).order_by(EventModel.event_date.desc()).limit(limit).offset(offset)
+    if not is_platform_admin(user):
+        q = q.where(EventModel.organizer_id == user.id)
     if status:
         q = q.where(EventModel.status == status)
     result = await db.execute(q)
-    return [_event_response(m) for m in result.scalars().all()]
+    models = list(result.scalars().all())
+    organizer_map = await _organizer_names(db, [m.organizer_id for m in models])
+    return [
+        _event_response(
+            m,
+            include_admin_fields=True,
+            organizer_name=organizer_map.get(m.organizer_id),
+        )
+        for m in models
+    ]
+
+
+@router.get("/admin/review-queue", response_model=list[EventResponse])
+async def list_review_queue(
+    _user=Depends(require_platform_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(EventModel)
+        .where(EventModel.review_status == EventReviewStatus.PENDING)
+        .order_by(EventModel.created_at.desc())
+    )
+    models = list(result.scalars().all())
+    organizer_map = await _organizer_names(db, [m.organizer_id for m in models])
+    return [
+        _event_response(
+            m,
+            include_admin_fields=True,
+            organizer_name=organizer_map.get(m.organizer_id),
+        )
+        for m in models
+    ]
+
+
+@router.get("/admin/review-pending-count")
+async def review_pending_count(
+    _user=Depends(require_platform_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(func.count())
+        .select_from(EventModel)
+        .where(EventModel.review_status == EventReviewStatus.PENDING)
+    )
+    return {"count": int(result.scalar_one() or 0)}
+
+
+@router.patch("/{event_id}/review", response_model=EventResponse)
+async def review_event(
+    event_id: UUID,
+    body: EventReviewRequest,
+    user=Depends(require_platform_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    model = await _get_event_or_404(db, event_id)
+    now = datetime.now(UTC)
+    if body.action == "approve":
+        model.review_status = EventReviewStatus.APPROVED
+        model.rejection_reason = None
+        model.status = EventStatus.PUBLISHED
+        if body.cartelera_visible is not None:
+            model.cartelera_visible = body.cartelera_visible
+        else:
+            model.cartelera_visible = True
+    else:
+        model.review_status = EventReviewStatus.REJECTED
+        model.rejection_reason = body.rejection_reason or "Revisión rechazada"
+        model.cartelera_visible = False
+        if model.status == EventStatus.PUBLISHED:
+            model.status = EventStatus.SCHEDULED
+    model.reviewed_at = now
+    model.reviewed_by = user.id
+    await db.flush()
+    organizer_map = await _organizer_names(db, [model.organizer_id])
+    return _event_response(
+        model,
+        include_admin_fields=True,
+        organizer_name=organizer_map.get(model.organizer_id),
+    )
+
+
+@router.patch("/{event_id}/cartelera", response_model=EventResponse)
+async def set_cartelera_visibility(
+    event_id: UUID,
+    body: EventCarteleraRequest,
+    _user=Depends(require_platform_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    model = await _get_event_or_404(db, event_id)
+    if body.visible and model.review_status != EventReviewStatus.APPROVED:
+        raise HTTPException(status_code=400, detail="Solo eventos aprobados pueden mostrarse en cartelera")
+    model.cartelera_visible = body.visible
+    await db.flush()
+    organizer_map = await _organizer_names(db, [model.organizer_id])
+    return _event_response(
+        model,
+        include_admin_fields=True,
+        organizer_name=organizer_map.get(model.organizer_id),
+    )
+
+
+@router.post("/{event_id}/submit-review")
+async def submit_event_for_review(
+    event_id: UUID,
+    user=Depends(require_event_manager),
+    db: AsyncSession = Depends(get_db),
+):
+    from tava.application.use_cases.event_notifications import EventNotificationUseCase
+
+    model = await _require_manage_event(db, event_id, user)
+    review_notification: dict | None = None
+    if is_platform_admin(user):
+        model.review_status = EventReviewStatus.APPROVED
+        model.cartelera_visible = True
+        if model.status == EventStatus.DRAFT:
+            model.status = EventStatus.PUBLISHED
+    else:
+        was_pending = model.review_status == EventReviewStatus.PENDING
+        model.review_status = EventReviewStatus.PENDING
+        model.cartelera_visible = False
+        model.rejection_reason = None
+        if model.status == EventStatus.DRAFT:
+            model.status = EventStatus.SCHEDULED
+        await db.flush()
+        if not was_pending:
+            notify_uc = EventNotificationUseCase(db)
+            organizer_result = await db.execute(select(UserModel).where(UserModel.id == user.id))
+            review_notification = await notify_uc.notify_platform_admin_review_request(
+                model,
+                organizer=organizer_result.scalar_one_or_none(),
+            )
+    await db.flush()
+    await db.commit()
+    organizer_map = await _organizer_names(db, [model.organizer_id])
+    response = _event_response(
+        model,
+        include_admin_fields=True,
+        organizer_name=organizer_map.get(model.organizer_id),
+    )
+    payload = response.model_dump()
+    if review_notification is not None:
+        payload["review_notification"] = review_notification
+    return payload
 
 
 @router.get("/assigned/mine", response_model=list[EventResponse])
@@ -146,7 +347,7 @@ async def my_assigned_events(
     user=Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    if user.role == UserRole.ADMIN:
+    if is_platform_admin(user):
         q = (
             select(EventModel)
             .where(EventModel.status.in_([EventStatus.PUBLISHED, EventStatus.IN_PROGRESS]))
@@ -170,7 +371,7 @@ async def my_assigned_events(
 @router.get("/{event_id}/staff", response_model=EventStaffResponse)
 async def get_event_staff_endpoint(
     event_id: UUID,
-    _user=Depends(require_roles(UserRole.ADMIN)),
+    user=Depends(require_platform_admin),
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(select(EventModel.id).where(EventModel.id == event_id))
@@ -187,7 +388,7 @@ async def get_event_staff_endpoint(
 async def update_event_staff(
     event_id: UUID,
     body: EventStaffUpdateRequest,
-    _user=Depends(require_roles(UserRole.ADMIN)),
+    user=Depends(require_platform_admin),
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(select(EventModel.id).where(EventModel.id == event_id))
@@ -211,13 +412,36 @@ async def get_event(event_id: UUID, db: AsyncSession = Depends(get_db)):
     model = result.scalar_one_or_none()
     if not model:
         raise HTTPException(status_code=404, detail="Evento no encontrado")
+    is_public = (
+        model.review_status == EventReviewStatus.APPROVED
+        and model.cartelera_visible
+        and model.status not in (EventStatus.DRAFT, EventStatus.CANCELLED)
+    )
+    if not is_public:
+        raise HTTPException(status_code=404, detail="Evento no encontrado")
     return _event_detail(model)
+
+
+@router.get("/{event_id}/manage", response_model=EventDetailResponse)
+async def get_event_for_manage(
+    event_id: UUID,
+    user=Depends(require_event_manager),
+    db: AsyncSession = Depends(get_db),
+):
+    model = await _require_manage_event(db, event_id, user)
+    result = await db.execute(
+        select(EventModel)
+        .where(EventModel.id == model.id)
+        .options(selectinload(EventModel.gallery), selectinload(EventModel.ticket_types))
+    )
+    loaded = result.scalar_one()
+    return _event_detail(loaded)
 
 
 @router.post("", response_model=EventResponse)
 async def create_event(
     body: EventCreateRequest,
-    user=Depends(require_roles(UserRole.ADMIN)),
+    user=Depends(require_event_manager),
     db: AsyncSession = Depends(get_db),
 ):
     repo = SQLAlchemyEventRepository(db)
@@ -227,29 +451,38 @@ async def create_event(
     else:
         data.pop("theatrical_details", None)
     data["organizer_id"] = user.id
+    if is_platform_admin(user):
+        data["review_status"] = EventReviewStatus.APPROVED
+        if data.get("status") in (EventStatus.PUBLISHED, EventStatus.IN_PROGRESS):
+            data["cartelera_visible"] = True
+    else:
+        data["review_status"] = EventReviewStatus.PENDING
+        data["cartelera_visible"] = False
+        data = _apply_organizer_publish_rules(user, data)
     event = await repo.create(**data)
     result = await db.execute(select(EventModel).where(EventModel.id == event.id))
-    return _event_response(result.scalar_one())
+    return _event_response(result.scalar_one(), include_admin_fields=True)
 
 
 @router.patch("/{event_id}")
 async def update_event(
     event_id: UUID,
     body: EventCreateRequest,
-    user=Depends(require_roles(UserRole.ADMIN)),
+    user=Depends(require_event_manager),
     db: AsyncSession = Depends(get_db),
 ):
     from tava.application.use_cases.event_notifications import EventNotificationUseCase
 
-    before_result = await db.execute(select(EventModel).where(EventModel.id == event_id))
-    before_model = before_result.scalar_one_or_none()
-    if not before_model:
-        raise HTTPException(status_code=404, detail="Evento no encontrado")
+    before_model = await _require_manage_event(db, event_id, user)
 
     repo = SQLAlchemyEventRepository(db)
     data = body.model_dump(exclude_unset=True)
     if body.theatrical_details is not None:
         data["theatrical_details"] = body.theatrical_details.model_dump()
+    data = _apply_organizer_publish_rules(user, data, before_model)
+    if not is_platform_admin(user) and before_model.review_status == EventReviewStatus.REJECTED:
+        data["review_status"] = EventReviewStatus.PENDING
+        data["rejection_reason"] = None
     event = await repo.update(event_id, **data)
     if not event:
         raise HTTPException(status_code=404, detail="Evento no encontrado")
@@ -258,11 +491,24 @@ async def update_event(
 
     notify_uc = EventNotificationUseCase(db)
     notification = await notify_uc.on_event_updated(before_model, after_model)
+    review_notification = None
+    if (
+        not is_platform_admin(user)
+        and after_model.review_status == EventReviewStatus.PENDING
+        and before_model.review_status != EventReviewStatus.PENDING
+    ):
+        organizer_result = await db.execute(select(UserModel).where(UserModel.id == user.id))
+        review_notification = await notify_uc.notify_platform_admin_review_request(
+            after_model,
+            organizer=organizer_result.scalar_one_or_none(),
+        )
     await db.commit()
 
-    response = _event_response(after_model)
+    response = _event_response(after_model, include_admin_fields=True)
     payload = response.model_dump()
     payload["attendee_notification"] = notification
+    if review_notification is not None:
+        payload["review_notification"] = review_notification
     return payload
 
 
@@ -279,13 +525,10 @@ async def _sold_counts_by_type(db: AsyncSession, event_id: UUID) -> dict[UUID, i
 async def sync_event_ticket_types(
     event_id: UUID,
     body: TicketTypesSyncRequest,
-    _user=Depends(require_roles(UserRole.ADMIN)),
+    user=Depends(require_event_manager),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(select(EventModel).where(EventModel.id == event_id))
-    event = result.scalar_one_or_none()
-    if not event:
-        raise HTTPException(status_code=404, detail="Evento no encontrado")
+    event = await _require_manage_event(db, event_id, user)
 
     items = body.ticket_types
     total_qty = sum(i.quantity_available for i in items)
@@ -354,12 +597,10 @@ async def sync_event_ticket_types(
 async def add_event_media(
     event_id: UUID,
     body: EventMediaCreateRequest,
-    _user=Depends(require_roles(UserRole.ADMIN)),
+    user=Depends(require_event_manager),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(select(EventModel).where(EventModel.id == event_id))
-    if not result.scalar_one_or_none():
-        raise HTTPException(status_code=404, detail="Evento no encontrado")
+    await _require_manage_event(db, event_id, user)
     media = EventMediaModel(
         event_id=event_id,
         media_type=body.media_type,
@@ -384,7 +625,7 @@ async def get_event_seating(event_id: UUID, db: AsyncSession = Depends(get_db)):
 async def sync_event_seating(
     event_id: UUID,
     body: SeatingSyncRequest,
-    _user=Depends(require_roles(UserRole.ADMIN)),
+    user=Depends(require_event_manager),
     db: AsyncSession = Depends(get_db),
 ):
     uc = SeatingUseCase(db)
@@ -400,9 +641,10 @@ async def sync_event_seating(
 async def broadcast_event_email(
     event_id: UUID,
     body: BroadcastEmailRequest,
-    _user=Depends(require_roles(UserRole.ADMIN)),
+    user=Depends(require_event_manager),
     db: AsyncSession = Depends(get_db),
 ):
+    await _require_manage_event(db, event_id, user)
     from tava.application.use_cases.event_notifications import EventNotificationUseCase
 
     uc = EventNotificationUseCase(db)
@@ -419,15 +661,12 @@ async def broadcast_event_email(
 @router.delete("/{event_id}")
 async def delete_event(
     event_id: UUID,
-    _user=Depends(require_roles(UserRole.ADMIN)),
+    user=Depends(require_event_manager),
     db: AsyncSession = Depends(get_db),
 ):
     from tava.infrastructure.persistence.models import TicketModel
 
-    result = await db.execute(select(EventModel).where(EventModel.id == event_id))
-    event = result.scalar_one_or_none()
-    if not event:
-        raise HTTPException(status_code=404, detail="Evento no encontrado")
+    event = await _require_manage_event(db, event_id, user)
     sold = await db.execute(select(TicketModel.id).where(TicketModel.event_id == event_id).limit(1))
     if sold.scalar_one_or_none():
         raise HTTPException(

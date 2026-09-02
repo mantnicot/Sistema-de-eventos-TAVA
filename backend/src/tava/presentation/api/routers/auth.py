@@ -9,8 +9,11 @@ from tava.config import get_settings
 from tava.infrastructure.persistence.database import get_db
 from tava.infrastructure.services.captcha import verify_captcha
 from tava.domain.enums import UserRole
+from tava.infrastructure.persistence.models import EventModel, UserModel
+from tava.presentation.api.platform_auth import is_platform_admin
 from tava.infrastructure.services.email import email_status_summary, email_transport_ready
 from tava.presentation.api.dependencies import get_current_user, require_roles
+from tava.presentation.api.platform_auth import require_platform_admin
 from tava.presentation.api.http_errors import raise_system_error, raise_user_error
 from tava.infrastructure.security.login_crypto import decrypt_password, get_public_key_pem
 from tava.presentation.api.schemas import (
@@ -29,7 +32,7 @@ router = APIRouter(prefix="/auth", tags=["Autenticación"])
 
 
 @router.get("/email-status")
-async def email_status(_user=Depends(require_roles(UserRole.ADMIN))):
+async def email_status(_user=Depends(require_platform_admin)):
     """Diagnóstico admin: ¿está configurado el envío de correos en el servidor?"""
     status = email_status_summary()
     return {
@@ -64,6 +67,7 @@ def _user_response(user) -> UserResponse:
         role=user.role,
         phone=user.phone,
         email_verified=getattr(user, "email_verified", True),
+        is_platform_admin=bool(getattr(user, "is_platform_admin", False)),
     )
 
 

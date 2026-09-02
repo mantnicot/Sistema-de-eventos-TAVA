@@ -18,6 +18,7 @@ def _to_entity(m: UserModel) -> User:
         email_verified=m.email_verified,
         is_active=m.is_active,
         created_at=m.created_at,
+        is_platform_admin=bool(getattr(m, "is_platform_admin", False)),
         phone=m.phone,
         document_id=m.document_id,
     )

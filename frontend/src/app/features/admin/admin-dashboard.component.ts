@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { catchError, finalize, of, timeout } from 'rxjs';
 import { ApiService } from '../../core/services/api.service';
 import { ApiWarmupService } from '../../core/services/api-warmup.service';
+import { AuthService } from '../../core/services/auth.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { SiteAppearance, SiteSettingsService } from '../../core/services/site-settings.service';
 import {
@@ -80,8 +81,17 @@ interface AttendeeNotification {
   email_error?: string | null;
 }
 
+interface ReviewNotification {
+  notified?: boolean;
+  reason?: string;
+  emails_sent?: number;
+  recipients?: number;
+  email_error?: string | null;
+}
+
 interface EventUpdateResponse extends TavaEvent {
   attendee_notification?: AttendeeNotification;
+  review_notification?: ReviewNotification;
 }
 
 const ADMIN_REQUEST_TIMEOUT_MS = 12000;
@@ -96,11 +106,13 @@ const ADMIN_EVENTS_TIMEOUT_MS = 55000;
 })
 export class AdminDashboardComponent implements OnInit {
   private readonly api = inject(ApiService);
+  private readonly auth = inject(AuthService);
   private readonly warmup = inject(ApiWarmupService);
   private readonly notify = inject(NotificationService);
   private readonly site = inject(SiteSettingsService);
 
-  readonly tab = signal<'kpis' | 'events' | 'users' | 'appearance'>('kpis');
+  readonly isPlatformAdmin = computed(() => this.auth.isPlatformAdmin());
+  readonly tab = signal<'kpis' | 'events' | 'review' | 'users' | 'appearance'>('kpis');
   readonly imageEventSpec = IMAGE_EVENT_SPEC;
   readonly videoTrailerSpec = VIDEO_TRAILER_SPEC;
   readonly galleryImageSpec = GALLERY_IMAGE_SPEC;
@@ -114,6 +126,10 @@ export class AdminDashboardComponent implements OnInit {
   readonly adminApiError = signal<string | null>(null);
   readonly adminEventsLoading = signal(false);
   readonly adminEventsError = signal<string | null>(null);
+  readonly reviewQueue = signal<TavaEvent[]>([]);
+  readonly reviewLoading = signal(false);
+  rejectReasonText = '';
+  readonly rejectingId = signal<string | null>(null);
 
   selectedReportEventId = '';
   castMembers: CastMember[] = [{ name: '', photo_url: '', role: '' }];
@@ -183,6 +199,9 @@ export class AdminDashboardComponent implements OnInit {
   );
 
   ngOnInit(): void {
+    if (!this.isPlatformAdmin()) {
+      this.tab.set('events');
+    }
     void this.bootstrapAdmin();
   }
 
@@ -197,26 +216,114 @@ export class AdminDashboardComponent implements OnInit {
   }
 
   private loadAdminData(): void {
-    this.api
-      .get<Kpis>('/dashboard/kpis')
-      .pipe(
-        timeout(ADMIN_REQUEST_TIMEOUT_MS),
-        catchError(() => {
-          this.adminApiError.set(
-            'Algunos datos no cargaron a tiempo. Puedes entrar a Eventos o pulsar Reintentar.'
-          );
-          return of(null);
-        }),
-        finalize(() => {
-          this.adminLoading.set(false);
-          this.loadAppearanceForm();
-        })
-      )
-      .subscribe((kpis) => {
-        if (kpis) this.kpis.set(kpis);
-      });
+    if (this.isPlatformAdmin()) {
+      this.api
+        .get<Kpis>('/dashboard/kpis')
+        .pipe(
+          timeout(ADMIN_REQUEST_TIMEOUT_MS),
+          catchError(() => {
+            this.adminApiError.set(
+              'Algunos datos no cargaron a tiempo. Puedes entrar a Eventos o pulsar Reintentar.'
+            );
+            return of(null);
+          }),
+          finalize(() => {
+            this.adminLoading.set(false);
+            this.loadAppearanceForm();
+          })
+        )
+        .subscribe((kpis) => {
+          if (kpis) this.kpis.set(kpis);
+        });
+      this.loadReviewQueue();
+    } else {
+      this.adminLoading.set(false);
+    }
 
     this.loadAdminEvents();
+  }
+
+  loadReviewQueue(): void {
+    if (!this.isPlatformAdmin()) return;
+    this.reviewLoading.set(true);
+    this.api.get<TavaEvent[]>('/events/admin/review-queue').subscribe({
+      next: (items) => {
+        this.reviewQueue.set(items ?? []);
+        this.reviewLoading.set(false);
+      },
+      error: () => {
+        this.reviewQueue.set([]);
+        this.reviewLoading.set(false);
+      },
+    });
+  }
+
+  approveEvent(ev: TavaEvent): void {
+    this.api.patch<TavaEvent>(`/events/${ev.id}/review`, { action: 'approve', cartelera_visible: true }).subscribe({
+      next: () => {
+        this.notify.success('Revisión', `«${ev.name}» aprobado y visible en cartelera`);
+        this.loadReviewQueue();
+        this.loadAdminEvents();
+      },
+      error: (err) => this.notify.error('Revisión', err?.error?.detail ?? 'No se pudo aprobar'),
+    });
+  }
+
+  rejectEvent(ev: TavaEvent): void {
+    const reason = this.rejectReasonText.trim() || 'Revisión rechazada por el administrador';
+    this.api.patch<TavaEvent>(`/events/${ev.id}/review`, { action: 'reject', rejection_reason: reason }).subscribe({
+      next: () => {
+        this.notify.success('Revisión', `«${ev.name}» rechazado`);
+        this.rejectingId.set(null);
+        this.rejectReasonText = '';
+        this.loadReviewQueue();
+        this.loadAdminEvents();
+      },
+      error: (err) => this.notify.error('Revisión', err?.error?.detail ?? 'No se pudo rechazar'),
+    });
+  }
+
+  toggleCartelera(ev: TavaEvent, visible: boolean): void {
+    this.api.patch<TavaEvent>(`/events/${ev.id}/cartelera`, { visible }).subscribe({
+      next: () => {
+        this.notify.success('Cartelera', visible ? `«${ev.name}» visible en cartelera` : `«${ev.name}» oculto de cartelera`);
+        this.loadAdminEvents();
+      },
+      error: (err) => this.notify.error('Cartelera', err?.error?.detail ?? 'No se pudo actualizar'),
+    });
+  }
+
+  submitForReview(): void {
+    const id = this.editingId();
+    if (!id) {
+      this.notify.warning('Revisión', 'Guarda el evento antes de enviarlo a revisión');
+      return;
+    }
+    this.api.post<EventUpdateResponse>(`/events/${id}/submit-review`, {}).subscribe({
+      next: (res) => {
+        const mail = res.review_notification;
+        if (mail?.notified) {
+          this.notify.success('Revisión', 'Evento enviado. Te avisamos al administrador por correo.');
+        } else if (mail?.reason === 'correo_no_configurado') {
+          this.notify.warning(
+            'Revisión',
+            'Evento enviado, pero el correo no está configurado en el servidor.'
+          );
+        } else if (mail && !mail.notified) {
+          this.notify.warning('Revisión', 'Evento enviado, pero no se pudo notificar por correo.');
+        } else {
+          this.notify.success('Revisión', 'Evento enviado al administrador global');
+        }
+        this.loadAdminEvents();
+      },
+      error: (err) => this.notify.error('Revisión', err?.error?.detail ?? 'No se pudo enviar'),
+    });
+  }
+
+  reviewStatusLabel(status?: string): string {
+    if (status === 'aprobado') return 'Aprobado';
+    if (status === 'rechazado') return 'Rechazado';
+    return 'Pendiente';
   }
 
   private loadAppearanceForm(): void {
@@ -629,6 +736,20 @@ export class AdminDashboardComponent implements OnInit {
     );
   }
 
+  private showReviewNotification(n: ReviewNotification): void {
+    if (n.notified) {
+      this.notify.success('Revisión', 'Se notificó al administrador global por correo.');
+      return;
+    }
+    if (n.reason === 'correo_no_configurado') {
+      this.notify.warning('Revisión', 'El evento quedó pendiente, pero el correo no está configurado.');
+      return;
+    }
+    if (!n.notified) {
+      this.notify.warning('Revisión', 'El evento quedó pendiente, pero no se pudo enviar el aviso por correo.');
+    }
+  }
+
   private showAttendeeNotification(n: AttendeeNotification): void {
     if (n.notified) {
       this.notify.success(
@@ -716,7 +837,7 @@ export class AdminDashboardComponent implements OnInit {
     this.ticketTypesDraft = [];
     this.ticketTypesTouched = false;
     this.adminSeatPreviewSelected = [];
-    this.api.get<TavaEventDetail>(`/events/${ev.id}`).subscribe({
+    this.api.get<TavaEventDetail>(`/events/${ev.id}/manage`).subscribe({
       next: (detail) => {
         this.ticketTypesDraft = (detail.ticket_types ?? []).map((t) => ({
           id: t.id,
@@ -769,7 +890,7 @@ export class AdminDashboardComponent implements OnInit {
 
   duplicateEvent(ev: TavaEvent): void {
     this.notify.loadingTheatrical('Duplicando evento', 'admin');
-    this.api.get<TavaEventDetail>(`/events/${ev.id}`).subscribe({
+    this.api.get<TavaEventDetail>(`/events/${ev.id}/manage`).subscribe({
       next: (detail) => {
         this.notify.hide();
         this.editingId.set(null);
@@ -865,11 +986,17 @@ export class AdminDashboardComponent implements OnInit {
         const attendeeNotification = id
           ? (saved as EventUpdateResponse).attendee_notification
           : undefined;
+        const reviewNotification = id
+          ? (saved as EventUpdateResponse).review_notification
+          : undefined;
         const finish = () => {
           this.notify.hide();
           this.notify.success('Eventos', id ? 'Evento actualizado' : 'Evento creado');
           if (attendeeNotification) {
             this.showAttendeeNotification(attendeeNotification);
+          }
+          if (reviewNotification) {
+            this.showReviewNotification(reviewNotification);
           }
           this.resetEventForm();
           this.loadAdminEvents();

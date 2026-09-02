@@ -675,3 +675,88 @@ async def send_event_broadcast_email(
     """
     text = f"Hola {full_name},\n\n{message}\n\n— TAVA Teatro ({event_name})\n"
     return await _deliver_email(to_email, full_subject, html, text)
+
+
+def _event_review_request_email_html(
+    admin_name: str,
+    event_name: str,
+    *,
+    organizer_name: str,
+    organizer_email: str,
+    event_date: str,
+    event_time: str,
+    city: str,
+    category: str,
+    admin_url: str,
+) -> str:
+    when = f"{event_date} · {event_time}" if event_date else "Por confirmar"
+    return f"""
+<!DOCTYPE html>
+<html lang="es">
+<body style="margin:0;padding:0;background:#1a1410;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:linear-gradient(180deg,#1a1410 0%,#2d2218 50%,#1a1410 100%);padding:32px 16px;">
+    <tr><td align="center">
+      <table role="presentation" width="560" cellspacing="0" cellpadding="0" style="max-width:560px;background:#fffefb;border-radius:16px;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,0.45);">
+        <tr>
+          <td style="background:linear-gradient(135deg,#6b1a2a,#3d0f18);padding:24px;text-align:center;">
+            <h1 style="margin:0;font-family:Georgia,serif;font-size:24px;color:#c9a227;">Evento pendiente de revisión</h1>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:28px 32px;font-family:Georgia,serif;color:#3d2a14;line-height:1.6;">
+            <p>Hola <strong>{admin_name}</strong>,</p>
+            <p>Un organizador envió un evento para tu aprobación en TAVA:</p>
+            <div style="background:#f8f0e4;border-left:4px solid #c9a227;padding:16px 20px;margin:16px 0;">
+              <p style="margin:0 0 8px;"><strong>{event_name}</strong></p>
+              <p style="margin:0 0 4px;">Organizador: {organizer_name} ({organizer_email})</p>
+              <p style="margin:0 0 4px;">Función: {when}</p>
+              <p style="margin:0 0 4px;">Ciudad: {city}</p>
+              <p style="margin:0;">Categoría: {category}</p>
+            </div>
+            <p>Entra al panel administrativo, pestaña <strong>Revisión</strong>, para aprobar o rechazar la publicación en cartelera.</p>
+            <p style="text-align:center;margin:24px 0;">
+              <a href="{admin_url}" style="background:#c9a227;color:#3d2a14;padding:12px 24px;border-radius:999px;text-decoration:none;display:inline-block;font-weight:700;">Revisar evento</a>
+            </p>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>"""
+
+
+async def send_event_review_request_email(
+    to_email: str,
+    admin_name: str,
+    event_name: str,
+    *,
+    organizer_name: str,
+    organizer_email: str,
+    event_date: str = "",
+    event_time: str = "",
+    city: str = "",
+    category: str = "",
+    admin_url: str = "",
+) -> bool:
+    subject = f"📋 Revisión pendiente — «{event_name}»"
+    html = _event_review_request_email_html(
+        admin_name,
+        event_name,
+        organizer_name=organizer_name,
+        organizer_email=organizer_email,
+        event_date=event_date,
+        event_time=event_time,
+        city=city,
+        category=category,
+        admin_url=admin_url or f"{settings.frontend_url.rstrip('/')}/admin",
+    )
+    text = (
+        f"Hola {admin_name},\n\n"
+        f"El organizador {organizer_name} ({organizer_email}) envió el evento «{event_name}» "
+        f"para revisión.\n"
+        f"Función: {event_date} {event_time}\n"
+        f"Ciudad: {city}\n\n"
+        f"Revisa en: {admin_url or settings.frontend_url.rstrip('/') + '/admin'}\n"
+    )
+    return await _deliver_email(to_email, subject, html, text)
