@@ -11,7 +11,8 @@ from tava.infrastructure.persistence.database import get_db
 from tava.infrastructure.persistence.event_staff import can_access_event
 from tava.infrastructure.persistence.models import TicketTypeModel
 from tava.presentation.api.dependencies import get_current_user, require_roles
-from tava.presentation.api.platform_auth import is_platform_admin, require_platform_admin
+from tava.presentation.api.auth_helpers import is_platform_admin
+from tava.presentation.api.platform_auth import require_platform_admin
 from tava.presentation.api.schemas import (
     AdminIssueTicketsRequest,
     ClaimTicketsRequest,

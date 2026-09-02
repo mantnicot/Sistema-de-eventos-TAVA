@@ -9,8 +9,6 @@ from tava.config import get_settings
 from tava.infrastructure.persistence.database import get_db
 from tava.infrastructure.services.captcha import verify_captcha
 from tava.domain.enums import UserRole
-from tava.infrastructure.persistence.models import EventModel, UserModel
-from tava.presentation.api.platform_auth import is_platform_admin
 from tava.infrastructure.services.email import email_status_summary, email_transport_ready
 from tava.presentation.api.dependencies import get_current_user, require_roles
 from tava.presentation.api.platform_auth import require_platform_admin

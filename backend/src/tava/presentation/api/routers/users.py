@@ -20,7 +20,7 @@ from tava.infrastructure.persistence.models import (
 )
 from tava.infrastructure.persistence.repositories.sqlalchemy_user_repository import SQLAlchemyUserRepository
 from tava.presentation.api.http_errors import raise_user_error
-from tava.presentation.api.platform_auth import is_platform_admin, require_platform_admin
+from tava.presentation.api.platform_auth import require_platform_admin
 from tava.presentation.api.schemas import UserAdminResponse, UserPermissionsUpdateRequest
 
 router = APIRouter(prefix="/users", tags=["Usuarios (Admin)"])

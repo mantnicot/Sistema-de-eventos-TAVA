@@ -12,9 +12,8 @@ from tava.infrastructure.persistence.event_staff import get_event_staff, list_as
 from tava.infrastructure.persistence.models import EventMediaModel, EventModel, TicketModel, TicketTypeModel, UserModel
 from tava.infrastructure.persistence.repositories.sqlalchemy_event_repository import SQLAlchemyEventRepository
 from tava.presentation.api.dependencies import get_current_user, require_roles
+from tava.presentation.api.auth_helpers import can_manage_event, is_platform_admin
 from tava.presentation.api.platform_auth import (
-    can_manage_event,
-    is_platform_admin,
     require_event_manager,
     require_platform_admin,
 )

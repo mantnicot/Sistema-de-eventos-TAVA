@@ -10,7 +10,7 @@ from tava.infrastructure.persistence.database import get_db
 from tava.infrastructure.persistence.repositories.sqlalchemy_user_repository import SQLAlchemyUserRepository
 from tava.infrastructure.security.jwt import decode_access_token
 from tava.presentation.api.http_errors import raise_system_error
-from tava.presentation.api.platform_auth import is_platform_admin
+from tava.presentation.api.auth_helpers import is_platform_admin
 
 security = HTTPBearer(auto_error=False)
 

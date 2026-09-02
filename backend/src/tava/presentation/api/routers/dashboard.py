@@ -9,7 +9,7 @@ from tava.domain.enums import EventStatus, PaymentStatus, UserRole
 from tava.infrastructure.persistence.database import get_db
 from tava.infrastructure.persistence.models import EventModel, OrderModel, TicketModel
 from tava.infrastructure.services.dashboard_report import build_kpis_pdf, build_kpis_xlsx
-from tava.presentation.api.platform_auth import is_platform_admin, require_platform_admin
+from tava.presentation.api.platform_auth import require_platform_admin
 
 router = APIRouter(prefix="/dashboard", tags=["Dashboard Administrativo"])
 

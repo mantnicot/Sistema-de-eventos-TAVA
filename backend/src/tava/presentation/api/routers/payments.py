@@ -11,7 +11,8 @@ from tava.domain.enums import UserRole
 from tava.infrastructure.persistence.database import get_db
 from tava.infrastructure.services.wompi import fetch_transaction, verify_event_checksum, wompi_configured
 from tava.presentation.api.dependencies import get_current_user, require_roles
-from tava.presentation.api.platform_auth import is_platform_admin, require_platform_admin
+from tava.presentation.api.auth_helpers import is_platform_admin
+from tava.presentation.api.platform_auth import require_platform_admin
 
 logger = logging.getLogger("tava.payments")
 router = APIRouter(prefix="/payments", tags=["Pagos Wompi"])

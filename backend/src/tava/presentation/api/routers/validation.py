@@ -10,7 +10,7 @@ from tava.infrastructure.persistence.database import get_db
 from tava.infrastructure.persistence.event_staff import can_access_event
 from tava.infrastructure.persistence.models import EventModel, TicketModel
 from tava.presentation.api.dependencies import require_roles
-from tava.presentation.api.platform_auth import can_manage_event, is_platform_admin
+from tava.presentation.api.auth_helpers import can_manage_event, is_platform_admin
 from tava.presentation.api.schemas import (
     AttendeesListResponse,
     AttendeeItem,
