@@ -7,18 +7,23 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 logger = logging.getLogger("tava.schema")
 
 SCHEMA_MARKER_KEY = "schema_upgrade_marker"
-SCHEMA_MARKER_VALUE = "2026-09-platform-admin-v2"
+SCHEMA_MARKER_VALUE = "2026-09-platform-admin-v3"
 
 
 async def _exec(conn: AsyncConnection, sql: str) -> None:
+    """Ejecuta un statement en savepoint para no abortar toda la transacción."""
     try:
-        await conn.execute(text(sql.strip()))
+        async with conn.begin_nested():
+            await conn.execute(text(sql.strip()))
     except Exception as exc:
-        logger.warning("Schema statement skipped/failed: %s | %s", sql[:80].replace("\n", " "), exc)
+        logger.warning(
+            "Schema statement skipped/failed: %s | %s",
+            sql[:100].replace("\n", " ").strip(),
+            exc,
+        )
 
 
 async def apply_schema_upgrades(conn: AsyncConnection) -> None:
-    # Asegurar tabla de settings antes de leer el marker
     await _exec(
         conn,
         """
@@ -108,6 +113,7 @@ async def apply_schema_upgrades(conn: AsyncConnection) -> None:
         "CREATE INDEX IF NOT EXISTS ix_orders_buyer_id ON orders(buyer_id)",
         "CREATE INDEX IF NOT EXISTS ix_event_staff_user_role ON event_staff_assignments(user_id, staff_role)",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_platform_admin BOOLEAN NOT NULL DEFAULT FALSE",
+        # Enum PostgreSQL: preferir DO block; si falla, no tumba el resto
         """
         DO $$ BEGIN
           ALTER TYPE userrole ADD VALUE IF NOT EXISTS 'organizer';
@@ -122,10 +128,12 @@ async def apply_schema_upgrades(conn: AsyncConnection) -> None:
         """
         UPDATE users
         SET role = 'organizer'
-        WHERE role::text = 'admin' AND is_platform_admin = FALSE
+        WHERE role::text = 'admin' AND COALESCE(is_platform_admin, FALSE) = FALSE
         """,
-        "ALTER TABLE events ADD COLUMN IF NOT EXISTS review_status VARCHAR(20) NOT NULL DEFAULT 'pendiente'",
-        "ALTER TABLE events ADD COLUMN IF NOT EXISTS cartelera_visible BOOLEAN NOT NULL DEFAULT FALSE",
+        "ALTER TABLE events ADD COLUMN IF NOT EXISTS review_status VARCHAR(20) DEFAULT 'pendiente'",
+        "ALTER TABLE events ADD COLUMN IF NOT EXISTS cartelera_visible BOOLEAN DEFAULT FALSE",
+        "UPDATE events SET review_status = 'pendiente' WHERE review_status IS NULL",
+        "UPDATE events SET cartelera_visible = FALSE WHERE cartelera_visible IS NULL",
         "ALTER TABLE events ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMPTZ",
         "ALTER TABLE events ADD COLUMN IF NOT EXISTS reviewed_by UUID REFERENCES users(id)",
         "ALTER TABLE events ADD COLUMN IF NOT EXISTS rejection_reason TEXT",
@@ -133,22 +141,23 @@ async def apply_schema_upgrades(conn: AsyncConnection) -> None:
         UPDATE events
         SET review_status = 'aprobado', cartelera_visible = TRUE
         WHERE status::text IN ('publicado', 'en_curso', 'agotado', 'finalizado', 'programado')
-          AND (review_status IS NULL OR review_status = 'pendiente')
+          AND COALESCE(review_status, 'pendiente') = 'pendiente'
         """,
         "CREATE INDEX IF NOT EXISTS ix_events_cartelera ON events(cartelera_visible, review_status, event_date)",
     ]
     for sql in statements:
         await _exec(conn, sql)
 
-    await conn.execute(
-        text(
-            """
-            INSERT INTO site_settings (key, value, updated_at)
-            VALUES (:key, :value, NOW())
-            ON CONFLICT (key)
-            DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()
-            """
-        ),
-        {"key": SCHEMA_MARKER_KEY, "value": SCHEMA_MARKER_VALUE},
-    )
+    async with conn.begin_nested():
+        await conn.execute(
+            text(
+                """
+                INSERT INTO site_settings (key, value, updated_at)
+                VALUES (:key, :value, NOW())
+                ON CONFLICT (key)
+                DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()
+                """
+            ),
+            {"key": SCHEMA_MARKER_KEY, "value": SCHEMA_MARKER_VALUE},
+        )
     logger.info("Esquema actualizado (%s)", SCHEMA_MARKER_VALUE)
