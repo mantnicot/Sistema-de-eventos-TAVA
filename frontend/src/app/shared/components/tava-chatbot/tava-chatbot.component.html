@@ -22,14 +22,26 @@
       <div class="tavo-chat__messages">
         @for (m of messages(); track trackMsg($index, m)) {
           <article class="tavo-chat__bubble" [class.tavo-chat__bubble--user]="m.from === 'user'">
-            <p>{{ m.text }}</p>
+            <p>
+              {{ m.text }}@if (showCaret(m)) {
+                <span class="tavo-chat__caret" aria-hidden="true"></span>
+              }
+            </p>
             @if (m.buttons?.length) {
               <div class="tavo-chat__actions">
                 @for (b of m.buttons; track b.label) {
-                  <button type="button" class="tavo-chat__chip" (click)="onButton(b)">{{ b.label }}</button>
+                  <button type="button" class="tavo-chat__chip" (click)="onButton(b)" [disabled]="busy()">
+                    {{ b.label }}
+                  </button>
                 }
               </div>
             }
+          </article>
+        }
+        @if (typing()) {
+          <article class="tavo-chat__bubble tavo-chat__bubble--typing" aria-live="polite">
+            <span class="tavo-chat__dots"><i></i><i></i><i></i></span>
+            <span class="tavo-chat__typing-label">Tavo está escribiendo…</span>
           </article>
         }
       </div>
@@ -47,8 +59,9 @@
             placeholder="Escribe tu duda…"
             maxlength="400"
             autocomplete="off"
+            [disabled]="busy()"
           />
-          <button type="submit" class="tavo-chat__send" [disabled]="!draft().trim()">Enviar</button>
+          <button type="submit" class="tavo-chat__send" [disabled]="busy() || !draft().trim()">Enviar</button>
         </form>
       </footer>
     </section>
