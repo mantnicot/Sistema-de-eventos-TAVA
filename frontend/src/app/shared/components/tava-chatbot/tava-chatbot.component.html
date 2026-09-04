@@ -1,0 +1,66 @@
+<div class="tavo-chat" [class.tavo-chat--open]="open()">
+  @if (showHint() && !open()) {
+    <button type="button" class="tavo-chat__hint" (click)="toggle()" aria-label="Abrir Tavo">
+      ¿Dudas?
+    </button>
+  }
+
+  @if (open()) {
+    <section class="tavo-chat__panel" role="dialog" aria-label="Chat con Tavo">
+      <header class="tavo-chat__head">
+        <img [src]="avatarUrl" alt="" width="40" height="40" class="tavo-chat__avatar" />
+        <div>
+          <strong>Tavo</strong>
+          <span>Asistente de TAVA</span>
+        </div>
+        <button type="button" class="tavo-chat__wa-head" (click)="openWhatsappAlways()" title="WhatsApp">
+          WA
+        </button>
+        <button type="button" class="tavo-chat__close" (click)="close()" aria-label="Cerrar chat">×</button>
+      </header>
+
+      <div class="tavo-chat__messages">
+        @for (m of messages(); track trackMsg($index, m)) {
+          <article class="tavo-chat__bubble" [class.tavo-chat__bubble--user]="m.from === 'user'">
+            <p>{{ m.text }}</p>
+            @if (m.buttons?.length) {
+              <div class="tavo-chat__actions">
+                @for (b of m.buttons; track b.label) {
+                  <button type="button" class="tavo-chat__chip" (click)="onButton(b)">{{ b.label }}</button>
+                }
+              </div>
+            }
+          </article>
+        }
+      </div>
+
+      <footer class="tavo-chat__foot">
+        <button type="button" class="tavo-chat__wa-bar" (click)="openWhatsappAlways()">
+          💬 WhatsApp en cualquier momento
+        </button>
+        <form class="tavo-chat__compose" (submit)="$event.preventDefault(); sendText()">
+          <input
+            type="text"
+            [ngModel]="draft()"
+            (ngModelChange)="draft.set($event)"
+            name="tavoDraft"
+            placeholder="Escribe tu duda…"
+            maxlength="400"
+            autocomplete="off"
+          />
+          <button type="submit" class="tavo-chat__send" [disabled]="!draft().trim()">Enviar</button>
+        </form>
+      </footer>
+    </section>
+  }
+
+  <button
+    type="button"
+    class="tavo-chat__toggle"
+    (click)="toggle()"
+    [attr.aria-expanded]="open()"
+    aria-label="Abrir asistente Tavo"
+  >
+    <img [src]="avatarUrl" alt="Tavo" width="48" height="48" />
+  </button>
+</div>

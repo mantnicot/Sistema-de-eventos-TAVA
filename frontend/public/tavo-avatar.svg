@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none" aria-hidden="true">
+  <!-- Marco diamante estilo TAVA -->
+  <path d="M100 8 L168 100 L100 192 L32 100 Z" fill="#1a1410"/>
+  <path d="M100 22 L152 100 L100 178 L48 100 Z" fill="#fffefb"/>
+  <!-- Silueta teatral / asistente -->
+  <circle cx="100" cy="78" r="16" fill="#1a1410"/>
+  <path d="M100 96 C86 96 78 112 78 132 L78 158 L90 158 L90 132 C90 118 94 110 100 110 C106 110 110 118 110 132 L110 158 L122 158 L122 132 C122 112 114 96 100 96 Z" fill="#1a1410"/>
+  <path d="M78 112 L58 98 L64 92 L86 108 Z" fill="#1a1410"/>
+  <path d="M122 112 L142 98 L136 92 L114 108 Z" fill="#1a1410"/>
+  <!-- Acento oro TAVA -->
+  <path d="M100 8 L108 20 L100 18 L92 20 Z" fill="#c9a227"/>
+</svg>

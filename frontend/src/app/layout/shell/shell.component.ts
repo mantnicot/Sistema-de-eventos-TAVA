@@ -6,6 +6,7 @@ import { ApiService } from '../../core/services/api.service';
 import { SiteSettingsService } from '../../core/services/site-settings.service';
 import { TavaContactFabComponent } from '../../shared/components/tava-contact-fab/tava-contact-fab.component';
 import { TavaPopupComponent } from '../../shared/components/tava-popup/tava-popup.component';
+import { TavaChatbotComponent } from '../../shared/components/tava-chatbot/tava-chatbot.component';
 import { SessionIdleService } from '../../core/services/session-idle.service';
 import { ApiWarmupService } from '../../core/services/api-warmup.service';
 import { ApiKeepAliveService } from '../../core/services/api-keep-alive.service';
@@ -20,6 +21,7 @@ import { EventsPrefetchService } from '../../core/services/events-prefetch.servi
     RouterLinkActive,
     TavaPopupComponent,
     TavaContactFabComponent,
+    TavaChatbotComponent,
   ],
   templateUrl: './shell.component.html',
   styleUrl: './shell.component.scss',
