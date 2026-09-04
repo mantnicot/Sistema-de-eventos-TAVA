@@ -36,8 +36,8 @@ export class TavaChatbotComponent implements OnDestroy {
   private timers: ReturnType<typeof setTimeout>[] = [];
   private replyToken = 0;
 
-  /** Logo oficial TAVA (siempre en /public). */
-  readonly avatarUrl = '/logo-tava.png';
+  /** Logo Tavo (máscara + headset). */
+  readonly avatarUrl = '/tavo-avatar.png';
 
   ngOnDestroy(): void {
     this.clearTimers();

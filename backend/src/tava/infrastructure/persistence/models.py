@@ -79,7 +79,13 @@ class EventModel(Base):
     category: Mapped[str] = mapped_column(String(100))
     status: Mapped[EventStatus] = mapped_column(Enum(EventStatus), default=EventStatus.DRAFT)
     review_status: Mapped[EventReviewStatus] = mapped_column(
-        Enum(EventReviewStatus), default=EventReviewStatus.PENDING
+        Enum(
+            EventReviewStatus,
+            name="event_review_status",
+            native_enum=False,
+            values_callable=lambda enum_cls: [item.value for item in enum_cls],
+        ),
+        default=EventReviewStatus.PENDING,
     )
     cartelera_visible: Mapped[bool] = mapped_column(Boolean, default=False)
     reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

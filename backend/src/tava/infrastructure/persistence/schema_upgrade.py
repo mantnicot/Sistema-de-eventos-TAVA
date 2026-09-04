@@ -7,10 +7,29 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 logger = logging.getLogger("tava.schema")
 
 SCHEMA_MARKER_KEY = "schema_upgrade_marker"
-SCHEMA_MARKER_VALUE = "2026-09-platform-admin-v1"
+SCHEMA_MARKER_VALUE = "2026-09-platform-admin-v2"
+
+
+async def _exec(conn: AsyncConnection, sql: str) -> None:
+    try:
+        await conn.execute(text(sql.strip()))
+    except Exception as exc:
+        logger.warning("Schema statement skipped/failed: %s | %s", sql[:80].replace("\n", " "), exc)
 
 
 async def apply_schema_upgrades(conn: AsyncConnection) -> None:
+    # Asegurar tabla de settings antes de leer el marker
+    await _exec(
+        conn,
+        """
+        CREATE TABLE IF NOT EXISTS site_settings (
+            key VARCHAR(80) PRIMARY KEY,
+            value TEXT NOT NULL,
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+        """,
+    )
+
     current = (
         await conn.execute(
             text("SELECT value FROM site_settings WHERE key = :key"),
@@ -47,13 +66,6 @@ async def apply_schema_upgrades(conn: AsyncConnection) -> None:
             expires_at TIMESTAMPTZ NOT NULL,
             used_at TIMESTAMPTZ,
             created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-        )
-        """,
-        """
-        CREATE TABLE IF NOT EXISTS site_settings (
-            key VARCHAR(80) PRIMARY KEY,
-            value TEXT NOT NULL,
-            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
         )
         """,
         """
@@ -95,8 +107,13 @@ async def apply_schema_upgrades(conn: AsyncConnection) -> None:
         "CREATE INDEX IF NOT EXISTS ix_tickets_event_used ON tickets(event_id, is_used)",
         "CREATE INDEX IF NOT EXISTS ix_orders_buyer_id ON orders(buyer_id)",
         "CREATE INDEX IF NOT EXISTS ix_event_staff_user_role ON event_staff_assignments(user_id, staff_role)",
-        "ALTER TYPE userrole ADD VALUE IF NOT EXISTS 'organizer'",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_platform_admin BOOLEAN NOT NULL DEFAULT FALSE",
+        """
+        DO $$ BEGIN
+          ALTER TYPE userrole ADD VALUE IF NOT EXISTS 'organizer';
+        EXCEPTION WHEN others THEN NULL;
+        END $$
+        """,
         """
         UPDATE users
         SET is_platform_admin = TRUE
@@ -105,7 +122,7 @@ async def apply_schema_upgrades(conn: AsyncConnection) -> None:
         """
         UPDATE users
         SET role = 'organizer'
-        WHERE role = 'admin' AND is_platform_admin = FALSE
+        WHERE role::text = 'admin' AND is_platform_admin = FALSE
         """,
         "ALTER TABLE events ADD COLUMN IF NOT EXISTS review_status VARCHAR(20) NOT NULL DEFAULT 'pendiente'",
         "ALTER TABLE events ADD COLUMN IF NOT EXISTS cartelera_visible BOOLEAN NOT NULL DEFAULT FALSE",
@@ -115,12 +132,14 @@ async def apply_schema_upgrades(conn: AsyncConnection) -> None:
         """
         UPDATE events
         SET review_status = 'aprobado', cartelera_visible = TRUE
-        WHERE status IN ('publicado', 'en_curso', 'agotado', 'finalizado', 'programado')
+        WHERE status::text IN ('publicado', 'en_curso', 'agotado', 'finalizado', 'programado')
+          AND (review_status IS NULL OR review_status = 'pendiente')
         """,
         "CREATE INDEX IF NOT EXISTS ix_events_cartelera ON events(cartelera_visible, review_status, event_date)",
     ]
     for sql in statements:
-        await conn.execute(text(sql.strip()))
+        await _exec(conn, sql)
+
     await conn.execute(
         text(
             """
@@ -132,4 +151,4 @@ async def apply_schema_upgrades(conn: AsyncConnection) -> None:
         ),
         {"key": SCHEMA_MARKER_KEY, "value": SCHEMA_MARKER_VALUE},
     )
-    logger.info("Esquema actualizado (columnas/tablas nuevas)")
+    logger.info("Esquema actualizado (%s)", SCHEMA_MARKER_VALUE)
