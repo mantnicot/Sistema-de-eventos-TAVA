@@ -42,6 +42,15 @@ export interface TavaEvent {
   organizer_id?: string;
   organizer_name?: string;
   rejection_reason?: string;
+  commission_rate?: number | null;
+  contract_version?: string | null;
+  contract_accepted_at?: string | null;
+  entry_unlocked?: boolean | null;
+  pre_settlement_fee?: number | null;
+  pre_settlement_confirmed_at?: string | null;
+  pre_settlement_notified_at?: string | null;
+  post_settlement_fee?: number | null;
+  post_settlement_notified_at?: string | null;
 }
 
 export interface TavaEventDetail extends TavaEvent {

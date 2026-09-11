@@ -60,6 +60,7 @@ class PaymentProvider(str, enum.Enum):
     PAYU = "payu"
     STRIPE = "stripe"
     MANUAL = "manual"
+    WHATSAPP = "whatsapp"
 
 
 class ValidationResult(str, enum.Enum):

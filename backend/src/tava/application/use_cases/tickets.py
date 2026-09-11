@@ -2,6 +2,7 @@ import asyncio
 from decimal import Decimal
 import secrets
 import string
+from urllib.parse import quote
 from uuid import UUID, uuid4
 
 from sqlalchemy import select
@@ -26,7 +27,7 @@ from tava.infrastructure.services.wompi import (
 
 settings = get_settings()
 CLAIM_CODE_ALPHABET = string.ascii_uppercase + string.digits
-PLATFORM_FEE_RATE = Decimal("0.06")
+DEFAULT_PLATFORM_FEE_RATE = Decimal("0.10")
 
 
 def _normalize_claim_code(code: str) -> str:
@@ -38,9 +39,53 @@ def _sale_channel(order: OrderModel) -> str:
         return "taquilla"
     if order.payment_provider == PaymentProvider.WOMPI:
         return "online"
+    if order.payment_provider == PaymentProvider.WHATSAPP:
+        return "whatsapp"
     if order.payment_provider == PaymentProvider.MANUAL:
         return "manual"
     return "otro"
+
+
+def _event_sale_mode(event: EventModel) -> str:
+    details = event.theatrical_details if isinstance(event.theatrical_details, dict) else {}
+    mode = str(details.get("sale_mode") or "system").lower()
+    return mode if mode in ("system", "whatsapp") else "system"
+
+
+def _build_whatsapp_order_message(
+    *,
+    event: EventModel,
+    ticket_type: TicketTypeModel,
+    quantity: int,
+    total: Decimal,
+    buyer_name: str,
+    buyer_email: str,
+    buyer_phone: str | None,
+    reference: str,
+) -> str:
+    details = event.theatrical_details if isinstance(event.theatrical_details, dict) else {}
+    custom = str(details.get("whatsapp_message") or "").strip()
+    phone_line = buyer_phone.strip() if buyer_phone else "No indicado"
+    base = (
+        f"Hola, vengo desde la página de TAVA Teatro.\n\n"
+        f"Quiero boletas para: {event.name}\n"
+        f"Fecha: {event.event_date.isoformat()} · Hora: {event.event_time.isoformat(timespec='minutes')}\n"
+        f"Ciudad / lugar: {event.city} · {event.address}\n"
+        f"Tipo de boleta: {ticket_type.name} · Cantidad: {quantity}\n"
+        f"Valor unitario: ${float(ticket_type.price):,.0f} · Total: ${float(total):,.0f}\n"
+        f"Nombre: {buyer_name}\n"
+        f"Correo: {buyer_email}\n"
+        f"Teléfono: {phone_line}\n\n"
+        f"Entiendo que:\n"
+        f"1) Coordinaré/realizaré el pago por este medio según indiquen.\n"
+        f"2) Cuando el administrador del evento valide el pago en el sistema TAVA, "
+        f"se generará el correo y el código para reclamar o descargar la boleta (PDF/QR). "
+        f"Mientras el pago no esté validado en el sistema, no se emite la boleta.\n\n"
+        f"Referencia de solicitud: {reference}"
+    ).replace(",", ".")
+    if custom:
+        return f"{custom.strip()}\n\n———\n{base}"
+    return base
 
 
 def _buyer_contact(order: OrderModel, buyer: UserModel | None) -> tuple[str | None, str | None]:
@@ -243,7 +288,11 @@ class TicketUseCase:
             tt.quantity_available += int(quantity)
 
     async def fulfill_paid_order(
-        self, order: OrderModel, *, wompi_transaction_id: str | None = None
+        self,
+        order: OrderModel,
+        *,
+        wompi_transaction_id: str | None = None,
+        payment_provider: PaymentProvider | None = None,
     ) -> tuple[list[TicketModel], EventModel, TicketTypeModel]:
         if order.payment_status == PaymentStatus.PAID:
             result = await self._session.execute(
@@ -273,12 +322,18 @@ class TicketUseCase:
         ticket_type = await self._load_ticket_type(ticket_type_id, order.event_id)
 
         order.payment_status = PaymentStatus.PAID
-        order.payment_provider = PaymentProvider.WOMPI
+        order.payment_provider = payment_provider or order.payment_provider or PaymentProvider.WOMPI
         if not order.claim_code:
             order.claim_code = await self._assign_unique_claim_code()
         if wompi_transaction_id:
             order.wompi_transaction_id = wompi_transaction_id
-        order.pending_payload = None
+        # Conservar datos de contacto externo; quitar payload de emisión
+        kept = {
+            k: payload.get(k)
+            for k in ("external_buyer_name", "external_buyer_email", "buyer_phone")
+            if payload.get(k)
+        }
+        order.pending_payload = kept or None
 
         tickets = await self._issue_tickets_for_order(
             order=order,
@@ -293,6 +348,138 @@ class TicketUseCase:
             )
         await self._session.flush()
         return tickets, event, ticket_type
+
+    async def create_whatsapp_pending_order(
+        self,
+        *,
+        user_id: UUID,
+        user_name: str,
+        user_email: str,
+        user_phone: str | None,
+        event_id: UUID,
+        ticket_type_id: UUID,
+        quantity: int,
+        holder_names: list[str] | None,
+        seat_ids: list[UUID] | None = None,
+    ) -> dict:
+        event = await self._load_event(event_id)
+        self._assert_tickets_on_sale(event)
+        details = event.theatrical_details if isinstance(event.theatrical_details, dict) else {}
+        wa_number = str(details.get("whatsapp_number") or "").strip()
+        if not wa_number:
+            raise ValueError("Este evento no tiene número de WhatsApp configurado para ventas.")
+
+        payment_reference = f"WA-{uuid4().hex[:10].upper()}"
+        order, _, event, tt = await self.create_order(
+            event_id=event_id,
+            ticket_type_id=ticket_type_id,
+            quantity=quantity,
+            buyer_id=user_id,
+            seller_id=None,
+            holder_names=holder_names,
+            buyer_display_name=user_name,
+            mark_paid=False,
+            issue_tickets=False,
+            payment_provider=PaymentProvider.WHATSAPP,
+            payment_reference=payment_reference,
+            seat_ids=seat_ids,
+        )
+        payload = dict(order.pending_payload or {})
+        payload["buyer_phone"] = user_phone
+        payload["external_buyer_name"] = user_name
+        payload["external_buyer_email"] = user_email
+        order.pending_payload = payload
+        await self._session.flush()
+
+        message = _build_whatsapp_order_message(
+            event=event,
+            ticket_type=tt,
+            quantity=quantity,
+            total=order.total_amount,
+            buyer_name=user_name,
+            buyer_email=user_email,
+            buyer_phone=user_phone,
+            reference=payment_reference,
+        )
+        phone_digits = "".join(ch for ch in wa_number if ch.isdigit())
+        wa_url = f"https://wa.me/{phone_digits}?text={quote(message)}"
+        return {
+            "order_id": str(order.id),
+            "payment_required": True,
+            "payment_channel": "whatsapp",
+            "payment_status": order.payment_status.value,
+            "payment_reference": payment_reference,
+            "whatsapp_url": wa_url,
+            "whatsapp_message": message,
+            "total": float(order.total_amount),
+            "event_name": event.name,
+            "ticket_type": tt.name,
+            "quantity": quantity,
+            "message": (
+                "Solicitud creada. Completa el pago por WhatsApp. "
+                "Cuando el administrador del evento valide el dinero en TAVA, "
+                "recibirás el correo y el código de la boleta."
+            ),
+        }
+
+    async def confirm_whatsapp_payment(self, order_id: UUID, *, manager_id: UUID) -> dict:
+        result = await self._session.execute(
+            select(OrderModel).where(OrderModel.id == order_id).options(selectinload(OrderModel.tickets))
+        )
+        order = result.scalar_one_or_none()
+        if not order:
+            raise ValueError("Orden no encontrada")
+        if order.payment_status == PaymentStatus.PAID and order.tickets:
+            return self._order_response(
+                order,
+                order.tickets,
+                await self._load_event(order.event_id),
+                await self._load_ticket_type(order.tickets[0].ticket_type_id, order.event_id),
+            )
+        if order.payment_status != PaymentStatus.PENDING:
+            raise ValueError("La orden no está pendiente de validación")
+        if order.payment_provider not in (PaymentProvider.WHATSAPP, PaymentProvider.MANUAL, None):
+            raise ValueError("Esta orden no es de canal WhatsApp/manual")
+
+        tickets, event, tt = await self.fulfill_paid_order(
+            order, payment_provider=PaymentProvider.WHATSAPP
+        )
+        response = self._order_response(order, tickets, event, tt)
+        response["email_pending"] = True
+        response["validated_by"] = str(manager_id)
+        response["message"] = "Pago validado. Se emitieron las boletas y se enviará el correo."
+        return response
+
+    async def list_pending_whatsapp_orders(self, event_id: UUID) -> list[dict]:
+        result = await self._session.execute(
+            select(OrderModel, UserModel)
+            .join(UserModel, OrderModel.buyer_id == UserModel.id)
+            .where(
+                OrderModel.event_id == event_id,
+                OrderModel.payment_status == PaymentStatus.PENDING,
+                OrderModel.payment_provider == PaymentProvider.WHATSAPP,
+            )
+            .order_by(OrderModel.created_at.desc())
+        )
+        rows = result.all()
+        items: list[dict] = []
+        for order, buyer in rows:
+            payload = order.pending_payload or {}
+            items.append(
+                {
+                    "order_id": str(order.id),
+                    "payment_reference": order.payment_reference,
+                    "total": float(order.total_amount),
+                    "created_at": order.created_at.isoformat() if order.created_at else None,
+                    "buyer_name": payload.get("external_buyer_name") or buyer.full_name,
+                    "buyer_email": payload.get("external_buyer_email") or buyer.email,
+                    "buyer_phone": payload.get("buyer_phone") or buyer.phone,
+                    "ticket_type_id": payload.get("ticket_type_id"),
+                    "quantity": payload.get("quantity"),
+                    "holder_names": payload.get("holder_names") or [],
+                }
+            )
+        return items
 
     async def reject_pending_order(self, order: OrderModel) -> None:
         if order.payment_status != PaymentStatus.PENDING:
@@ -679,6 +866,7 @@ class TicketUseCase:
         quantity: int,
         holder_names: list[str] | None,
         seat_ids: list[UUID] | None = None,
+        user_phone: str | None = None,
     ) -> dict:
         event = await self._load_event(event_id)
         self._assert_tickets_on_sale(event)
@@ -705,11 +893,40 @@ class TicketUseCase:
             response["email_pending"] = bool(buyer_model)
             return response
 
+        # Ventas de pago: preferir WhatsApp (validación manual) cuando el evento así lo define
+        if _event_sale_mode(event) == "whatsapp":
+            return await self.create_whatsapp_pending_order(
+                user_id=user_id,
+                user_name=user_name,
+                user_email=user_email,
+                user_phone=user_phone,
+                event_id=event_id,
+                ticket_type_id=ticket_type_id,
+                quantity=quantity,
+                holder_names=holder_names,
+                seat_ids=seat_ids,
+            )
+
         if wompi_configured():
             return await self.create_wompi_checkout(
                 user_id=user_id,
                 user_name=user_name,
                 user_email=user_email,
+                event_id=event_id,
+                ticket_type_id=ticket_type_id,
+                quantity=quantity,
+                holder_names=holder_names,
+                seat_ids=seat_ids,
+            )
+
+        # Sin Wompi: también canalizar por WhatsApp si hay número
+        details = event.theatrical_details if isinstance(event.theatrical_details, dict) else {}
+        if str(details.get("whatsapp_number") or "").strip():
+            return await self.create_whatsapp_pending_order(
+                user_id=user_id,
+                user_name=user_name,
+                user_email=user_email,
+                user_phone=user_phone,
                 event_id=event_id,
                 ticket_type_id=ticket_type_id,
                 quantity=quantity,
@@ -973,7 +1190,12 @@ class TicketUseCase:
 
         for ticket, event, ticket_type, order, buyer in rows:
             price = Decimal(str(ticket_type.price or 0))
-            fee = (price * PLATFORM_FEE_RATE).quantize(Decimal("0.01"))
+            fee_rate = (
+                Decimal(str(event.commission_rate))
+                if event.commission_rate is not None
+                else DEFAULT_PLATFORM_FEE_RATE
+            )
+            fee = (price * fee_rate).quantize(Decimal("0.01"))
             net = (price - fee).quantize(Decimal("0.01"))
             buyer_name, buyer_email = _buyer_contact(order, buyer)
             status = "cancelada" if ticket.is_cancelled else ("usada" if ticket.is_used else "valida")
@@ -998,6 +1220,7 @@ class TicketUseCase:
                     "ticket_type": ticket_type.name,
                     "price": float(price),
                     "platform_fee": float(fee),
+                    "fee_rate": float(fee_rate),
                     "organizer_net": float(net),
                     "ticket_code": ticket.ticket_code,
                     "claim_code": order.claim_code,
@@ -1011,10 +1234,11 @@ class TicketUseCase:
                 }
             )
 
-        fee_total = (bruto * PLATFORM_FEE_RATE).quantize(Decimal("0.01"))
+        # Resumen ponderado aproximado con tasa por ítem
+        fee_total = sum((Decimal(str(i["platform_fee"])) for i in items if i["status"] != "cancelada"), Decimal("0"))
         net_total = (bruto - fee_total).quantize(Decimal("0.01"))
         return {
-            "fee_rate": float(PLATFORM_FEE_RATE),
+            "fee_rate": float(DEFAULT_PLATFORM_FEE_RATE),
             "items": items,
             "summary": {
                 "boletas": active_count,

@@ -206,6 +206,7 @@ async def purchase(
             quantity=body.quantity,
             holder_names=body.holder_names,
             seat_ids=body.seat_ids,
+            user_phone=getattr(user, "phone", None),
         )
         await db.commit()
         if result.get("email_pending") and result.get("order_id"):

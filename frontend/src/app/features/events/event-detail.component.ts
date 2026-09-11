@@ -283,11 +283,12 @@ export class EventDetailComponent implements OnInit, OnDestroy {
     if (this.purchasing) return;
 
     const total = this.totalPrice();
-    const confirmMsg =
-      `Vas a comprar ${this.quantity} boleta(s) para "${ev.name}" ` +
-      `por $${total.toLocaleString('es-CO')} COP. Revisa los nombres antes de continuar.`;
+    const confirmMsg = this.isWhatsAppSale(ev)
+      ? `Vas a solicitar ${this.quantity} boleta(s) para "${ev.name}" por $${total.toLocaleString('es-CO')} COP. Se abrirá WhatsApp; la boleta se emite cuando validen tu pago.`
+      : `Vas a comprar ${this.quantity} boleta(s) para "${ev.name}" ` +
+        `por $${total.toLocaleString('es-CO')} COP. Revisa los nombres antes de continuar.`;
 
-    this.notify.confirm('Confirmar compra', confirmMsg, () => {
+    this.notify.confirm(this.isWhatsAppSale(ev) ? 'Continuar por WhatsApp' : 'Confirmar compra', confirmMsg, () => {
       if (this.purchasing) return;
       this.purchasing = true;
       this.notify.loadingTheatrical('Preparando compra', 'purchase');
@@ -295,7 +296,9 @@ export class EventDetailComponent implements OnInit, OnDestroy {
         .post<{
           message?: string;
           payment_required?: boolean;
+          payment_channel?: string;
           checkout_url?: string;
+          whatsapp_url?: string;
           order_id?: string;
         }>('/tickets/purchase', {
           event_id: ev.id,
@@ -309,6 +312,15 @@ export class EventDetailComponent implements OnInit, OnDestroy {
             this.purchasing = false;
             this.notify.hide();
             clearPurchaseDraft();
+            if (res.payment_required && res.whatsapp_url) {
+              window.open(res.whatsapp_url, '_blank', 'noopener,noreferrer');
+              this.notify.celebration(
+                'Solicitud creada',
+                res.message ??
+                  'Completa el pago por WhatsApp. Cuando el organizador valide el dinero, recibirás correo y código de boleta.'
+              );
+              return;
+            }
             if (res.payment_required && res.checkout_url) {
               window.location.href = res.checkout_url;
               return;

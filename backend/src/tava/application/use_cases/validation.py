@@ -62,6 +62,14 @@ class ValidationUseCase:
         if not event or event.status not in (EventStatus.PUBLISHED, EventStatus.IN_PROGRESS):
             return ValidationResult.EVENT_DISABLED, ticket
 
+        # Tras aviso T-1h: bloqueado hasta que admin general confirme la comisión
+        if (
+            event.commission_rate is not None
+            and event.pre_settlement_notified_at is not None
+            and not event.entry_unlocked
+        ):
+            return ValidationResult.EVENT_DISABLED, ticket
+
         if ticket.is_cancelled:
             return ValidationResult.CANCELLED, ticket
 

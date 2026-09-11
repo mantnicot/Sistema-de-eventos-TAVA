@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 logger = logging.getLogger("tava.schema")
 
 SCHEMA_MARKER_KEY = "schema_upgrade_marker"
-SCHEMA_MARKER_VALUE = "2026-09-platform-admin-v3"
+SCHEMA_MARKER_VALUE = "2026-09-commission-settlement-v4"
 
 
 async def _exec(conn: AsyncConnection, sql: str) -> None:
@@ -144,6 +144,24 @@ async def apply_schema_upgrades(conn: AsyncConnection) -> None:
           AND COALESCE(review_status, 'pendiente') = 'pendiente'
         """,
         "CREATE INDEX IF NOT EXISTS ix_events_cartelera ON events(cartelera_visible, review_status, event_date)",
+        "ALTER TABLE events ADD COLUMN IF NOT EXISTS commission_rate NUMERIC(5, 4)",
+        "ALTER TABLE events ADD COLUMN IF NOT EXISTS contract_version VARCHAR(40)",
+        "ALTER TABLE events ADD COLUMN IF NOT EXISTS contract_accepted_at TIMESTAMPTZ",
+        "ALTER TABLE events ADD COLUMN IF NOT EXISTS entry_unlocked BOOLEAN NOT NULL DEFAULT TRUE",
+        "ALTER TABLE events ADD COLUMN IF NOT EXISTS pre_settlement_bruto NUMERIC(12, 2)",
+        "ALTER TABLE events ADD COLUMN IF NOT EXISTS pre_settlement_fee NUMERIC(12, 2)",
+        "ALTER TABLE events ADD COLUMN IF NOT EXISTS pre_settlement_notified_at TIMESTAMPTZ",
+        "ALTER TABLE events ADD COLUMN IF NOT EXISTS pre_settlement_confirmed_at TIMESTAMPTZ",
+        "ALTER TABLE events ADD COLUMN IF NOT EXISTS pre_settlement_confirmed_by UUID REFERENCES users(id)",
+        "ALTER TABLE events ADD COLUMN IF NOT EXISTS post_settlement_bruto NUMERIC(12, 2)",
+        "ALTER TABLE events ADD COLUMN IF NOT EXISTS post_settlement_fee NUMERIC(12, 2)",
+        "ALTER TABLE events ADD COLUMN IF NOT EXISTS post_settlement_notified_at TIMESTAMPTZ",
+        """
+        DO $$ BEGIN
+          ALTER TYPE paymentprovider ADD VALUE IF NOT EXISTS 'whatsapp';
+        EXCEPTION WHEN others THEN NULL;
+        END $$
+        """,
     ]
     for sql in statements:
         await _exec(conn, sql)

@@ -1,15 +1,35 @@
 from datetime import UTC, datetime
+from decimal import Decimal
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from tava.domain.enums import EventReviewStatus, EventStatus, UserRole
+from tava.application.use_cases.settlement import SettlementUseCase
+from tava.application.use_cases.ticket_emails import send_order_confirmation_email_background
+from tava.application.use_cases.tickets import TicketUseCase
+from tava.domain.commission_contract import (
+    CONTRACT_VERSION,
+    MAX_COMMISSION_RATE,
+    MIN_COMMISSION_RATE,
+    MIN_PAID_TICKET_COP,
+    contract_text,
+    is_paid_ticket_price,
+    normalize_commission_rate,
+)
+from tava.domain.enums import EventReviewStatus, EventStatus, TicketKind, UserRole
 from tava.infrastructure.persistence.database import get_db
 from tava.infrastructure.persistence.event_staff import get_event_staff, list_assigned_event_ids, set_event_staff
-from tava.infrastructure.persistence.models import EventMediaModel, EventModel, TicketModel, TicketTypeModel, UserModel
+from tava.infrastructure.persistence.models import (
+    EventMediaModel,
+    EventModel,
+    OrderModel,
+    TicketModel,
+    TicketTypeModel,
+    UserModel,
+)
 from tava.infrastructure.persistence.repositories.sqlalchemy_event_repository import SQLAlchemyEventRepository
 from tava.presentation.api.dependencies import get_current_user, require_roles
 from tava.presentation.api.auth_helpers import can_manage_event, is_platform_admin
@@ -19,6 +39,7 @@ from tava.presentation.api.platform_auth import (
 )
 from tava.presentation.api.schemas import (
     BroadcastEmailRequest,
+    CommissionContractResponse,
     EventCarteleraRequest,
     EventCreateRequest,
     EventDetailResponse,
@@ -66,6 +87,10 @@ def _event_response(
         trailer_url=model.trailer_url,
         theatrical_details=_theatrical(model.theatrical_details),
         tickets_available=tickets_available,
+        commission_rate=model.commission_rate,
+        contract_version=model.contract_version,
+        contract_accepted_at=model.contract_accepted_at,
+        entry_unlocked=model.entry_unlocked,
     )
     if include_admin_fields:
         payload.review_status = model.review_status
@@ -73,7 +98,45 @@ def _event_response(
         payload.organizer_id = model.organizer_id
         payload.organizer_name = organizer_name
         payload.rejection_reason = model.rejection_reason
+        payload.pre_settlement_fee = model.pre_settlement_fee
+        payload.pre_settlement_confirmed_at = model.pre_settlement_confirmed_at
+        payload.pre_settlement_notified_at = model.pre_settlement_notified_at
+        payload.post_settlement_fee = model.post_settlement_fee
+        payload.post_settlement_notified_at = model.post_settlement_notified_at
     return payload
+
+
+def _apply_commission_fields(data: dict, body: EventCreateRequest, *, existing: EventModel | None = None) -> dict:
+    """Aplica comisión/contrato. Si hay comisión, exige aceptación y bloquea ingreso hasta liquidar."""
+    rate_raw = body.commission_rate
+    if rate_raw is None and "commission_rate" not in data:
+        # preserve existing on partial-ish updates when field omitted via model_dump
+        pass
+
+    # EventCreate always sends commission_rate (possibly null)
+    if body.commission_rate is not None:
+        rate = normalize_commission_rate(body.commission_rate)
+        if not body.contract_accepted and not (existing and existing.contract_accepted_at):
+            raise HTTPException(
+                status_code=400,
+                detail="Debes aceptar el contrato de comisión de TAVA para eventos de pago.",
+            )
+        data["commission_rate"] = rate
+        data["contract_version"] = CONTRACT_VERSION
+        data["contract_accepted_at"] = existing.contract_accepted_at if existing and existing.contract_accepted_at else datetime.now(UTC)
+        # El bloqueo de ingreso ocurre 1h antes (worker); hasta entonces queda habilitado
+        if existing is None:
+            data["entry_unlocked"] = True
+        elif existing.pre_settlement_notified_at and not existing.pre_settlement_confirmed_at:
+            data["entry_unlocked"] = False
+    elif body.commission_rate is None and existing is None:
+        data["commission_rate"] = None
+        data["entry_unlocked"] = True
+    elif body.commission_rate is None and existing is not None and "commission_rate" in body.model_fields_set:
+        data["commission_rate"] = None
+        data["entry_unlocked"] = True
+
+    return data
 
 
 async def _organizer_names(db: AsyncSession, organizer_ids: list[UUID]) -> dict[UUID, str]:
@@ -179,6 +242,17 @@ async def list_events(
         )
         for e in events
     ]
+
+
+@router.get("/commission-contract", response_model=CommissionContractResponse)
+async def get_commission_contract():
+    return CommissionContractResponse(
+        version=CONTRACT_VERSION,
+        text=contract_text(),
+        min_rate=float(MIN_COMMISSION_RATE),
+        max_rate=float(MAX_COMMISSION_RATE),
+        min_paid_ticket=float(MIN_PAID_TICKET_COP),
+    )
 
 
 @router.get("/admin/all", response_model=list[EventResponse])
@@ -445,15 +519,22 @@ async def create_event(
 ):
     repo = SQLAlchemyEventRepository(db)
     data = body.model_dump()
+    data.pop("contract_accepted", None)
     if body.theatrical_details:
         data["theatrical_details"] = body.theatrical_details.model_dump()
     else:
         data.pop("theatrical_details", None)
     data["organizer_id"] = user.id
+    try:
+        data = _apply_commission_fields(data, body, existing=None)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
     if is_platform_admin(user):
         data["review_status"] = EventReviewStatus.APPROVED
         if data.get("status") in (EventStatus.PUBLISHED, EventStatus.IN_PROGRESS):
             data["cartelera_visible"] = True
+        if data.get("commission_rate") is None:
+            data["entry_unlocked"] = True
     else:
         data["review_status"] = EventReviewStatus.PENDING
         data["cartelera_visible"] = False
@@ -476,8 +557,13 @@ async def update_event(
 
     repo = SQLAlchemyEventRepository(db)
     data = body.model_dump(exclude_unset=True)
+    data.pop("contract_accepted", None)
     if body.theatrical_details is not None:
         data["theatrical_details"] = body.theatrical_details.model_dump()
+    try:
+        data = _apply_commission_fields(data, body, existing=before_model)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
     data = _apply_organizer_publish_rules(user, data, before_model)
     if not is_platform_admin(user) and before_model.review_status == EventReviewStatus.REJECTED:
         data["review_status"] = EventReviewStatus.PENDING
@@ -510,7 +596,6 @@ async def update_event(
         payload["review_notification"] = review_notification
     return payload
 
-
 async def _sold_counts_by_type(db: AsyncSession, event_id: UUID) -> dict[UUID, int]:
     result = await db.execute(
         select(TicketModel.ticket_type_id, func.count())
@@ -530,6 +615,19 @@ async def sync_event_ticket_types(
     event = await _require_manage_event(db, event_id, user)
 
     items = body.ticket_types
+    for item in items:
+        price = Decimal(str(item.price or 0))
+        if is_paid_ticket_price(price) and price < MIN_PAID_TICKET_COP:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Las boletas de pago deben costar al menos ${int(MIN_PAID_TICKET_COP):,} COP.".replace(",", "."),
+            )
+        if item.kind != TicketKind.COURTESY and is_paid_ticket_price(price) and event.commission_rate is None:
+            raise HTTPException(
+                status_code=400,
+                detail="Configura y acepta la comisión (8%–15%) y el contrato antes de publicar boletas de pago.",
+            )
+
     total_qty = sum(i.quantity_available for i in items)
     if event.capacity > 0 and total_qty > event.capacity:
         raise HTTPException(
@@ -677,3 +775,68 @@ async def delete_event(
     await db.delete(event)
     await db.flush()
     return {"message": "Evento eliminado", "success": True}
+
+
+@router.get("/{event_id}/settlement")
+async def event_settlement(
+    event_id: UUID,
+    user=Depends(require_event_manager),
+    db: AsyncSession = Depends(get_db),
+):
+    await _require_manage_event(db, event_id, user)
+    event = await db.get(EventModel, event_id)
+    if not event:
+        raise HTTPException(status_code=404, detail="Evento no encontrado")
+    return await SettlementUseCase(db).settlement_snapshot(event)
+
+
+@router.post("/{event_id}/settlement/confirm")
+async def confirm_event_settlement(
+    event_id: UUID,
+    user=Depends(require_platform_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    try:
+        result = await SettlementUseCase(db).confirm_pre_settlement(event_id, user.id)
+        await db.commit()
+        return result
+    except ValueError as e:
+        await db.rollback()
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+
+@router.get("/{event_id}/whatsapp-orders")
+async def list_whatsapp_orders(
+    event_id: UUID,
+    user=Depends(require_event_manager),
+    db: AsyncSession = Depends(get_db),
+):
+    await _require_manage_event(db, event_id, user)
+    return {"items": await TicketUseCase(db).list_pending_whatsapp_orders(event_id)}
+
+
+@router.post("/{event_id}/whatsapp-orders/{order_id}/confirm")
+async def confirm_whatsapp_order(
+    event_id: UUID,
+    order_id: UUID,
+    background_tasks: BackgroundTasks,
+    user=Depends(require_event_manager),
+    db: AsyncSession = Depends(get_db),
+):
+    await _require_manage_event(db, event_id, user)
+    uc = TicketUseCase(db)
+    try:
+        order_check = await db.get(OrderModel, order_id)
+        if not order_check or order_check.event_id != event_id:
+            raise HTTPException(status_code=404, detail="Orden no encontrada en este evento")
+        result = await uc.confirm_whatsapp_payment(order_id, manager_id=user.id)
+        await db.commit()
+        if result.get("email_pending") and result.get("order_id"):
+            background_tasks.add_task(
+                send_order_confirmation_email_background,
+                UUID(str(result["order_id"])),
+            )
+        return result
+    except ValueError as e:
+        await db.rollback()
+        raise HTTPException(status_code=400, detail=str(e)) from e

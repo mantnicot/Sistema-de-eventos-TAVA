@@ -143,11 +143,11 @@
             <p>Pero tenemos otros para ti. Explora la cartelera y reserva tu próxima función.</p>
             <a routerLink="/eventos" class="tava-btn-primary">Ver otros eventos</a>
           </div>
-        } @else if (isWhatsAppSale(ev)) {
+        } @else if (isWhatsAppSale(ev) && !ev.ticket_types.length) {
           <div class="detail__missed">
             <p class="detail__missed-title">Boletas por WhatsApp</p>
             <p>
-              Para este evento las boletas se gestionan directamente con TAVA. Escríbenos y te ayudamos con la compra y el código de reclamo.
+              Este evento aún no tiene tipos de boleta. Escríbenos por WhatsApp.
             </p>
             @if (ev.theatrical_details?.whatsapp_number) {
               <a
@@ -163,7 +163,11 @@
             }
           </div>
         } @else if (ev.ticket_types.length) {
-          <p class="detail__funny-cta">{{ funnyCta(ev.id) }}</p>
+          <p class="detail__funny-cta">
+            {{ isWhatsAppSale(ev)
+              ? 'Elige boletas aquí y continúa por WhatsApp. La boleta se envía cuando validen tu pago.'
+              : funnyCta(ev.id) }}
+          </p>
 
           @if (!auth.isLoggedIn()) {
             <section class="purchase-register-gate">
@@ -281,7 +285,15 @@
             (click)="comprar()"
             [disabled]="!selectedTypeId() || (auth.isLoggedIn() && !legalAccepted) || purchasing"
           >
-            {{ purchasing ? 'Procesando…' : (auth.isLoggedIn() ? 'Comprar boletas' : 'Registrarme para comprar') }}
+            {{
+              purchasing
+                ? 'Procesando…'
+                : !auth.isLoggedIn()
+                  ? 'Registrarme para comprar'
+                  : isWhatsAppSale(ev)
+                    ? 'Continuar por WhatsApp'
+                    : 'Comprar boletas'
+            }}
           </button>
         } @else {
           <p class="muted">Próximamente tipos de boleta para este evento.</p>

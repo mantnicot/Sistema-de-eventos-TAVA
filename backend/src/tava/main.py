@@ -82,11 +82,33 @@ async def _startup_bootstrap() -> None:
         logger.exception("Bootstrap falló — revisar DATABASE_URL y Neon")
 
 
+async def _settlement_worker_loop() -> None:
+    """Avisos T-1h y ajuste post-evento cada minuto."""
+    from tava.infrastructure.persistence.database import AsyncSessionLocal
+    from tava.application.use_cases.settlement import SettlementUseCase
+
+    await asyncio.sleep(20)
+    while True:
+        try:
+            async with AsyncSessionLocal() as session:
+                result = await SettlementUseCase(session).process_due_notifications()
+                await session.commit()
+                if result.get("pre_sent") or result.get("post_sent"):
+                    logger.info("Settlement worker: %s", result)
+        except Exception:
+            logger.exception("Settlement worker falló")
+        await asyncio.sleep(60)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     bootstrap_task = asyncio.create_task(_startup_bootstrap())
+    settlement_task = asyncio.create_task(_settlement_worker_loop())
     yield
+    settlement_task.cancel()
     bootstrap_task.cancel()
+    with suppress(asyncio.CancelledError):
+        await settlement_task
     with suppress(asyncio.CancelledError):
         await bootstrap_task
 

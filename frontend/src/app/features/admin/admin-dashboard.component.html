@@ -208,8 +208,8 @@
           <label>
             Venta de boletas
             <select [(ngModel)]="theatrical.sale_mode" name="saleMode">
-              <option value="system">Compra en el sistema</option>
-              <option value="whatsapp">Solo por WhatsApp</option>
+              <option value="whatsapp">Por WhatsApp (recomendado)</option>
+              <option value="system">Compra en el sistema (Wompi)</option>
             </select>
           </label>
           @if (theatrical.sale_mode === 'whatsapp') {
@@ -222,19 +222,82 @@
               />
             </label>
             <label>
-              Mensaje predeterminado
+              Mensaje base (opcional)
               <textarea
                 [(ngModel)]="theatrical.whatsapp_message"
                 name="whatsappMessage"
                 rows="3"
-                placeholder="Hola TAVA, quiero boletas para este evento..."
+                placeholder="Se antepone al mensaje automático con datos de la solicitud..."
               ></textarea>
             </label>
             <p class="muted">
-              En la página pública del evento se ocultará la compra directa y se abrirá WhatsApp con este mensaje.
+              El comprador elige boletas en la web; se abre WhatsApp con el pedido. Tú validas el pago en el panel y ahí se envía correo + código.
             </p>
           }
         </section>
+
+        <section class="ticketing-block">
+          <h3>Comisión TAVA (eventos de pago)</h3>
+          <p class="muted">Mínimo por boleta de pago: ${{ minPaidTicket | number }} COP. Elige entre 8% y 15%.</p>
+          <label>
+            Comisión del sistema
+            <select [(ngModel)]="commissionRatePercent" name="commissionRate" [disabled]="!hasPaidTicketsDraft()">
+              @for (p of commissionOptions; track p) {
+                <option [ngValue]="p">{{ p }}%</option>
+              }
+            </select>
+          </label>
+          <details class="contract-box">
+            <summary>Leer contrato de comisión ({{ contractVersion || 'v1' }})</summary>
+            <pre class="contract-text">{{ contractText }}</pre>
+          </details>
+          <label class="check-row">
+            <input type="checkbox" [(ngModel)]="contractAccepted" name="contractAccepted" [disabled]="!hasPaidTicketsDraft()" />
+            Acepto el contrato y me comprometo a pagar la comisión seleccionada
+          </label>
+        </section>
+
+        @if (editingId()) {
+          <section class="ticketing-block">
+            <h3>Pagos WhatsApp pendientes</h3>
+            @if (!pendingWhatsappOrders().length) {
+              <p class="muted">No hay solicitudes pendientes de validar.</p>
+            } @else {
+              @for (o of pendingWhatsappOrders(); track o.order_id) {
+                <div class="wa-order-row">
+                  <div>
+                    <strong>{{ o.buyer_name || 'Comprador' }}</strong>
+                    <span class="muted"> · {{ o.buyer_email }} · {{ o.payment_reference }}</span>
+                    <p>${{ o.total | number }} · {{ o.quantity || '?' }} boleta(s)</p>
+                  </div>
+                  <button type="button" class="tava-btn-primary" (click)="confirmWhatsappOrder(o.order_id)">
+                    Validar pago y emitir
+                  </button>
+                </div>
+              }
+            }
+          </section>
+
+          @if (settlementInfo()?.requires_commission) {
+            <section class="ticketing-block">
+              <h3>Liquidación comisión</h3>
+              <p>
+                Bruto confirmado: ${{ settlementInfo()!.bruto | number }} ·
+                Comisión: ${{ settlementInfo()!.fee_due | number }}
+                ({{ (settlementInfo()!.commission_rate || 0) * 100 | number:'1.0-1' }}%)
+              </p>
+              <p class="muted">
+                Ingreso validador:
+                {{ settlementInfo()!.entry_unlocked ? 'HABILITADO' : 'BLOQUEADO hasta confirmar pago al admin general' }}
+              </p>
+              @if (settlementInfo()!.pre_settlement_notified_at && !settlementInfo()!.pre_settlement_confirmed_at && isPlatformAdmin()) {
+                <button type="button" class="tava-btn-primary" (click)="confirmSettlementPayment()">
+                  Confirmar dinero recibido (habilitar ingreso)
+                </button>
+              }
+            </section>
+          }
+        }
         <tava-file-upload
           label="Imagen principal del evento"
           kind="image"
@@ -465,8 +528,10 @@
       </div>
 
       <aside class="admin-events-sidebar tava-card">
-        <h2>Eventos registrados</h2>
-        <p class="muted">Selecciona uno para editar sin bajar al final.</p>
+        <header class="admin-events-sidebar__head">
+          <h2>Eventos registrados</h2>
+          <p class="muted">Selecciona uno para editar sin bajar al final.</p>
+        </header>
         <tava-list-search
           [query]="eventsQuery()"
           (queryChange)="eventsQuery.set($event)"
@@ -474,49 +539,76 @@
           [shown]="filteredSidebarEvents().length"
           [total]="adminEvents().length"
         />
-        <div class="admin-list admin-list--sidebar">
+        <div class="admin-event-cards">
           @for (ev of filteredSidebarEvents(); track ev.id) {
-            <article class="admin-list__item" [class.admin-list__item--active]="editingId() === ev.id">
-              <div>
-                <strong>{{ ev.name }}</strong>
-                <span class="badge">{{ ev.status }}</span>
-                @if (ev.review_status) {
-                  <span class="badge" [class.badge--pending]="ev.review_status === 'pendiente'" [class.badge--ok]="ev.review_status === 'aprobado'">{{ reviewStatusLabel(ev.review_status) }}</span>
-                }
-                @if (isPlatformAdmin() && ev.review_status === 'aprobado') {
-                  <span class="badge" [class.badge--ok]="ev.cartelera_visible">{{ ev.cartelera_visible ? 'En cartelera' : 'Oculto' }}</span>
-                }
-                <p class="muted">{{ ev.event_date }} · {{ ev.city }}</p>
-                @if (isPlatformAdmin() && ev.organizer_name) {
-                  <p class="muted">Organizador: {{ ev.organizer_name }}</p>
-                }
+            <article
+              class="event-card"
+              [class.event-card--active]="editingId() === ev.id"
+              (click)="editEvent(ev)"
+            >
+              <div class="event-card__media">
+                <img
+                  [src]="eventThumb(ev.main_image_url)"
+                  [alt]="ev.name"
+                  loading="lazy"
+                  (error)="onSidebarImgError($event)"
+                />
               </div>
-              <div class="admin-list__actions">
-                <button type="button" (click)="editEvent(ev)">Editar</button>
-                @if (isPlatformAdmin()) {
-                  <button type="button" (click)="duplicateEvent(ev)">Duplicar</button>
-                  @if (ev.review_status === 'aprobado') {
-                    <button type="button" (click)="toggleCartelera(ev, !ev.cartelera_visible)">
-                      {{ ev.cartelera_visible ? 'Quitar de cartelera' : 'Mostrar en cartelera' }}
+              <div class="event-card__body">
+                <div class="event-card__top">
+                  <strong class="event-card__title">{{ ev.name }}</strong>
+                  <div class="event-card__tags">
+                    <span class="pill" [attr.data-status]="ev.status">{{ statusLabel(ev.status) }}</span>
+                    @if (ev.review_status) {
+                      <span
+                        class="pill"
+                        [attr.data-review]="ev.review_status"
+                      >{{ reviewStatusLabel(ev.review_status) }}</span>
+                    }
+                    @if (isPlatformAdmin() && ev.review_status === 'aprobado') {
+                      <span class="pill" [attr.data-cartelera]="ev.cartelera_visible ? 'on' : 'off'">
+                        {{ ev.cartelera_visible ? 'En cartelera' : 'Oculto' }}
+                      </span>
+                    }
+                  </div>
+                </div>
+                <p class="event-card__meta">
+                  <span>{{ formatSidebarDate(ev.event_date) }}</span>
+                  @if (ev.event_time) {
+                    <span>· {{ formatSidebarTime(ev.event_time) }}</span>
+                  }
+                  <span>· {{ ev.city }}</span>
+                </p>
+                @if (isPlatformAdmin() && ev.organizer_name) {
+                  <p class="event-card__org">{{ ev.organizer_name }}</p>
+                }
+                <div class="event-card__actions" (click)="$event.stopPropagation()">
+                  <button type="button" class="event-card__btn" (click)="editEvent(ev)">Editar</button>
+                  <button type="button" class="event-card__btn" (click)="duplicateEvent(ev)">Duplicar</button>
+                  @if (isPlatformAdmin() && ev.review_status === 'aprobado') {
+                    <button type="button" class="event-card__btn" (click)="toggleCartelera(ev, !ev.cartelera_visible)">
+                      {{ ev.cartelera_visible ? 'Ocultar' : 'Mostrar' }}
                     </button>
                   }
-                } @else {
-                  <button type="button" (click)="duplicateEvent(ev)">Duplicar</button>
-                }
-                <button type="button" class="btn-danger" (click)="deleteEvent(ev)">Eliminar</button>
+                  <button type="button" class="event-card__btn event-card__btn--danger" (click)="deleteEvent(ev)">
+                    Eliminar
+                  </button>
+                </div>
               </div>
             </article>
           } @empty {
-            @if (adminEventsLoading()) {
-              <p class="muted">Cargando eventos...</p>
-            } @else if (adminEventsError()) {
-              <p class="muted">{{ adminEventsError() }}</p>
-              <button type="button" class="nav__btn-outline" (click)="loadAdminEvents()">Reintentar eventos</button>
-            } @else if (adminEvents().length) {
-              <p class="muted">Ningún evento coincide con esa búsqueda.</p>
-            } @else {
-              <p class="muted">No hay eventos. Crea el primero.</p>
-            }
+            <div class="event-card-empty">
+              @if (adminEventsLoading()) {
+                <p class="muted">Cargando eventos...</p>
+              } @else if (adminEventsError()) {
+                <p class="muted">{{ adminEventsError() }}</p>
+                <button type="button" class="nav__btn-outline" (click)="loadAdminEvents()">Reintentar eventos</button>
+              } @else if (adminEvents().length) {
+                <p class="muted">Ningún evento coincide con esa búsqueda.</p>
+              } @else {
+                <p class="muted">No hay eventos. Crea el primero.</p>
+              }
+            </div>
           }
         </div>
       </aside>

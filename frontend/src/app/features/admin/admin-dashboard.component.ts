@@ -20,7 +20,10 @@ import { AdminUsersPanelComponent } from './admin-users-panel.component';
 import { TavaEvent, TavaEventDetail, TheatricalDetails, CastMember } from '../../core/models/event.model';
 import { TicketKind, TicketTypeDraft } from '../../core/models/ticket-type.model';
 import { resolveMediaUrl } from '../../core/utils/media-url.util';
+import { EVENT_IMAGE_PLACEHOLDER, onEventImageError } from '../../core/utils/event-image.util';
+import { formatEventDateTime, formatEventTime } from '../../core/utils/event-timing.util';
 import { matchesSearch } from '../../core/utils/list-search.util';
+import { parseHttpError } from '../../core/utils/http-error.util';
 import { mergeSeatingPreview, applyBlockTicketType, applySeatTicketType } from '../../core/utils/seating-preview.util';
 import {
   countLayoutSeats,
@@ -146,7 +149,7 @@ export class AdminDashboardComponent implements OnInit {
   seatingAssignTicketTypeId: string | null = null;
 
   theatrical: TheatricalDetails = {
-    sale_mode: 'system',
+    sale_mode: 'whatsapp',
     whatsapp_number: '',
     whatsapp_message: '',
   };
@@ -163,6 +166,36 @@ export class AdminDashboardComponent implements OnInit {
     main_image_url: '',
     trailer_url: '',
   };
+
+  commissionRatePercent = 10;
+  contractAccepted = false;
+  contractText = '';
+  contractVersion = '';
+  minPaidTicket = 15000;
+  readonly commissionOptions = [8, 9, 10, 11, 12, 13, 14, 15];
+  pendingWhatsappOrders = signal<
+    {
+      order_id: string;
+      payment_reference?: string;
+      total: number;
+      buyer_name?: string;
+      buyer_email?: string;
+      buyer_phone?: string;
+      quantity?: number;
+      created_at?: string;
+    }[]
+  >([]);
+  settlementInfo = signal<{
+    bruto: number;
+    fee_due: number;
+    commission_rate: number | null;
+    entry_unlocked: boolean;
+    pre_settlement_fee: number | null;
+    pre_settlement_confirmed_at: string | null;
+    pre_settlement_notified_at: string | null;
+    adjustment_after_pre: number;
+    requires_commission: boolean;
+  } | null>(null);
 
   appearanceForm = { loader_video_url: '', loader_video_enabled: true };
 
@@ -203,6 +236,114 @@ export class AdminDashboardComponent implements OnInit {
       this.tab.set('events');
     }
     void this.bootstrapAdmin();
+    this.loadCommissionContract();
+  }
+
+  loadCommissionContract(): void {
+    this.api
+      .get<{ version: string; text: string; min_paid_ticket: number }>('/events/commission-contract')
+      .subscribe({
+        next: (c) => {
+          this.contractVersion = c.version;
+          this.contractText = c.text;
+          this.minPaidTicket = c.min_paid_ticket || 15000;
+        },
+        error: () => {
+          this.contractText =
+            'Contrato de comisión TAVA (8%–15%). Al aceptar te comprometes a pagar la comisión sobre boletería vendida por la plataforma.';
+        },
+      });
+  }
+
+  hasPaidTicketsDraft(): boolean {
+    return this.ticketTypesDraft.some((t) => Number(t.price) > 0 && t.kind !== 'cortesia');
+  }
+
+  loadWhatsappOrders(eventId: string): void {
+    this.api
+      .get<{
+        items: {
+          order_id: string;
+          payment_reference?: string;
+          total: number;
+          buyer_name?: string;
+          buyer_email?: string;
+          buyer_phone?: string;
+          quantity?: number;
+          created_at?: string;
+        }[];
+      }>(`/events/${eventId}/whatsapp-orders`)
+      .subscribe({
+        next: (res) => this.pendingWhatsappOrders.set(res.items ?? []),
+        error: () => this.pendingWhatsappOrders.set([]),
+      });
+  }
+
+  loadSettlement(eventId: string): void {
+    this.api
+      .get<{
+        bruto: number;
+        fee_due: number;
+        commission_rate: number | null;
+        entry_unlocked: boolean;
+        pre_settlement_fee: number | null;
+        pre_settlement_confirmed_at: string | null;
+        pre_settlement_notified_at: string | null;
+        adjustment_after_pre: number;
+        requires_commission: boolean;
+      }>(`/events/${eventId}/settlement`)
+      .subscribe({
+        next: (s) => this.settlementInfo.set(s),
+        error: () => this.settlementInfo.set(null),
+      });
+  }
+
+  confirmWhatsappOrder(orderId: string): void {
+    const eventId = this.editingId();
+    if (!eventId) return;
+    this.notify.confirm(
+      'Validar pago',
+      '¿Confirmas que recibiste el dinero? Se emitirán las boletas y se enviará el correo al comprador.',
+      () => {
+        this.notify.loadingTheatrical('Validando pago', 'admin');
+        this.api.post(`/events/${eventId}/whatsapp-orders/${orderId}/confirm`, {}).subscribe({
+          next: () => {
+            this.notify.hide();
+            this.notify.success('WhatsApp', 'Pago validado: boletas emitidas y correo en camino');
+            this.loadWhatsappOrders(eventId);
+            this.loadSettlement(eventId);
+          },
+          error: (err) => {
+            this.notify.hide();
+            this.notify.showHttpError(parseHttpError(err, 'validación'));
+          },
+        });
+      }
+    );
+  }
+
+  confirmSettlementPayment(): void {
+    const eventId = this.editingId();
+    if (!eventId || !this.isPlatformAdmin()) return;
+    this.notify.confirm(
+      'Confirmar liquidación',
+      '¿Confirmas que el organizador pagó la comisión? Se habilitará el ingreso por validador.',
+      () => {
+        this.notify.loadingTheatrical('Confirmando', 'admin');
+        this.api.post(`/events/${eventId}/settlement/confirm`, {}).subscribe({
+          next: () => {
+            this.notify.hide();
+            this.notify.success('Liquidación', 'Ingreso habilitado para el validador');
+            this.loadSettlement(eventId);
+            this.loadAdminEvents();
+          },
+          error: (err) => {
+            this.notify.hide();
+            this.notify.showHttpError(parseHttpError(err, 'liquidación'));
+          },
+        });
+      }
+    );
   }
 
   bootstrapAdmin(): void {
@@ -324,6 +465,37 @@ export class AdminDashboardComponent implements OnInit {
     if (status === 'aprobado') return 'Aprobado';
     if (status === 'rechazado') return 'Rechazado';
     return 'Pendiente';
+  }
+
+  statusLabel(status?: string): string {
+    const map: Record<string, string> = {
+      borrador: 'Borrador',
+      programado: 'Programado',
+      publicado: 'Publicado',
+      agotado: 'Agotado',
+      en_curso: 'En curso',
+      finalizado: 'Finalizado',
+      cancelado: 'Cancelado',
+    };
+    return map[status ?? ''] ?? status ?? '';
+  }
+
+  eventThumb(url?: string | null): string {
+    return url?.trim() ? resolveMediaUrl(url) : EVENT_IMAGE_PLACEHOLDER;
+  }
+
+  onSidebarImgError(ev: Event): void {
+    onEventImageError(ev);
+  }
+
+  formatSidebarDate(date: string): string {
+    if (!date) return '';
+    const formatted = formatEventDateTime(date, '');
+    return formatted.replace(/\s*·\s*$/, '') || date;
+  }
+
+  formatSidebarTime(time: string): string {
+    return formatEventTime(time);
   }
 
   private loadAppearanceForm(): void {
@@ -585,10 +757,14 @@ export class AdminDashboardComponent implements OnInit {
     this.ticketTypesTouched = false;
     this.duplicateGalleryDraft = [];
     this.theatrical = {
-      sale_mode: 'system',
+      sale_mode: 'whatsapp',
       whatsapp_number: '',
       whatsapp_message: '',
     };
+    this.commissionRatePercent = 10;
+    this.contractAccepted = false;
+    this.pendingWhatsappOrders.set([]);
+    this.settlementInfo.set(null);
     this.eventForm = {
       name: '',
       description: '',
@@ -864,9 +1040,14 @@ export class AdminDashboardComponent implements OnInit {
       trailer_url: ev.trailer_url ?? '',
     };
     this.theatrical = { ...(ev.theatrical_details ?? {}) };
-    this.theatrical.sale_mode = this.theatrical.sale_mode ?? 'system';
+    this.theatrical.sale_mode = this.theatrical.sale_mode ?? 'whatsapp';
     this.theatrical.whatsapp_number = this.theatrical.whatsapp_number ?? '';
     this.theatrical.whatsapp_message = this.theatrical.whatsapp_message ?? '';
+    const rate = ev.commission_rate != null ? Number(ev.commission_rate) : null;
+    this.commissionRatePercent = rate != null ? Math.round(rate * 100) : 10;
+    this.contractAccepted = !!ev.contract_accepted_at;
+    this.loadWhatsappOrders(ev.id);
+    this.loadSettlement(ev.id);
     const td = ev.theatrical_details;
     if (td?.cast_members?.length) {
       this.castMembers = td.cast_members.map((m) => ({ ...m }));
@@ -951,6 +1132,22 @@ export class AdminDashboardComponent implements OnInit {
       );
       return;
     }
+    if (this.hasPaidTicketsDraft()) {
+      const invalid = this.ticketTypesDraft.find(
+        (t) => Number(t.price) > 0 && t.kind !== 'cortesia' && Number(t.price) < this.minPaidTicket
+      );
+      if (invalid) {
+        this.notify.warning(
+          'Precio mínimo',
+          `Las boletas de pago deben costar al menos $${this.minPaidTicket.toLocaleString('es-CO')} COP.`
+        );
+        return;
+      }
+      if (!this.contractAccepted) {
+        this.notify.warning('Contrato', 'Debes aceptar el contrato de comisión para eventos de pago.');
+        return;
+      }
+    }
     this.notify.loadingTheatrical('Guardando obra', 'admin');
     const members = this.castMembers
       .map((m) => ({
@@ -961,9 +1158,11 @@ export class AdminDashboardComponent implements OnInit {
       .filter((m) => m.name);
     const body = {
       ...this.eventForm,
+      commission_rate: this.hasPaidTicketsDraft() ? this.commissionRatePercent / 100 : null,
+      contract_accepted: this.hasPaidTicketsDraft() ? this.contractAccepted : false,
       theatrical_details: {
         ...this.theatrical,
-        sale_mode: this.theatrical.sale_mode ?? 'system',
+        sale_mode: this.theatrical.sale_mode ?? 'whatsapp',
         whatsapp_number: this.theatrical.whatsapp_number?.trim() || null,
         whatsapp_message: this.theatrical.whatsapp_message?.trim() || null,
         cast: members.map((m) => m.name),

@@ -760,3 +760,62 @@ async def send_event_review_request_email(
         f"Revisa en: {admin_url or settings.frontend_url.rstrip('/') + '/admin'}\n"
     )
     return await _deliver_email(to_email, subject, html, text)
+
+
+def _money_cop(value: float) -> str:
+    return f"${value:,.0f}".replace(",", ".")
+
+
+async def send_commission_settlement_email(
+    *,
+    to_email: str,
+    full_name: str,
+    event_name: str,
+    event_date: str,
+    event_time: str,
+    bruto: float,
+    fee: float,
+    rate_percent: float,
+    role_hint: str = "organizador",
+) -> bool:
+    subject = f"Liquidacion TAVA — comision {rate_percent:.0f}% · «{event_name}»"
+    action = (
+        "Debes pagar al Administrador General de TAVA la comision indicada para habilitar el ingreso de asistentes."
+        if role_hint == "organizador"
+        else "El organizador debe pagar esta comision. Confirma el ingreso del dinero en el panel para habilitar el validador."
+    )
+    text = (
+        f"Hola {full_name},\n\n"
+        f"Falta aproximadamente 1 hora para «{event_name}» ({event_date} {event_time}).\n\n"
+        f"Boleteria confirmada en plataforma (bruto): {_money_cop(bruto)} COP\n"
+        f"Comision acordada ({rate_percent:.0f}%): {_money_cop(fee)} COP\n\n"
+        f"{action}\n\n"
+        f"Panel: {settings.frontend_url.rstrip('/')}/admin\n"
+    )
+    html = f"<pre style='font-family:sans-serif;white-space:pre-wrap'>{text}</pre>"
+    return await _deliver_email(to_email, subject, html, text)
+
+
+async def send_commission_adjustment_email(
+    *,
+    to_email: str,
+    full_name: str,
+    event_name: str,
+    bruto: float,
+    total_fee: float,
+    already_billed: float,
+    adjustment: float,
+    rate_percent: float,
+) -> bool:
+    subject = f"Ajuste de comision post-evento · «{event_name}»"
+    text = (
+        f"Hola {full_name},\n\n"
+        f"Ajuste de comision para «{event_name}» (ventas adicionales via pagina tras la liquidacion previa).\n\n"
+        f"Bruto final confirmado: {_money_cop(bruto)} COP\n"
+        f"Comision total ({rate_percent:.0f}%): {_money_cop(total_fee)} COP\n"
+        f"Ya liquidado antes del evento: {_money_cop(already_billed)} COP\n"
+        f"Ajuste pendiente: {_money_cop(adjustment)} COP\n\n"
+        f"Coordina el pago restante con el Administrador General de TAVA.\n"
+    )
+    html = f"<pre style='font-family:sans-serif;white-space:pre-wrap'>{text}</pre>"
+    return await _deliver_email(to_email, subject, html, text)

@@ -1,13 +1,23 @@
 import { Component, inject, OnDestroy, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { firstValueFrom } from 'rxjs';
+import { ApiService } from '../../../core/services/api.service';
+import { AuthService } from '../../../core/services/auth.service';
+import { TavaEvent, TavaEventDetail } from '../../../core/models/event.model';
+import { readEventsCache } from '../../../core/utils/events-cache.util';
 import {
   buildWhatsappUrl,
+  formatEventInfo,
+  menuButtons,
   resolveTavoAction,
   resolveTavoFreeText,
-  TAVO_WELCOME,
+  tavoContextFromUser,
+  welcomeForRole,
   TavoButton,
+  TavoEventBrief,
   TavoMessage,
+  TavoUserContext,
 } from './tavo-chat.logic';
 
 const MIN_THINK_MS = 700;
@@ -23,6 +33,8 @@ const CHAR_MS = 18;
 })
 export class TavaChatbotComponent implements OnDestroy {
   private readonly router = inject(Router);
+  private readonly api = inject(ApiService);
+  private readonly auth = inject(AuthService);
 
   readonly open = signal(false);
   readonly showHint = signal(true);
@@ -35,9 +47,16 @@ export class TavaChatbotComponent implements OnDestroy {
   private lastUserText = '';
   private timers: ReturnType<typeof setTimeout>[] = [];
   private replyToken = 0;
+  private eventsCatalog: TavoEventBrief[] = [];
+  private eventsLoaded = false;
+  private lastMenuRole: string | null = null;
 
   /** Logo Tavo (máscara + headset). */
   readonly avatarUrl = '/tavo-avatar.png';
+
+  private userCtx(): TavoUserContext {
+    return tavoContextFromUser(this.auth.user());
+  }
 
   ngOnDestroy(): void {
     this.clearTimers();
@@ -48,14 +67,13 @@ export class TavaChatbotComponent implements OnDestroy {
     this.open.set(next);
     if (next) {
       this.showHint.set(false);
-      if (!this.messages().length) {
-        void this.pushTavo(TAVO_WELCOME, [
-          { id: 'buy', label: '🎟️ Comprar boletas' },
-          { id: 'create', label: '📝 Crear / publicar evento' },
-          { id: 'tickets', label: '🎫 Mis boletas / reclamar' },
-          { id: 'faq', label: '❓ FAQ general' },
-          { id: 'whatsapp', label: '💬 Hablar por WhatsApp' },
-        ]);
+      void this.ensureEvents();
+      const ctx = this.userCtx();
+      const roleKey = `${ctx.role}:${ctx.loggedIn}`;
+      if (!this.messages().length || this.lastMenuRole !== roleKey) {
+        this.messages.set([]);
+        this.lastMenuRole = roleKey;
+        void this.pushTavo(welcomeForRole(ctx.role), menuButtons(ctx));
       }
     } else {
       this.showHint.set(true);
@@ -70,9 +88,10 @@ export class TavaChatbotComponent implements OnDestroy {
   onButton(btn: TavoButton): void {
     if (this.busy()) return;
     this.pushUser(btn.label);
+    const ctx = this.userCtx();
     if (btn.id === 'whatsapp' && this.lastUserText && !/whatsapp|hablar/i.test(this.lastUserText)) {
       this.openExternal(buildWhatsappUrl(this.lastUserText));
-      const result = resolveTavoAction('whatsapp');
+      const result = resolveTavoAction('whatsapp', this.eventsCatalog, ctx);
       void this.pushTavo(result.reply.text, result.reply.buttons);
       return;
     }
@@ -84,24 +103,23 @@ export class TavaChatbotComponent implements OnDestroy {
       ]);
       return;
     }
-    const result = resolveTavoAction(btn.id);
-    if (btn.route && btn.label.toLowerCase().includes('ir al')) {
-      void this.pushTavo(
-        'Te llevo al panel. Si no tienes permiso de organizador, inicia sesión o pide el rol.',
-        result.reply.buttons
-      );
-      void this.router.navigate([btn.route], btn.fragment ? { fragment: btn.fragment } : undefined);
-      return;
-    }
-    void this.pushTavo(result.reply.text, result.reply.buttons);
-    const route = btn.route || result.navigateTo;
-    const fragment = btn.fragment || result.fragment;
-    if (route) {
-      void this.router.navigate([route], fragment ? { fragment } : undefined);
-    }
-    if (result.openWhatsapp) {
-      this.openExternal(result.openWhatsapp);
-    }
+    void this.ensureEvents().then(() => {
+      const result = resolveTavoAction(btn.id, this.eventsCatalog, ctx);
+      if (btn.route && btn.label.toLowerCase().includes('ir al')) {
+        void this.pushTavo('Te llevo al panel.', result.reply.buttons);
+        void this.router.navigate([btn.route], btn.fragment ? { fragment: btn.fragment } : undefined);
+        return;
+      }
+      void this.pushTavo(result.reply.text, result.reply.buttons);
+      const route = btn.route || result.navigateTo;
+      const fragment = btn.fragment || result.fragment;
+      if (route) {
+        void this.router.navigate([route], fragment ? { fragment } : undefined);
+      }
+      if (result.openWhatsapp) {
+        this.openExternal(result.openWhatsapp);
+      }
+    });
   }
 
   sendText(): void {
@@ -111,16 +129,77 @@ export class TavaChatbotComponent implements OnDestroy {
     this.draft.set('');
     this.lastUserText = text;
     this.pushUser(text);
-    const result = resolveTavoFreeText(text);
-    void this.pushTavo(result.reply.text, result.reply.buttons);
-    if (result.navigateTo) {
-      void this.router.navigate(
-        [result.navigateTo],
-        result.fragment ? { fragment: result.fragment } : undefined
-      );
+    const ctx = this.userCtx();
+    void this.ensureEvents().then(async () => {
+      const result = resolveTavoFreeText(text, this.eventsCatalog, ctx);
+      if (result.fetchEventId) {
+        await this.replyWithEventPrices(result.fetchEventId);
+      } else {
+        await this.pushTavo(result.reply.text, result.reply.buttons);
+      }
+      if (result.navigateTo) {
+        void this.router.navigate(
+          [result.navigateTo],
+          result.fragment ? { fragment: result.fragment } : undefined
+        );
+      }
+      if (result.openWhatsapp) {
+        this.openExternal(result.openWhatsapp);
+      }
+    });
+  }
+
+  private async ensureEvents(): Promise<void> {
+    if (this.eventsLoaded && this.eventsCatalog.length) return;
+    const cached = readEventsCache('', '');
+    if (cached?.length) {
+      this.eventsCatalog = cached.map((e) => this.toBrief(e));
+      this.eventsLoaded = true;
+      return;
     }
-    if (result.openWhatsapp) {
-      this.openExternal(result.openWhatsapp);
+    try {
+      const list = await firstValueFrom(this.api.get<TavaEvent[]>('/events'));
+      this.eventsCatalog = (list ?? []).map((e) => this.toBrief(e));
+      this.eventsLoaded = true;
+    } catch {
+      this.eventsCatalog = [];
+    }
+  }
+
+  private toBrief(e: TavaEvent | TavaEventDetail): TavoEventBrief {
+    const detail = e as TavaEventDetail;
+    return {
+      id: e.id,
+      name: e.name,
+      description: e.description,
+      event_date: e.event_date,
+      event_time: e.event_time,
+      city: e.city,
+      address: e.address,
+      category: e.category,
+      tickets_available: e.tickets_available,
+      ticket_types: detail.ticket_types?.map((tt) => ({ name: tt.name, price: tt.price })),
+    };
+  }
+
+  private async replyWithEventPrices(eventId: string): Promise<void> {
+    try {
+      const detail = await firstValueFrom(this.api.get<TavaEventDetail>(`/events/${eventId}`));
+      const brief = this.toBrief(detail);
+      const idx = this.eventsCatalog.findIndex((e) => e.id === eventId);
+      if (idx >= 0) this.eventsCatalog[idx] = brief;
+      else this.eventsCatalog.push(brief);
+      await this.pushTavo(formatEventInfo(brief, true), [
+        { id: 'buy_cartelera', label: 'Ver ficha', route: `/eventos/${eventId}` },
+        { id: 'buy_how', label: 'Cómo comprar' },
+        { id: 'menu', label: '← Menú' },
+        { id: 'whatsapp', label: 'WhatsApp' },
+      ]);
+    } catch {
+      await this.pushTavo('Abre la ficha del evento en cartelera para ver fechas, lugar y precios.', [
+        { id: 'buy_cartelera', label: 'Abrir cartelera', route: '/eventos' },
+        { id: 'menu', label: '← Menú' },
+      ]);
     }
   }
 

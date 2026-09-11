@@ -1,4 +1,4 @@
-from datetime import date, time
+from datetime import date, datetime, time
 from decimal import Decimal
 from uuid import UUID
 
@@ -140,6 +140,14 @@ class TheatricalDetailsSchema(BaseModel):
     whatsapp_message: str | None = Field(default=None, max_length=1000)
 
 
+class CommissionContractResponse(BaseModel):
+    version: str
+    text: str
+    min_rate: float
+    max_rate: float
+    min_paid_ticket: float
+
+
 class RegisterResponse(BaseModel):
     message: str
     user: UserResponse
@@ -160,6 +168,8 @@ class EventCreateRequest(BaseModel):
     trailer_url: str | None = None
     venue_id: UUID | None = None
     theatrical_details: TheatricalDetailsSchema | None = None
+    commission_rate: Decimal | None = None
+    contract_accepted: bool = False
 
 
 class EventMediaResponse(BaseModel):
@@ -204,6 +214,15 @@ class EventResponse(BaseModel):
     organizer_id: UUID | None = None
     organizer_name: str | None = None
     rejection_reason: str | None = None
+    commission_rate: Decimal | None = None
+    contract_version: str | None = None
+    contract_accepted_at: datetime | None = None
+    entry_unlocked: bool | None = None
+    pre_settlement_fee: Decimal | None = None
+    pre_settlement_confirmed_at: datetime | None = None
+    pre_settlement_notified_at: datetime | None = None
+    post_settlement_fee: Decimal | None = None
+    post_settlement_notified_at: datetime | None = None
 
 
 class EventDetailResponse(EventResponse):

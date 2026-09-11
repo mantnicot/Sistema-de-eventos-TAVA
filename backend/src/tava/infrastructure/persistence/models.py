@@ -97,6 +97,21 @@ class EventModel(Base):
     theatrical_details: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     organizer_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"))
     venue_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("venues.id"), nullable=True)
+    # Comisión / contrato / liquidación (eventos de pago)
+    commission_rate: Mapped[Decimal | None] = mapped_column(Numeric(5, 4), nullable=True)
+    contract_version: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    contract_accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    entry_unlocked: Mapped[bool] = mapped_column(Boolean, default=True)
+    pre_settlement_bruto: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    pre_settlement_fee: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    pre_settlement_notified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    pre_settlement_confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    pre_settlement_confirmed_by: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
+    )
+    post_settlement_bruto: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    post_settlement_fee: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    post_settlement_notified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
