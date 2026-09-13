@@ -1,13 +1,12 @@
-<section class="hero hero--broadway">
-  <div class="hero__glow"></div>
+<section class="hero">
   <div class="hero__inner">
-    <h1 class="hero__title tava-glow-text">Las mejores obras, un solo escenario</h1>
+    <h1 class="hero__title">Las mejores obras, un solo escenario</h1>
     <p class="hero__subtitle">
       Inspirado en la experiencia de las grandes carteleras — con el sello &#64;tavateatro.
     </p>
-    <form class="hero__search tava-card" (submit)="goSearch($event)">
+    <form class="hero__search" (submit)="goSearch($event)">
       <input type="search" placeholder="Buscar obra, ciudad o categoría…" [(ngModel)]="searchQuery" name="q" />
-      <button type="submit" class="tava-btn-primary">Buscar eventos</button>
+      <button type="submit">Buscar eventos</button>
     </form>
     <div class="hero__actions">
       <a routerLink="/eventos" class="tava-btn-primary">Ver cartelera completa</a>
@@ -18,38 +17,81 @@
   </div>
 </section>
 
-@if (featured().length) {
-  <section class="section section--shows">
-    <div class="section__head">
-      <h2 class="section__title tava-glow-text">Estrenos y funciones</h2>
-      <a routerLink="/eventos" class="section__link">Ver todos →</a>
+@if (activeEvents().length) {
+  <section class="poster-carousel" aria-label="Eventos activos">
+    <div class="poster-carousel__head">
+      <h2>En cartelera</h2>
+      <a routerLink="/eventos">Ver todos →</a>
     </div>
-    <div class="show-grid">
-      @for (ev of featured(); track ev.id) {
-        <a [routerLink]="['/eventos', ev.id]" class="show-card tava-card">
-          <div class="show-card__img">
-            <img [src]="mediaUrl(ev.main_image_url)" [alt]="ev.name" loading="lazy" (error)="onImgError($event)" />
-          </div>
-          <div class="show-card__body">
-            <span class="show-card__cat">{{ ev.category }}</span>
-            <h3>{{ ev.name }}</h3>
-            <time>{{ ev.event_date }}</time>
-            <span class="show-card__cta">Ver boletas</span>
-          </div>
-        </a>
+
+    <div class="poster-carousel__stage">
+      <div
+        class="poster-carousel__track"
+        [style.transform]="'translateX(-' + activeIndex() * 100 + '%)'"
+      >
+        @for (ev of activeEvents(); track ev.id; let i = $index) {
+          <a
+            class="poster-slide"
+            [routerLink]="['/eventos', ev.id]"
+            [attr.aria-hidden]="activeIndex() !== i"
+            [tabindex]="activeIndex() === i ? 0 : -1"
+          >
+            <img
+              class="poster-slide__img"
+              [src]="mediaUrl(ev.main_image_url)"
+              [alt]="ev.name"
+              [loading]="i === 0 ? 'eager' : 'lazy'"
+              (error)="onImgError($event)"
+            />
+            <div class="poster-slide__veil" aria-hidden="true"></div>
+            <div class="poster-slide__copy">
+              @if (getPhase(ev) === 'live') {
+                <span class="poster-slide__live">En vivo</span>
+              }
+              <h3>{{ ev.name }}</h3>
+              <p>{{ formatEventDateTime(ev.event_date, ev.event_time) }} · {{ ev.city }}</p>
+            </div>
+          </a>
+        }
+      </div>
+
+      @if (activeEvents().length > 1) {
+        <button type="button" class="poster-carousel__arrow poster-carousel__arrow--prev" (click)="prevSlide($event)" aria-label="Anterior">
+          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+            <path d="M15 5 L8 12 L15 19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+        </button>
+        <button type="button" class="poster-carousel__arrow poster-carousel__arrow--next" (click)="nextSlide($event)" aria-label="Siguiente">
+          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+            <path d="M9 5 L16 12 L9 19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+        </button>
+
+        <button
+          type="button"
+          class="poster-carousel__meter"
+          (click)="toggleAutoplay($event)"
+          [attr.aria-label]="autoplayPaused() ? 'Reanudar carrusel' : 'Pausar carrusel'"
+        >
+          @if (autoplayPaused()) {
+            <svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true">
+              <path d="M8 5 L19 12 L8 19 Z" fill="currentColor" />
+            </svg>
+          } @else {
+            <svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true">
+              <rect x="6" y="5" width="4" height="14" rx="1" fill="currentColor" />
+              <rect x="14" y="5" width="4" height="14" rx="1" fill="currentColor" />
+            </svg>
+          }
+          <span>{{ activeIndex() + 1 }} / {{ activeEvents().length }}</span>
+        </button>
       }
     </div>
   </section>
 }
 
 <section class="trust-strip">
-  <div class="trust-strip__item tava-card">🎭 Obras en vivo</div>
-  <div class="trust-strip__item tava-card">🎫 Boletas digitales</div>
-  <div class="trust-strip__item tava-card">Códigos de reclamo</div>
-</section>
-
-<section class="promo tava-card">
-  <h2>Grupos y colegios</h2>
-  <p>Compra anticipada con tarifas especiales — como en las grandes producciones.</p>
-  <a routerLink="/eventos" class="tava-btn-primary">Consultar eventos</a>
+  <div class="trust-strip__item">Obras en vivo</div>
+  <div class="trust-strip__item">Boletas digitales</div>
+  <div class="trust-strip__item">Códigos de reclamo</div>
 </section>

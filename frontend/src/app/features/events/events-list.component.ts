@@ -1,4 +1,4 @@
-import { Component, HostListener, inject, OnDestroy, OnInit, signal } from '@angular/core';
+import { Component, inject, OnDestroy, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { Subscription } from 'rxjs';
@@ -27,8 +27,6 @@ export class EventsListComponent implements OnInit, OnDestroy {
   readonly events = signal<TavaEvent[]>([]);
   readonly activeEvents = signal<TavaEvent[]>([]);
   readonly finishedEvents = signal<TavaEvent[]>([]);
-  readonly activeIndex = signal(0);
-  readonly autoplayPaused = signal(false);
   readonly loading = signal(false);
   readonly loadingStalled = signal(false);
   readonly loadError = signal<string | null>(null);
@@ -40,8 +38,6 @@ export class EventsListComponent implements OnInit, OnDestroy {
   readonly getPhase = getEventPhase;
   private loadSub?: Subscription;
   private stallTimer: ReturnType<typeof setTimeout> | null = null;
-  private autoplayTimer: ReturnType<typeof setInterval> | null = null;
-  private readonly AUTOPLAY_MS = 5500;
 
   ngOnInit(): void {
     this.route.queryParamMap.subscribe((q) => {
@@ -53,13 +49,6 @@ export class EventsListComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.loadSub?.unsubscribe();
     this.clearStallTimer();
-    this.stopAutoplay();
-  }
-
-  @HostListener('document:visibilitychange')
-  onVisibility(): void {
-    if (document.hidden) this.stopAutoplay();
-    else if (!this.autoplayPaused()) this.startAutoplay();
   }
 
   load(): void {
@@ -93,8 +82,6 @@ export class EventsListComponent implements OnInit, OnDestroy {
           this.events.set([]);
           this.activeEvents.set([]);
           this.finishedEvents.set([]);
-          this.activeIndex.set(0);
-          this.stopAutoplay();
         }
         this.loadError.set(
           'No pudimos cargar los eventos. Comprueba tu conexión e intenta de nuevo.'
@@ -103,73 +90,18 @@ export class EventsListComponent implements OnInit, OnDestroy {
     });
   }
 
-  prevSlide(event?: Event): void {
-    event?.stopPropagation();
-    event?.preventDefault();
-    const n = this.activeEvents().length;
-    if (n < 2) return;
-    this.activeIndex.set((this.activeIndex() - 1 + n) % n);
-    this.bumpAutoplay();
-  }
-
-  nextSlide(event?: Event): void {
-    event?.stopPropagation();
-    event?.preventDefault();
-    const n = this.activeEvents().length;
-    if (n < 2) return;
-    this.activeIndex.set((this.activeIndex() + 1) % n);
-    this.bumpAutoplay();
-  }
-
-  toggleAutoplay(event?: Event): void {
-    event?.stopPropagation();
-    event?.preventDefault();
-    const paused = !this.autoplayPaused();
-    this.autoplayPaused.set(paused);
-    if (paused) this.stopAutoplay();
-    else this.startAutoplay();
+  excerpt(text: string | undefined | null, max = 180): string {
+    const raw = (text ?? '').replace(/\s+/g, ' ').trim();
+    if (!raw) return 'Sin descripción disponible.';
+    if (raw.length <= max) return raw;
+    return `${raw.slice(0, max).trimEnd()}…`;
   }
 
   private applyEvents(e: TavaEvent[]): void {
     this.events.set(e);
     const split = splitEventsByPhase(e);
-    const active = [...split.live, ...split.upcoming];
-    this.activeEvents.set(active);
+    this.activeEvents.set([...split.live, ...split.upcoming]);
     this.finishedEvents.set(split.finished);
-    if (this.activeIndex() >= active.length) {
-      this.activeIndex.set(0);
-    }
-    this.bumpAutoplay();
-  }
-
-  private bumpAutoplay(): void {
-    if (this.autoplayPaused()) {
-      this.stopAutoplay();
-      return;
-    }
-    this.restartAutoplay();
-  }
-
-  private startAutoplay(): void {
-    this.stopAutoplay();
-    if (this.autoplayPaused() || this.activeEvents().length < 2) return;
-    this.autoplayTimer = setInterval(() => {
-      const n = this.activeEvents().length;
-      if (n < 2) return;
-      this.activeIndex.set((this.activeIndex() + 1) % n);
-    }, this.AUTOPLAY_MS);
-  }
-
-  private stopAutoplay(): void {
-    if (this.autoplayTimer) {
-      clearInterval(this.autoplayTimer);
-      this.autoplayTimer = null;
-    }
-  }
-
-  private restartAutoplay(): void {
-    this.stopAutoplay();
-    this.startAutoplay();
   }
 
   private startStallTimer(): void {

@@ -7,7 +7,7 @@ export const routes: Routes = [
     path: '',
     component: ShellComponent,
     children: [
-      { path: '', redirectTo: 'eventos', pathMatch: 'full' },
+      { path: '', redirectTo: 'inicio', pathMatch: 'full' },
       { path: 'inicio', loadComponent: () => import('./features/home/home.component').then((m) => m.HomeComponent) },
       {
         path: 'eventos',

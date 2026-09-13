@@ -1,10 +1,10 @@
-<section class="billboard">
-  <header class="billboard__intro">
-    <h1>Cartelera</h1>
-    <p>Elige tu función</p>
+<section class="events-page">
+  <header class="events-page__intro">
+    <h1>Todos los eventos</h1>
+    <p>Listado completo con descripción de cada función.</p>
   </header>
 
-  <form class="billboard__search" (submit)="$event.preventDefault(); load()">
+  <form class="events-page__search" (submit)="$event.preventDefault(); load()">
     <input
       type="search"
       placeholder="Buscar obra, artista o ciudad…"
@@ -19,111 +19,79 @@
       name="category"
       (keyup.enter)="load()"
     />
-    <button type="button" class="billboard__search-btn" (click)="load()">Buscar</button>
+    <button type="button" (click)="load()">Buscar</button>
   </form>
-</section>
 
-@if (activeEvents().length) {
-  <section class="poster-carousel" aria-label="Eventos activos">
-    <div class="poster-carousel__stage">
-      <div
-        class="poster-carousel__track"
-        [style.transform]="'translateX(-' + activeIndex() * 100 + '%)'"
-      >
-        @for (ev of activeEvents(); track ev.id; let i = $index) {
-          <a
-            class="poster-slide"
-            [routerLink]="['/eventos', ev.id]"
-            [attr.aria-hidden]="activeIndex() !== i"
-            [tabindex]="activeIndex() === i ? 0 : -1"
-          >
-            <img
-              class="poster-slide__img"
-              [src]="mediaUrl(ev.main_image_url)"
-              [alt]="ev.name"
-              [loading]="i === 0 ? 'eager' : 'lazy'"
-              (error)="onImgError($event)"
-            />
-            <div class="poster-slide__veil" aria-hidden="true"></div>
-            <div class="poster-slide__copy">
-              @if (getPhase(ev) === 'live') {
-                <span class="poster-slide__live">En vivo</span>
-              }
-              <h2>{{ ev.name }}</h2>
-              <p>{{ formatEventDateTime(ev.event_date, ev.event_time) }} · {{ ev.city }}</p>
-            </div>
-          </a>
+  @if (activeEvents().length) {
+    <section class="events-list" aria-label="Eventos activos">
+      <h2>Activos</h2>
+      <ul>
+        @for (ev of activeEvents(); track ev.id) {
+          <li>
+            <a [routerLink]="['/eventos', ev.id]" class="event-row" [class.event-row--live]="getPhase(ev) === 'live'">
+              <div class="event-row__poster">
+                <img [src]="mediaUrl(ev.main_image_url)" [alt]="ev.name" loading="lazy" (error)="onImgError($event)" />
+              </div>
+              <div class="event-row__body">
+                <div class="event-row__top">
+                  <span class="event-row__cat">{{ ev.category }}</span>
+                  @if (getPhase(ev) === 'live') {
+                    <span class="event-row__live">En vivo</span>
+                  }
+                </div>
+                <h3>{{ ev.name }}</h3>
+                <p class="event-row__meta">{{ formatEventDateTime(ev.event_date, ev.event_time) }} · {{ ev.city }}</p>
+                <p class="event-row__desc">{{ excerpt(ev.description) }}</p>
+                <span class="event-row__cta">Ver función</span>
+              </div>
+            </a>
+          </li>
         }
-      </div>
+      </ul>
+    </section>
+  }
 
-      @if (activeEvents().length > 1) {
-        <button type="button" class="poster-carousel__arrow poster-carousel__arrow--prev" (click)="prevSlide($event)" aria-label="Anterior">
-          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-            <path d="M15 5 L8 12 L15 19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-          </svg>
-        </button>
-        <button type="button" class="poster-carousel__arrow poster-carousel__arrow--next" (click)="nextSlide($event)" aria-label="Siguiente">
-          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-            <path d="M9 5 L16 12 L9 19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-          </svg>
-        </button>
+  @if (finishedEvents().length) {
+    <section class="events-list events-list--past" aria-label="Eventos finalizados">
+      <h2>Finalizados</h2>
+      <ul>
+        @for (ev of finishedEvents(); track ev.id) {
+          <li>
+            <a [routerLink]="['/eventos', ev.id]" class="event-row event-row--past">
+              <div class="event-row__poster">
+                <img [src]="mediaUrl(ev.main_image_url)" [alt]="ev.name" loading="lazy" (error)="onImgError($event)" />
+              </div>
+              <div class="event-row__body">
+                <div class="event-row__top">
+                  <span class="event-row__cat">{{ ev.category }}</span>
+                  <span class="event-row__done">Finalizado</span>
+                </div>
+                <h3>{{ ev.name }}</h3>
+                <p class="event-row__meta">{{ formatEventDateTime(ev.event_date, ev.event_time) }} · {{ ev.city }}</p>
+                <p class="event-row__desc">{{ excerpt(ev.description) }}</p>
+              </div>
+            </a>
+          </li>
+        }
+      </ul>
+    </section>
+  }
 
-        <button
-          type="button"
-          class="poster-carousel__meter"
-          (click)="toggleAutoplay($event)"
-          [attr.aria-label]="autoplayPaused() ? 'Reanudar carrusel' : 'Pausar carrusel'"
-        >
-          @if (autoplayPaused()) {
-            <svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true">
-              <path d="M8 5 L19 12 L8 19 Z" fill="currentColor" />
-            </svg>
-          } @else {
-            <svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true">
-              <rect x="6" y="5" width="4" height="14" rx="1" fill="currentColor" />
-              <rect x="14" y="5" width="4" height="14" rx="1" fill="currentColor" />
-            </svg>
-          }
-          <span>{{ activeIndex() + 1 }} / {{ activeEvents().length }}</span>
-        </button>
+  @if (loading() && !activeEvents().length && !finishedEvents().length) {
+    <div class="empty">
+      <tava-theatrical-loader title="Armando la cartelera" />
+      @if (loadingStalled()) {
+        <p>El servidor sigue despertando. Puedes esperar un poco más o reintentar.</p>
+        <button type="button" class="tava-btn-primary" (click)="load()">Reintentar</button>
       }
     </div>
-  </section>
-}
-
-@if (finishedEvents().length) {
-  <section class="past-strip">
-    <h2>Finalizados</h2>
-    <div class="past-strip__grid">
-      @for (ev of finishedEvents(); track ev.id) {
-        <a [routerLink]="['/eventos', ev.id]" class="past-card">
-          <div class="past-card__img">
-            <img [src]="mediaUrl(ev.main_image_url)" [alt]="ev.name" loading="lazy" (error)="onImgError($event)" />
-          </div>
-          <div class="past-card__meta">
-            <strong>{{ ev.name }}</strong>
-            <span>{{ formatEventDateTime(ev.event_date, ev.event_time) }}</span>
-          </div>
-        </a>
-      }
-    </div>
-  </section>
-}
-
-@if (loading() && !activeEvents().length && !finishedEvents().length) {
-  <div class="empty">
-    <tava-theatrical-loader title="Armando la cartelera" />
-    @if (loadingStalled()) {
-      <p>El servidor sigue despertando. Puedes esperar un poco más o reintentar.</p>
+  } @else if (loadError()) {
+    <div class="empty">
+      <tava-theatrical-loader title="El servidor se demoro mucho" />
+      <p>{{ loadError() }}</p>
       <button type="button" class="tava-btn-primary" (click)="load()">Reintentar</button>
-    }
-  </div>
-} @else if (loadError()) {
-  <div class="empty">
-    <tava-theatrical-loader title="El servidor se demoro mucho" />
-    <p>{{ loadError() }}</p>
-    <button type="button" class="tava-btn-primary" (click)="load()">Reintentar</button>
-  </div>
-} @else if (!activeEvents().length && !finishedEvents().length) {
-  <p class="empty">No hay funciones publicadas. Vuelve pronto.</p>
-}
+    </div>
+  } @else if (!activeEvents().length && !finishedEvents().length) {
+    <p class="empty">No hay funciones publicadas. Vuelve pronto.</p>
+  }
+</section>
