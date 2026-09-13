@@ -135,7 +135,7 @@ class TheatricalDetailsSchema(BaseModel):
     warnings: str | None = None
     credits: str | None = None
     seating: SeatingConfigSchema | None = None
-    sale_mode: str | None = Field(default=None, pattern="^(system|whatsapp)$")
+    sale_mode: str | None = Field(default=None, pattern="^(system|whatsapp|free)$")
     whatsapp_number: str | None = Field(default=None, max_length=40)
     whatsapp_message: str | None = Field(default=None, max_length=1000)
 
@@ -308,11 +308,6 @@ class AttendeeItem(BaseModel):
     is_used: bool
     is_cancelled: bool = False
     used_at: str | None = None
-
-
-class BroadcastEmailRequest(BaseModel):
-    subject: str = Field(min_length=3, max_length=120)
-    message: str = Field(min_length=10, max_length=4000)
 
 
 class CancelTicketRequest(BaseModel):

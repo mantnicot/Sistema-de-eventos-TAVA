@@ -140,8 +140,6 @@ export class AdminDashboardComponent implements OnInit {
   readonly attendeesLoading = signal(false);
   readonly attendeesQuery = signal('');
   readonly eventsQuery = signal('');
-  broadcastSubject = '';
-  broadcastMessage = '';
   cancelNotifyHolder = true;
   seatingDraft: SeatingConfig = structuredClone(DEFAULT_SEATING);
   savedSeatingSeats: SeatMapItem[] = [];
@@ -256,7 +254,42 @@ export class AdminDashboardComponent implements OnInit {
   }
 
   hasPaidTicketsDraft(): boolean {
+    if (this.theatrical.sale_mode === 'free') return false;
     return this.ticketTypesDraft.some((t) => Number(t.price) > 0 && t.kind !== 'cortesia');
+  }
+
+  isFreeSaleMode(): boolean {
+    return this.theatrical.sale_mode === 'free';
+  }
+
+  onSaleModeChange(mode: string): void {
+    this.theatrical.sale_mode = mode as TheatricalDetails['sale_mode'];
+    if (mode === 'free') {
+      this.contractAccepted = false;
+      for (const t of this.ticketTypesDraft) {
+        t.price = 0;
+      }
+      this.ticketTypesTouched = this.ticketTypesDraft.length > 0;
+    }
+  }
+
+  ensureFreeTicketDraft(): void {
+    this.theatrical.sale_mode = 'free';
+    this.contractAccepted = false;
+    if (!this.ticketTypesDraft.length) {
+      this.ticketTypesDraft.push({
+        name: 'Entrada gratuita',
+        kind: 'individual',
+        price: 0,
+        quantity_available: Math.min(this.eventForm.capacity || 50, 100),
+        benefits: 'Reserva sin costo',
+      });
+    } else {
+      for (const t of this.ticketTypesDraft) {
+        t.price = 0;
+      }
+    }
+    this.ticketTypesTouched = true;
   }
 
   loadWhatsappOrders(eventId: string): void {
@@ -780,8 +813,6 @@ export class AdminDashboardComponent implements OnInit {
     };
     this.attendeesData.set(null);
     this.attendeesQuery.set('');
-    this.broadcastSubject = '';
-    this.broadcastMessage = '';
     this.seatingDraft = structuredClone(DEFAULT_SEATING);
     this.savedSeatingSeats = [];
     this.adminSeatPreviewSelected = [];
@@ -863,49 +894,6 @@ export class AdminDashboardComponent implements OnInit {
             error: (err) => {
               this.notify.hide();
               this.notify.error('Boletas', err.error?.detail ?? 'No se pudo cancelar');
-            },
-          });
-      }
-    );
-  }
-
-  sendBroadcastEmail(): void {
-    const id = this.editingId();
-    if (!id) return;
-    const subject = this.broadcastSubject.trim();
-    const message = this.broadcastMessage.trim();
-    if (subject.length < 3 || message.length < 10) {
-      this.notify.warning('Correo', 'Escribe un asunto (mín. 3) y un mensaje (mín. 10 caracteres).');
-      return;
-    }
-    this.notify.confirm(
-      'Enviar correo',
-      'Se enviará a todos los compradores con boletas pagadas de este evento. ¿Continuar?',
-      () => {
-        this.notify.loadingTheatrical('Enviando correos', 'admin');
-        this.api
-          .post<{ sent: number; recipients: number }>(`/events/${id}/broadcast-email`, {
-            subject,
-            message,
-          })
-          .subscribe({
-            next: (res) => {
-              this.notify.hide();
-              if (res.sent > 0) {
-                this.notify.success('Correo', `Enviados ${res.sent} de ${res.recipients} destinatarios.`);
-              } else {
-                const err = (res as { email_error?: string }).email_error;
-                this.notify.error(
-                  'Correo',
-                  err ?? 'No se envió ningún correo. Verifica BREVO_SENDER_EMAIL en Render.'
-                );
-              }
-              this.broadcastSubject = '';
-              this.broadcastMessage = '';
-            },
-            error: (err) => {
-              this.notify.hide();
-              this.notify.error('Correo', err.error?.detail ?? 'No se pudo enviar');
             },
           });
       }
@@ -1040,7 +1028,8 @@ export class AdminDashboardComponent implements OnInit {
       trailer_url: ev.trailer_url ?? '',
     };
     this.theatrical = { ...(ev.theatrical_details ?? {}) };
-    this.theatrical.sale_mode = this.theatrical.sale_mode ?? 'whatsapp';
+    this.theatrical.sale_mode =
+      this.theatrical.sale_mode === 'free' ? 'free' : 'whatsapp';
     this.theatrical.whatsapp_number = this.theatrical.whatsapp_number ?? '';
     this.theatrical.whatsapp_message = this.theatrical.whatsapp_message ?? '';
     const rate = ev.commission_rate != null ? Number(ev.commission_rate) : null;
@@ -1090,7 +1079,10 @@ export class AdminDashboardComponent implements OnInit {
         };
         this.theatrical = {
           ...(detail.theatrical_details ?? {}),
-          sale_mode: detail.theatrical_details?.sale_mode ?? 'system',
+          sale_mode:
+            detail.theatrical_details?.sale_mode === 'free'
+              ? 'free'
+              : 'whatsapp',
           whatsapp_number: detail.theatrical_details?.whatsapp_number ?? '',
           whatsapp_message: detail.theatrical_details?.whatsapp_message ?? '',
         };
@@ -1112,8 +1104,6 @@ export class AdminDashboardComponent implements OnInit {
         this.ticketTypesTouched = true;
         this.duplicateGalleryDraft = [...(detail.gallery ?? [])];
         this.attendeesData.set(null);
-        this.broadcastSubject = '';
-        this.broadcastMessage = '';
         this.notify.success('Eventos', 'Copia lista. Cambia la fecha y guarda el nuevo evento.');
         document.querySelector('.admin-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       },
@@ -1148,6 +1138,13 @@ export class AdminDashboardComponent implements OnInit {
         return;
       }
     }
+    if (this.isFreeSaleMode()) {
+      const paid = this.ticketTypesDraft.find((t) => Number(t.price) > 0);
+      if (paid) {
+        this.notify.warning('Evento gratuito', 'En modo gratis todas las boletas deben estar en $0.');
+        return;
+      }
+    }
     this.notify.loadingTheatrical('Guardando obra', 'admin');
     const members = this.castMembers
       .map((m) => ({
@@ -1163,8 +1160,14 @@ export class AdminDashboardComponent implements OnInit {
       theatrical_details: {
         ...this.theatrical,
         sale_mode: this.theatrical.sale_mode ?? 'whatsapp',
-        whatsapp_number: this.theatrical.whatsapp_number?.trim() || null,
-        whatsapp_message: this.theatrical.whatsapp_message?.trim() || null,
+        whatsapp_number:
+          this.theatrical.sale_mode === 'whatsapp'
+            ? this.theatrical.whatsapp_number?.trim() || null
+            : null,
+        whatsapp_message:
+          this.theatrical.sale_mode === 'whatsapp'
+            ? this.theatrical.whatsapp_message?.trim() || null
+            : null,
         cast: members.map((m) => m.name),
         cast_members: members,
         seating: {

@@ -492,12 +492,6 @@
   opacity: 0.55;
 }
 
-.broadcast-block {
-  margin-top: 1rem;
-  padding-top: 0.75rem;
-  border-top: 1px dashed rgba(201, 162, 39, 0.2);
-}
-
 .btn-sm {
   font-size: 0.72rem !important;
   padding: 0.25rem 0.5rem !important;
@@ -805,6 +799,16 @@
   flex-wrap: wrap;
   gap: 0.5rem;
   margin-bottom: 0.75rem;
+}
+
+.ghost-btn {
+  border: 1px solid rgba(201, 162, 39, 0.45);
+  background: rgba(255, 255, 255, 0.55);
+  border-radius: 999px;
+  padding: 0.45rem 1rem;
+  cursor: pointer;
+  font-family: inherit;
+  color: #3d2a14;
 }
 
 .ticket-type-row {

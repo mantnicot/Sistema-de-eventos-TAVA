@@ -164,15 +164,25 @@
           </div>
         } @else if (ev.ticket_types.length) {
           <p class="detail__funny-cta">
-            {{ isWhatsAppSale(ev)
-              ? 'Elige boletas aquí y continúa por WhatsApp. La boleta se envía cuando validen tu pago.'
-              : funnyCta(ev.id) }}
+            {{
+              isFreeSale(ev)
+                ? 'Evento gratuito: reserva tu cupo y recibe la boleta al instante.'
+                : isWhatsAppSale(ev)
+                  ? 'Elige boletas aquí y continúa por WhatsApp. La boleta se envía cuando validen tu pago.'
+                  : funnyCta(ev.id)
+            }}
           </p>
 
           @if (!auth.isLoggedIn()) {
             <section class="purchase-register-gate">
-              <strong>Debes registrarte sí o sí para comprar</strong>
-              <p>Crea tu cuenta, valida el correo que recibirás y vuelve para terminar la compra. Guardaremos tu selección.</p>
+              <strong>{{ isFreeSale(ev) ? 'Debes registrarte para reservar' : 'Debes registrarte sí o sí para comprar' }}</strong>
+              <p>
+                {{
+                  isFreeSale(ev)
+                    ? 'Crea tu cuenta, valida el correo y vuelve para reservar tu boleta gratis.'
+                    : 'Crea tu cuenta, valida el correo que recibirás y vuelve para terminar la compra. Guardaremos tu selección.'
+                }}
+              </p>
               <div>
                 <a routerLink="/registro" [queryParams]="{ returnUrl: '/eventos/' + ev.id }" class="tava-btn-primary">Registrarme</a>
                 <a routerLink="/ingresar" [queryParams]="{ returnUrl: '/eventos/' + ev.id }" class="back">Ya tengo cuenta</a>
@@ -194,7 +204,9 @@
                 [checked]="selectedTypeId() === tt.id"
                 (change)="onTicketTypeChange(tt.id)"
               />
-              {{ tt.name }} — ${{ tt.price | number }} ({{ tt.quantity_available }} disp.)
+              {{ tt.name }} —
+              {{ tt.price > 0 ? ('$' + (tt.price | number) + ' COP') : 'Gratis' }}
+              ({{ tt.quantity_available }} disp.)
             </label>
           }
 
@@ -289,10 +301,14 @@
               purchasing
                 ? 'Procesando…'
                 : !auth.isLoggedIn()
-                  ? 'Registrarme para comprar'
-                  : isWhatsAppSale(ev)
-                    ? 'Continuar por WhatsApp'
-                    : 'Comprar boletas'
+                  ? isFreeSale(ev)
+                    ? 'Registrarme para reservar'
+                    : 'Registrarme para comprar'
+                  : isFreeSale(ev)
+                    ? 'Reservar boletas gratis'
+                    : isWhatsAppSale(ev)
+                      ? 'Continuar por WhatsApp'
+                      : 'Comprar boletas'
             }}
           </button>
         } @else {

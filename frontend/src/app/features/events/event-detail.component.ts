@@ -130,13 +130,20 @@ export class EventDetailComponent implements OnInit, OnDestroy {
     return ev.theatrical_details?.sale_mode === 'whatsapp';
   }
 
+  isFreeSale(ev: TavaEventDetail): boolean {
+    return ev.theatrical_details?.sale_mode === 'free';
+  }
+
   whatsappSaleLink(ev: TavaEventDetail): string {
     const phone = (ev.theatrical_details?.whatsapp_number ?? '').replace(/[^\d]/g, '');
     const configured = ev.theatrical_details?.whatsapp_message?.trim();
     const fallback =
-      `Hola TAVA, quiero conseguir boletas para ${ev.name} ` +
-      `del ${ev.event_date} a las ${this.formatEventTime(ev.event_time)}.`;
-    return `https://wa.me/${phone}?text=${encodeURIComponent(configured || fallback)}`;
+      `Hola, vengo desde la página de TAVA Teatro.\n\n` +
+      `Quiero boletas para: ${ev.name}\n` +
+      `Fecha: ${ev.event_date} · Hora: ${this.formatEventTime(ev.event_time)}\n` +
+      `Lugar: ${ev.city} · ${ev.address}`;
+    const text = configured ? `${fallback}\n\n——— NOTA ——\n${configured}` : fallback;
+    return `https://api.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(text)}`;
   }
 
   ngOnInit(): void {
@@ -283,15 +290,21 @@ export class EventDetailComponent implements OnInit, OnDestroy {
     if (this.purchasing) return;
 
     const total = this.totalPrice();
-    const confirmMsg = this.isWhatsAppSale(ev)
-      ? `Vas a solicitar ${this.quantity} boleta(s) para "${ev.name}" por $${total.toLocaleString('es-CO')} COP. Se abrirá WhatsApp; la boleta se emite cuando validen tu pago.`
-      : `Vas a comprar ${this.quantity} boleta(s) para "${ev.name}" ` +
-        `por $${total.toLocaleString('es-CO')} COP. Revisa los nombres antes de continuar.`;
+    const free = this.isFreeSale(ev);
+    const confirmMsg = free
+      ? `Vas a reservar ${this.quantity} boleta(s) gratis para "${ev.name}". Se emitirán al instante.`
+      : this.isWhatsAppSale(ev)
+        ? `Vas a solicitar ${this.quantity} boleta(s) para "${ev.name}" por $${total.toLocaleString('es-CO')} COP. Se abrirá WhatsApp; la boleta se emite cuando validen tu pago.`
+        : `Vas a comprar ${this.quantity} boleta(s) para "${ev.name}" ` +
+          `por $${total.toLocaleString('es-CO')} COP. Revisa los nombres antes de continuar.`;
 
-    this.notify.confirm(this.isWhatsAppSale(ev) ? 'Continuar por WhatsApp' : 'Confirmar compra', confirmMsg, () => {
+    this.notify.confirm(
+      free ? 'Confirmar reserva' : this.isWhatsAppSale(ev) ? 'Continuar por WhatsApp' : 'Confirmar compra',
+      confirmMsg,
+      () => {
       if (this.purchasing) return;
       this.purchasing = true;
-      this.notify.loadingTheatrical('Preparando compra', 'purchase');
+      this.notify.loadingTheatrical(free ? 'Reservando cupo' : 'Preparando compra', 'purchase');
       this.api
         .post<{
           message?: string;
@@ -299,6 +312,9 @@ export class EventDetailComponent implements OnInit, OnDestroy {
           payment_channel?: string;
           checkout_url?: string;
           whatsapp_url?: string;
+          whatsapp_message?: string;
+          whatsapp_phone?: string;
+          reservation?: boolean;
           order_id?: string;
         }>('/tickets/purchase', {
           event_id: ev.id,
@@ -312,8 +328,15 @@ export class EventDetailComponent implements OnInit, OnDestroy {
             this.purchasing = false;
             this.notify.hide();
             clearPurchaseDraft();
-            if (res.payment_required && res.whatsapp_url) {
-              window.open(res.whatsapp_url, '_blank', 'noopener,noreferrer');
+            if (res.payment_required && (res.whatsapp_url || res.whatsapp_message)) {
+              const phone = (res.whatsapp_phone || '').replace(/[^\d]/g, '');
+              const waUrl =
+                res.whatsapp_message && phone
+                  ? `https://api.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(res.whatsapp_message)}`
+                  : res.whatsapp_url;
+              if (waUrl) {
+                window.open(waUrl, '_blank', 'noopener,noreferrer');
+              }
               this.notify.celebration(
                 'Solicitud creada',
                 res.message ??
@@ -326,8 +349,11 @@ export class EventDetailComponent implements OnInit, OnDestroy {
               return;
             }
             this.notify.celebration(
-              '¡Compra lista!',
-              res.message ?? 'Tus boletas ya están disponibles. El PDF también llegará a tu correo.'
+              free || res.reservation ? '¡Reserva lista!' : '¡Compra lista!',
+              res.message ??
+                (free
+                  ? 'Tu boleta gratis ya está disponible. El PDF también llegará a tu correo.'
+                  : 'Tus boletas ya están disponibles. El PDF también llegará a tu correo.')
             );
             setTimeout(() => {
               this.notify.hide();
@@ -337,7 +363,7 @@ export class EventDetailComponent implements OnInit, OnDestroy {
           error: (err) => {
             this.purchasing = false;
             this.notify.hide();
-            this.notify.showHttpError(parseHttpError(err, 'compra'));
+            this.notify.showHttpError(parseHttpError(err, free ? 'reserva' : 'compra'));
           },
         });
     });

@@ -573,7 +573,7 @@ export function resolveTavoAction(
     case 'faq_payment':
       return {
         reply: msg(
-          'Hoy muchos eventos cobran por WhatsApp: generas el pedido en la web, pagas como te indiquen y el organizador valida en TAVA. Entonces se emite la boleta. Si el evento usa pago en sistema (Wompi), el checkout es en la ficha.',
+          'Hoy los eventos de pago cobran por WhatsApp: generas el pedido en la web, pagas como te indiquen y el organizador valida en TAVA. Entonces se emite la boleta. Los eventos gratuitos se reservan en la misma ficha y la boleta llega al instante.',
           [
             { id: 'buy_how', label: 'Cómo comprar' },
             { id: 'faq', label: '← FAQ' },

@@ -207,11 +207,19 @@
           <h3>Modo de venta</h3>
           <label>
             Venta de boletas
-            <select [(ngModel)]="theatrical.sale_mode" name="saleMode">
+            <select [(ngModel)]="theatrical.sale_mode" name="saleMode" (ngModelChange)="onSaleModeChange($event)">
+              <option value="free">Evento gratuito (solo reserva)</option>
               <option value="whatsapp">Por WhatsApp (recomendado)</option>
-              <option value="system">Compra en el sistema (Wompi)</option>
             </select>
           </label>
+          @if (theatrical.sale_mode === 'free') {
+            <p class="muted">
+              Sin cobro ni comisión. La gente reserva en la web y recibe boleta/QR al instante. Usa boletas a $0.
+            </p>
+            <button type="button" class="ghost-btn" (click)="ensureFreeTicketDraft()">
+              Preparar boleta gratuita $0
+            </button>
+          }
           @if (theatrical.sale_mode === 'whatsapp') {
             <label>
               Número de WhatsApp
@@ -222,40 +230,44 @@
               />
             </label>
             <label>
-              Mensaje base (opcional)
+              Nota opcional (se agrega al final del mensaje automático)
               <textarea
                 [(ngModel)]="theatrical.whatsapp_message"
                 name="whatsappMessage"
                 rows="3"
-                placeholder="Se antepone al mensaje automático con datos de la solicitud..."
+                placeholder="Ej. Horario de atención, datos de transferencia…"
               ></textarea>
             </label>
             <p class="muted">
-              El comprador elige boletas en la web; se abre WhatsApp con el pedido. Tú validas el pago en el panel y ahí se envía correo + código.
+              El comprador elige boletas en la web; se abre WhatsApp con el pedido completo (evento, comprador y total). Tú validas el pago en el panel y ahí se envía correo + código.
             </p>
           }
         </section>
 
-        <section class="ticketing-block">
-          <h3>Comisión TAVA (eventos de pago)</h3>
-          <p class="muted">Mínimo por boleta de pago: ${{ minPaidTicket | number }} COP. Elige entre 8% y 15%.</p>
-          <label>
-            Comisión del sistema
-            <select [(ngModel)]="commissionRatePercent" name="commissionRate" [disabled]="!hasPaidTicketsDraft()">
-              @for (p of commissionOptions; track p) {
-                <option [ngValue]="p">{{ p }}%</option>
-              }
-            </select>
-          </label>
-          <details class="contract-box">
-            <summary>Leer contrato de comisión ({{ contractVersion || 'v1' }})</summary>
-            <pre class="contract-text">{{ contractText }}</pre>
-          </details>
-          <label class="check-row">
-            <input type="checkbox" [(ngModel)]="contractAccepted" name="contractAccepted" [disabled]="!hasPaidTicketsDraft()" />
-            Acepto el contrato y me comprometo a pagar la comisión seleccionada
-          </label>
-        </section>
+        @if (theatrical.sale_mode !== 'free') {
+          <section class="ticketing-block">
+            <h3>Comisión TAVA (eventos de pago)</h3>
+            <p class="muted">Mínimo por boleta de pago: ${{ minPaidTicket | number }} COP. Elige entre 8% y 15%.</p>
+            <label>
+              Comisión del sistema
+              <select [(ngModel)]="commissionRatePercent" name="commissionRate" [disabled]="!hasPaidTicketsDraft()">
+                @for (p of commissionOptions; track p) {
+                  <option [ngValue]="p">{{ p }}%</option>
+                }
+              </select>
+            </label>
+            <details class="contract-box">
+              <summary>Leer contrato de comisión ({{ contractVersion || 'v1' }})</summary>
+              <pre class="contract-text">{{ contractText }}</pre>
+            </details>
+            <label class="check-row">
+              <input type="checkbox" [(ngModel)]="contractAccepted" name="contractAccepted" [disabled]="!hasPaidTicketsDraft()" />
+              Acepto el contrato y me comprometo a pagar la comisión seleccionada
+            </label>
+          </section>
+        } @else {
+          <p class="muted">Evento gratuito: no aplica contrato ni comisión de plataforma.</p>
+        }
 
         @if (editingId()) {
           <section class="ticketing-block">
@@ -441,28 +453,6 @@
                     }
                   </tbody>
                 </table>
-              </div>
-
-              <div class="broadcast-block">
-                <h4>Enviar correo a asistentes</h4>
-                <p class="muted">Mensaje personalizado a quienes compraron boletas pagadas de este evento.</p>
-                <label>
-                  Asunto
-                  <input [(ngModel)]="broadcastSubject" name="broadcastSubject" maxlength="120" />
-                </label>
-                <label>
-                  Mensaje
-                  <textarea
-                    [(ngModel)]="broadcastMessage"
-                    name="broadcastMessage"
-                    rows="4"
-                    maxlength="4000"
-                    placeholder="Escribe el aviso para los asistentes…"
-                  ></textarea>
-                </label>
-                <button type="button" class="tava-btn-primary" (click)="sendBroadcastEmail()">
-                  Enviar correo
-                </button>
               </div>
             } @else {
               <p class="muted">No se pudo cargar la lista de asistentes.</p>

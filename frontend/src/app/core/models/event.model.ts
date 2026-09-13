@@ -17,7 +17,7 @@ export interface TheatricalDetails {
   warnings?: string;
   credits?: string;
   seating?: SeatingConfig;
-  sale_mode?: 'system' | 'whatsapp';
+  sale_mode?: 'system' | 'whatsapp' | 'free';
   whatsapp_number?: string;
   whatsapp_message?: string;
 }

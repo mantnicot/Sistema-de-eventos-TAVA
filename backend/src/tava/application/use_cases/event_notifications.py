@@ -22,7 +22,6 @@ from tava.infrastructure.security.ticket_tokens import generate_qr_token, genera
 from tava.infrastructure.services.email import (
     email_transport_ready,
     last_email_failure,
-    send_event_broadcast_email,
     send_event_change_email,
     send_event_review_request_email,
     send_ticket_cancelled_email,
@@ -154,31 +153,6 @@ class EventNotificationUseCase:
             "tickets_affected": sold,
             "email_error": failure,
         }
-
-    async def broadcast_custom_email(
-        self, event_id: UUID, *, subject: str, message: str
-    ) -> dict:
-        if not email_transport_ready():
-            raise ValueError("Correo no configurado (Brevo/Resend). No se pudo enviar.")
-        event = await self._load_event(event_id)
-        buyers = await self._unique_buyers_for_event(event_id)
-        if not buyers:
-            return {"sent": 0, "message": "No hay asistentes con boletas pagadas"}
-        sent = 0
-        last_err: str | None = None
-        for user in buyers:
-            ok = await send_event_broadcast_email(
-                user.email,
-                user.full_name,
-                event.name,
-                subject.strip(),
-                message.strip(),
-            )
-            if ok:
-                sent += 1
-            else:
-                last_err = last_email_failure() or last_err
-        return {"sent": sent, "recipients": len(buyers), "email_error": last_err}
 
     async def cancel_ticket(self, ticket_id: UUID, *, notify: bool = True) -> dict:
         result = await self._session.execute(
@@ -324,18 +298,6 @@ class EventNotificationUseCase:
             if ok:
                 sent += 1
         return sent
-
-    async def _unique_buyers_for_event(self, event_id: UUID) -> list[UserModel]:
-        result = await self._session.execute(
-            select(UserModel)
-            .join(OrderModel, OrderModel.buyer_id == UserModel.id)
-            .where(
-                OrderModel.event_id == event_id,
-                OrderModel.payment_status == PaymentStatus.PAID,
-            )
-            .distinct()
-        )
-        return list(result.scalars().all())
 
     async def _load_event(self, event_id: UUID) -> EventModel:
         result = await self._session.execute(select(EventModel).where(EventModel.id == event_id))

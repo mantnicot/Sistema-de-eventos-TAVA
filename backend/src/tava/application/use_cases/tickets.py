@@ -49,7 +49,7 @@ def _sale_channel(order: OrderModel) -> str:
 def _event_sale_mode(event: EventModel) -> str:
     details = event.theatrical_details if isinstance(event.theatrical_details, dict) else {}
     mode = str(details.get("sale_mode") or "system").lower()
-    return mode if mode in ("system", "whatsapp") else "system"
+    return mode if mode in ("system", "whatsapp", "free") else "system"
 
 
 def _build_whatsapp_order_message(
@@ -62,30 +62,44 @@ def _build_whatsapp_order_message(
     buyer_email: str,
     buyer_phone: str | None,
     reference: str,
+    holder_names: list[str] | None = None,
 ) -> str:
+    """Mensaje completo para WhatsApp: evento + comprador + pedido (siempre)."""
     details = event.theatrical_details if isinstance(event.theatrical_details, dict) else {}
     custom = str(details.get("whatsapp_message") or "").strip()
-    phone_line = buyer_phone.strip() if buyer_phone else "No indicado"
-    base = (
-        f"Hola, vengo desde la página de TAVA Teatro.\n\n"
-        f"Quiero boletas para: {event.name}\n"
-        f"Fecha: {event.event_date.isoformat()} · Hora: {event.event_time.isoformat(timespec='minutes')}\n"
-        f"Ciudad / lugar: {event.city} · {event.address}\n"
-        f"Tipo de boleta: {ticket_type.name} · Cantidad: {quantity}\n"
-        f"Valor unitario: ${float(ticket_type.price):,.0f} · Total: ${float(total):,.0f}\n"
-        f"Nombre: {buyer_name}\n"
-        f"Correo: {buyer_email}\n"
-        f"Teléfono: {phone_line}\n\n"
-        f"Entiendo que:\n"
-        f"1) Coordinaré/realizaré el pago por este medio según indiquen.\n"
-        f"2) Cuando el administrador del evento valide el pago en el sistema TAVA, "
-        f"se generará el correo y el código para reclamar o descargar la boleta (PDF/QR). "
-        f"Mientras el pago no esté validado en el sistema, no se emite la boleta.\n\n"
-        f"Referencia de solicitud: {reference}"
-    ).replace(",", ".")
+    phone_line = (buyer_phone or "").strip() or "No indicado"
+    unit = f"${int(ticket_type.price):,}".replace(",", ".")
+    total_fmt = f"${int(total):,}".replace(",", ".")
+    time_txt = event.event_time.isoformat(timespec="minutes")
+    holders = [n.strip() for n in (holder_names or []) if n and str(n).strip()]
+    holders_line = ", ".join(holders) if holders else buyer_name
+
+    # Info de venta primero (lo que el organizador necesita para cobrar)
+    lines = [
+        "Hola, vengo desde la página de TAVA Teatro.",
+        "",
+        "——— PEDIDO ——",
+        f"Evento: {event.name}",
+        f"Fecha: {event.event_date.isoformat()} · Hora: {time_txt}",
+        f"Lugar: {event.city} · {event.address}",
+        f"Boleta: {ticket_type.name}",
+        f"Cantidad: {quantity}",
+        f"Precio unitario: {unit} COP",
+        f"Total a pagar: {total_fmt} COP",
+        f"Referencia: {reference}",
+        "",
+        "——— COMPRADOR ——",
+        f"Nombre: {buyer_name}",
+        f"Correo: {buyer_email}",
+        f"Teléfono: {phone_line}",
+        f"Nombre(s) en boleta(s): {holders_line}",
+        "",
+        "Cuando reciban el pago, validarlo en el panel TAVA para emitir la boleta (correo + código/PDF).",
+    ]
+    body = "\n".join(lines)
     if custom:
-        return f"{custom.strip()}\n\n———\n{base}"
-    return base
+        return f"{body}\n\n——— NOTA ——\n{custom}"
+    return body
 
 
 def _buyer_contact(order: OrderModel, buyer: UserModel | None) -> tuple[str | None, str | None]:
@@ -391,6 +405,7 @@ class TicketUseCase:
         order.pending_payload = payload
         await self._session.flush()
 
+        names = self._normalize_holder_names(quantity, holder_names, user_name)
         message = _build_whatsapp_order_message(
             event=event,
             ticket_type=tt,
@@ -400,9 +415,11 @@ class TicketUseCase:
             buyer_email=user_email,
             buyer_phone=user_phone,
             reference=payment_reference,
+            holder_names=names,
         )
         phone_digits = "".join(ch for ch in wa_number if ch.isdigit())
-        wa_url = f"https://wa.me/{phone_digits}?text={quote(message)}"
+        # Preferir api.whatsapp.com: más fiable con textos largos en móvil/desktop
+        wa_url = f"https://api.whatsapp.com/send?phone={phone_digits}&text={quote(message)}"
         return {
             "order_id": str(order.id),
             "payment_required": True,
@@ -411,6 +428,7 @@ class TicketUseCase:
             "payment_reference": payment_reference,
             "whatsapp_url": wa_url,
             "whatsapp_message": message,
+            "whatsapp_phone": phone_digits,
             "total": float(order.total_amount),
             "event_name": event.name,
             "ticket_type": tt.name,
@@ -872,8 +890,15 @@ class TicketUseCase:
         self._assert_tickets_on_sale(event)
         tt = await self._load_ticket_type(ticket_type_id, event_id)
         total = tt.price * quantity
+        sale_mode = _event_sale_mode(event)
 
-        if total <= 0:
+        # Evento gratuito: solo reserva, emite boleta al instante (sin WhatsApp/Wompi)
+        if sale_mode == "free" or total <= 0:
+            if sale_mode == "free" and total > 0:
+                raise ValueError(
+                    "Este evento es gratuito. Las boletas deben estar en $0. "
+                    "Pide al organizador que configure el modo gratis correctamente."
+                )
             order, tickets, event, tt = await self.create_order(
                 event_id=event_id,
                 ticket_type_id=ticket_type_id,
@@ -890,11 +915,18 @@ class TicketUseCase:
             buyer_model = await self._users.get_model_by_email(user_email)
             response = self._order_response(order, tickets, event, tt)
             response["payment_required"] = False
+            response["reservation"] = True
             response["email_pending"] = bool(buyer_model)
+            response["message"] = (
+                "Reserva confirmada. Tus boletas gratis ya están listas "
+                "(PDF/QR por correo y en Mis boletas)."
+                if sale_mode == "free" or total <= 0
+                else response.get("message")
+            )
             return response
 
         # Ventas de pago: preferir WhatsApp (validación manual) cuando el evento así lo define
-        if _event_sale_mode(event) == "whatsapp":
+        if sale_mode == "whatsapp":
             return await self.create_whatsapp_pending_order(
                 user_id=user_id,
                 user_name=user_name,

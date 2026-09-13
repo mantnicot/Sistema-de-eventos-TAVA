@@ -654,29 +654,6 @@ async def send_ticket_cancelled_email(
     return await _deliver_email(to_email, subject, html, text)
 
 
-async def send_event_broadcast_email(
-    to_email: str,
-    full_name: str,
-    event_name: str,
-    subject: str,
-    message: str,
-) -> bool:
-    full_subject = subject if subject else f"Mensaje de TAVA — {event_name}"
-    html = f"""
-    <div style="font-family:Georgia,serif;max-width:520px;margin:0 auto;color:#3d2a14;">
-      <h1 style="color:#b8860b;">TAVA Teatro</h1>
-      <p>Hola <strong>{full_name}</strong>,</p>
-      <p>Mensaje sobre el evento <strong>{event_name}</strong>:</p>
-      <div style="background:#f8f0e4;border-left:4px solid #c9a227;padding:16px 20px;margin:16px 0;">
-        {message.replace(chr(10), '<br>')}
-      </div>
-      <p style="font-size:12px;color:#666;">Equipo TAVA Teatro</p>
-    </div>
-    """
-    text = f"Hola {full_name},\n\n{message}\n\n— TAVA Teatro ({event_name})\n"
-    return await _deliver_email(to_email, full_subject, html, text)
-
-
 def _event_review_request_email_html(
     admin_name: str,
     event_name: str,

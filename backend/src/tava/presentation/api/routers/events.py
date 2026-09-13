@@ -38,7 +38,6 @@ from tava.presentation.api.platform_auth import (
     require_platform_admin,
 )
 from tava.presentation.api.schemas import (
-    BroadcastEmailRequest,
     CommissionContractResponse,
     EventCarteleraRequest,
     EventCreateRequest,
@@ -107,11 +106,14 @@ def _event_response(
 
 
 def _apply_commission_fields(data: dict, body: EventCreateRequest, *, existing: EventModel | None = None) -> dict:
-    """Aplica comisión/contrato. Si hay comisión, exige aceptación y bloquea ingreso hasta liquidar."""
-    rate_raw = body.commission_rate
-    if rate_raw is None and "commission_rate" not in data:
-        # preserve existing on partial-ish updates when field omitted via model_dump
-        pass
+    """Aplica comisión/contrato. Eventos free no llevan comisión."""
+    details = body.theatrical_details.model_dump() if body.theatrical_details else {}
+    if str(details.get("sale_mode") or "").lower() == "free":
+        data["commission_rate"] = None
+        data["contract_version"] = None
+        data["contract_accepted_at"] = None
+        data["entry_unlocked"] = True
+        return data
 
     # EventCreate always sends commission_rate (possibly null)
     if body.commission_rate is not None:
@@ -148,14 +150,105 @@ async def _organizer_names(db: AsyncSession, organizer_ids: list[UUID]) -> dict[
     return {row[0]: row[1] for row in result.all()}
 
 
-def _apply_organizer_publish_rules(user, data: dict, existing: EventModel | None = None) -> dict:
+def _sale_mode_of(details) -> str:
+    if not isinstance(details, dict):
+        return "whatsapp"
+    return str(details.get("sale_mode") or "whatsapp").lower()
+
+
+def _organizer_money_or_tickets_changed(existing: EventModel, data: dict) -> bool:
+    """True si el organizador tocó dinero, comisión, aforo o modo de venta."""
+    if "commission_rate" in data:
+        new_c = data["commission_rate"]
+        old_c = existing.commission_rate
+        if new_c is None and old_c is None:
+            pass
+        elif new_c is None or old_c is None:
+            return True
+        elif Decimal(str(new_c)) != Decimal(str(old_c)):
+            return True
+    if "capacity" in data and int(data["capacity"]) != int(existing.capacity):
+        return True
+    if "theatrical_details" in data:
+        old_mode = _sale_mode_of(existing.theatrical_details)
+        new_mode = _sale_mode_of(data["theatrical_details"])
+        if old_mode != new_mode:
+            return True
+    return False
+
+
+def _ticket_types_money_changed(
+    existing: dict[UUID, TicketTypeModel],
+    items: list,
+) -> bool:
+    keep_ids: set[UUID] = set()
+    for item in items:
+        if item.id and item.id in existing:
+            keep_ids.add(item.id)
+            model = existing[item.id]
+            if (
+                model.kind != item.kind
+                or Decimal(str(model.price)) != Decimal(str(item.price))
+                or int(model.quantity_available) != int(item.quantity_available)
+            ):
+                return True
+        else:
+            return True
+    return any(tid not in keep_ids for tid in existing)
+
+
+def _queue_event_for_review(model: EventModel) -> None:
+    model.review_status = EventReviewStatus.PENDING
+    model.cartelera_visible = False
+    model.rejection_reason = None
+    if model.status in (EventStatus.PUBLISHED, EventStatus.IN_PROGRESS, EventStatus.SOLD_OUT):
+        model.status = EventStatus.SCHEDULED
+
+
+def _apply_organizer_publish_rules(
+    user,
+    data: dict,
+    existing: EventModel | None = None,
+    *,
+    money_or_tickets_changed: bool = False,
+) -> dict:
     if is_platform_admin(user):
         return data
-    status = data.get("status", existing.status if existing else EventStatus.DRAFT)
-    if status in (EventStatus.PUBLISHED, EventStatus.IN_PROGRESS, EventStatus.SOLD_OUT):
-        data["status"] = EventStatus.SCHEDULED
+
+    # Alta nueva: siempre a revisión
+    if existing is None:
+        status = data.get("status", EventStatus.DRAFT)
+        if status in (EventStatus.PUBLISHED, EventStatus.IN_PROGRESS, EventStatus.SOLD_OUT):
+            data["status"] = EventStatus.SCHEDULED
         data["review_status"] = EventReviewStatus.PENDING
         data["cartelera_visible"] = False
+        return data
+
+    # Edición: revisión solo si cambian dinero / boletas / modo de venta
+    if money_or_tickets_changed:
+        data["review_status"] = EventReviewStatus.PENDING
+        data["cartelera_visible"] = False
+        data["rejection_reason"] = None
+        status = data.get("status", existing.status)
+        if status in (EventStatus.PUBLISHED, EventStatus.IN_PROGRESS, EventStatus.SOLD_OUT):
+            data["status"] = EventStatus.SCHEDULED
+        return data
+
+    # Cambios cosméticos: no reabrir revisión ni bajar de cartelera
+    data.pop("review_status", None)
+    if data.get("cartelera_visible") is True and existing.review_status != EventReviewStatus.APPROVED:
+        data["cartelera_visible"] = False
+    elif "cartelera_visible" in data and not is_platform_admin(user):
+        # Organizador no puede auto-publicar en cartelera
+        data["cartelera_visible"] = existing.cartelera_visible
+
+    status = data.get("status")
+    if status in (EventStatus.PUBLISHED, EventStatus.IN_PROGRESS, EventStatus.SOLD_OUT):
+        if existing.review_status != EventReviewStatus.APPROVED:
+            data["status"] = EventStatus.SCHEDULED
+            data["review_status"] = EventReviewStatus.PENDING
+            data["cartelera_visible"] = False
+        # Si ya estaba aprobado, puede mantener el status que envíe (p. ej. publicado)
     return data
 
 
@@ -564,10 +657,12 @@ async def update_event(
         data = _apply_commission_fields(data, body, existing=before_model)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
-    data = _apply_organizer_publish_rules(user, data, before_model)
-    if not is_platform_admin(user) and before_model.review_status == EventReviewStatus.REJECTED:
-        data["review_status"] = EventReviewStatus.PENDING
-        data["rejection_reason"] = None
+    money_changed = (
+        False if is_platform_admin(user) else _organizer_money_or_tickets_changed(before_model, data)
+    )
+    data = _apply_organizer_publish_rules(
+        user, data, before_model, money_or_tickets_changed=money_changed
+    )
     event = await repo.update(event_id, **data)
     if not event:
         raise HTTPException(status_code=404, detail="Evento no encontrado")
@@ -615,14 +710,28 @@ async def sync_event_ticket_types(
     event = await _require_manage_event(db, event_id, user)
 
     items = body.ticket_types
+    details = event.theatrical_details if isinstance(event.theatrical_details, dict) else {}
+    sale_mode = str(details.get("sale_mode") or "system").lower()
+    is_free_event = sale_mode == "free"
+
     for item in items:
         price = Decimal(str(item.price or 0))
-        if is_paid_ticket_price(price) and price < MIN_PAID_TICKET_COP:
+        if is_free_event and is_paid_ticket_price(price):
+            raise HTTPException(
+                status_code=400,
+                detail="En eventos gratuitos todas las boletas deben costar $0 (solo reserva).",
+            )
+        if not is_free_event and is_paid_ticket_price(price) and price < MIN_PAID_TICKET_COP:
             raise HTTPException(
                 status_code=400,
                 detail=f"Las boletas de pago deben costar al menos ${int(MIN_PAID_TICKET_COP):,} COP.".replace(",", "."),
             )
-        if item.kind != TicketKind.COURTESY and is_paid_ticket_price(price) and event.commission_rate is None:
+        if (
+            not is_free_event
+            and item.kind != TicketKind.COURTESY
+            and is_paid_ticket_price(price)
+            and event.commission_rate is None
+        ):
             raise HTTPException(
                 status_code=400,
                 detail="Configura y acepta la comisión (8%–15%) y el contrato antes de publicar boletas de pago.",
@@ -638,6 +747,7 @@ async def sync_event_ticket_types(
     sold = await _sold_counts_by_type(db, event_id)
     existing_result = await db.execute(select(TicketTypeModel).where(TicketTypeModel.event_id == event_id))
     existing = {t.id: t for t in existing_result.scalars().all()}
+    tickets_money_changed = _ticket_types_money_changed(existing, items)
     keep_ids: set[UUID] = set()
 
     for item in items:
@@ -673,6 +783,20 @@ async def sync_event_ticket_types(
                 detail=f'No se puede quitar "{model.name}": tiene boletas vendidas',
             )
         await db.delete(model)
+
+    if not is_platform_admin(user) and tickets_money_changed:
+        prev_review = event.review_status
+        _queue_event_for_review(event)
+        await db.flush()
+        if prev_review != EventReviewStatus.PENDING:
+            from tava.application.use_cases.event_notifications import EventNotificationUseCase
+
+            notify_uc = EventNotificationUseCase(db)
+            organizer_result = await db.execute(select(UserModel).where(UserModel.id == user.id))
+            await notify_uc.notify_platform_admin_review_request(
+                event,
+                organizer=organizer_result.scalar_one_or_none(),
+            )
 
     await db.flush()
     refreshed = await db.execute(select(TicketTypeModel).where(TicketTypeModel.event_id == event_id))
@@ -728,27 +852,6 @@ async def sync_event_seating(
     uc = SeatingUseCase(db)
     try:
         result = await uc.sync_layout(event_id, body.seating.model_dump())
-        await db.commit()
-        return result
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-
-@router.post("/{event_id}/broadcast-email")
-async def broadcast_event_email(
-    event_id: UUID,
-    body: BroadcastEmailRequest,
-    user=Depends(require_event_manager),
-    db: AsyncSession = Depends(get_db),
-):
-    await _require_manage_event(db, event_id, user)
-    from tava.application.use_cases.event_notifications import EventNotificationUseCase
-
-    uc = EventNotificationUseCase(db)
-    try:
-        result = await uc.broadcast_custom_email(
-            event_id, subject=body.subject, message=body.message
-        )
         await db.commit()
         return result
     except ValueError as e:
