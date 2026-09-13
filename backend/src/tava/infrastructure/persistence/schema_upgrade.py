@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 logger = logging.getLogger("tava.schema")
 
 SCHEMA_MARKER_KEY = "schema_upgrade_marker"
-SCHEMA_MARKER_VALUE = "2026-09-commission-settlement-v4"
+SCHEMA_MARKER_VALUE = "2026-09-user-role-varchar-v5"
 
 
 async def _exec(conn: AsyncConnection, sql: str) -> None:
@@ -162,6 +162,20 @@ async def apply_schema_upgrades(conn: AsyncConnection) -> None:
         EXCEPTION WHEN others THEN NULL;
         END $$
         """,
+        # roles: evitar enum nativo (ADD VALUE falla en transacción y bloqueaba 'organizer')
+        """
+        DO $$ BEGIN
+          ALTER TABLE users
+            ALTER COLUMN role TYPE VARCHAR(20)
+            USING role::text;
+        EXCEPTION WHEN others THEN NULL;
+        END $$
+        """,
+        "UPDATE users SET role = 'organizer' WHERE role IN ('ORGANIZER', 'Organizer')",
+        "UPDATE users SET role = 'general' WHERE role IN ('GENERAL', 'General')",
+        "UPDATE users SET role = 'admin' WHERE role IN ('ADMIN', 'Admin')",
+        "UPDATE users SET role = 'validator' WHERE role IN ('VALIDATOR', 'Validator')",
+        "UPDATE users SET role = 'seller' WHERE role IN ('SELLER', 'Seller')",
     ]
     for sql in statements:
         await _exec(conn, sql)

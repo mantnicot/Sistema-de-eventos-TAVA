@@ -11,6 +11,7 @@ const LONG_TICKET_WRITE_PATHS = [
   '/tickets/admin/issue-claim',
   '/tickets/purchase',
   '/payments/wompi/confirm/',
+  '/users/',
 ];
 
 export const timeoutInterceptor: HttpInterceptorFn = (req, next) => {

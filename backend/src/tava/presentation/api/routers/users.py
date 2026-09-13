@@ -19,7 +19,7 @@ from tava.infrastructure.persistence.models import (
     UserModel,
 )
 from tava.infrastructure.persistence.repositories.sqlalchemy_user_repository import SQLAlchemyUserRepository
-from tava.presentation.api.http_errors import raise_user_error
+from tava.presentation.api.http_errors import raise_system_error, raise_user_error
 from tava.presentation.api.platform_auth import require_platform_admin
 from tava.presentation.api.schemas import UserAdminResponse, UserPermissionsUpdateRequest
 
@@ -117,33 +117,49 @@ async def set_user_permissions(
     admin=Depends(require_platform_admin),
     db=Depends(get_db),
 ):
+    from fastapi import HTTPException
+
     if body.role == UserRole.ADMIN:
         raise_user_error(400, "ADMIN_ROLE_LOCKED", "Solo puede existir un administrador global de la plataforma")
 
     target_role = _normalize_assignable_role(body.role)
 
-    if admin.id == user_id and target_role != UserRole.ADMIN:
-        raise_user_error(400, "CANNOT_DEMOTE_SELF", "No puedes quitarte el rol de administrador global")
+    # El admin global se identifica por is_platform_admin, no por role==admin
+    if admin.id == user_id and bool(getattr(admin, "is_platform_admin", False)):
+        raise_user_error(
+            400,
+            "CANNOT_DEMOTE_SELF",
+            "No puedes cambiar tus propios permisos de administrador global",
+        )
 
     repo = SQLAlchemyUserRepository(db)
     current = await repo.get_by_id(user_id)
     if not current:
         raise_user_error(404, "USER_NOT_FOUND", "Usuario no encontrado")
 
-    if getattr(current, "is_platform_admin", False) and target_role != UserRole.ADMIN:
+    if getattr(current, "is_platform_admin", False):
         if await _count_platform_admins(db) <= 1:
             raise_user_error(400, "LAST_ADMIN", "Debe quedar al menos un administrador global")
 
-    updated = await repo.update_user(
-        user_id,
-        role=target_role,
-        is_active=body.is_active,
-    )
-    if not updated:
-        raise_user_error(404, "USER_NOT_FOUND", "Usuario no encontrado")
+    try:
+        updated = await repo.update_user(
+            user_id,
+            role=target_role,
+            is_active=body.is_active,
+        )
+        if not updated:
+            raise_user_error(404, "USER_NOT_FOUND", "Usuario no encontrado")
 
-    access = await _apply_role_event_access(db, user_id, target_role, body.event_ids)
-    return _to_admin_response(updated, access)
+        access = await _apply_role_event_access(db, user_id, target_role, body.event_ids)
+        return _to_admin_response(updated, access)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise_system_error(
+            500,
+            "PERMISSIONS_UPDATE_FAILED",
+            f"No se pudieron guardar los permisos: {exc}",
+        )
 
 
 @router.patch("/{user_id}/role", response_model=UserAdminResponse)
@@ -153,33 +169,48 @@ async def set_user_role(
     admin=Depends(require_platform_admin),
     db=Depends(get_db),
 ):
+    from fastapi import HTTPException
+
     if body.role == UserRole.ADMIN:
         raise_user_error(400, "ADMIN_ROLE_LOCKED", "Solo puede existir un administrador global de la plataforma")
 
     target_role = _normalize_assignable_role(body.role)
 
-    if admin.id == user_id and target_role != UserRole.ADMIN:
-        raise_user_error(400, "CANNOT_DEMOTE_SELF", "No puedes quitarte el rol de administrador global")
+    if admin.id == user_id and bool(getattr(admin, "is_platform_admin", False)):
+        raise_user_error(
+            400,
+            "CANNOT_DEMOTE_SELF",
+            "No puedes cambiar tus propios permisos de administrador global",
+        )
     repo = SQLAlchemyUserRepository(db)
     current = await repo.get_by_id(user_id)
     if not current:
         raise_user_error(404, "USER_NOT_FOUND", "Usuario no encontrado")
-    if getattr(current, "is_platform_admin", False) and target_role != UserRole.ADMIN:
+    if getattr(current, "is_platform_admin", False):
         if await _count_platform_admins(db) <= 1:
             raise_user_error(400, "LAST_ADMIN", "Debe quedar al menos un administrador global")
-    updated = await repo.update_user(user_id, role=target_role)
-    if not updated:
-        raise_user_error(404, "USER_NOT_FOUND", "Usuario no encontrado")
-    current_access = await get_user_event_access(db, user_id)
-    keep_ids = (
-        current_access["seller_event_ids"]
-        if target_role == UserRole.SELLER
-        else current_access["validator_event_ids"]
-        if target_role == UserRole.VALIDATOR
-        else []
-    )
-    access = await _apply_role_event_access(db, user_id, target_role, keep_ids)
-    return _to_admin_response(updated, access)
+    try:
+        updated = await repo.update_user(user_id, role=target_role)
+        if not updated:
+            raise_user_error(404, "USER_NOT_FOUND", "Usuario no encontrado")
+        current_access = await get_user_event_access(db, user_id)
+        keep_ids = (
+            current_access["seller_event_ids"]
+            if target_role == UserRole.SELLER
+            else current_access["validator_event_ids"]
+            if target_role == UserRole.VALIDATOR
+            else []
+        )
+        access = await _apply_role_event_access(db, user_id, target_role, keep_ids)
+        return _to_admin_response(updated, access)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise_system_error(
+            500,
+            "ROLE_UPDATE_FAILED",
+            f"No se pudo actualizar el rol: {exc}",
+        )
 
 
 @router.patch("/{user_id}/status", response_model=UserAdminResponse)
