@@ -100,10 +100,10 @@ export function welcomeForRole(role: TavoRole): string {
 }
 
 export const TAVO_SCOPE_CLIENT =
-  'Puedo ayudarte con: cartelera, comprar boletas (muchas veces por WhatsApp), reclamar o ver tus boletas y dudas generales. Si necesitas otra cosa, te paso a WhatsApp.';
+  'Puedo ayudarte con: cartelera (activos e inactivos), comprar o reservar boletas (pago por WhatsApp o eventos gratis), reclamar/ver tus boletas y dudas generales. Si necesitas otra cosa, te paso a WhatsApp.';
 
 export const TAVO_SCOPE_STAFF =
-  'Según tu rol te oriento en panel, ventas WhatsApp, comisión/liquidación o validación de ingreso. También tienes opciones generales: cartelera, FAQ y WhatsApp.';
+  'Según tu rol te oriento en panel, ventas WhatsApp, eventos gratis, comisión/liquidación o validación. También: cartelera, FAQ y WhatsApp. Recuerda: yo no apruebo eventos ni confirmo pagos.';
 
 /** Opciones generales (todos los roles). */
 function generalButtons(ctx: TavoUserContext): TavoButton[] {
@@ -305,7 +305,9 @@ export function resolveTavoAction(
     case 'buy':
       return {
         reply: msg(
-          'Perfecto. Entra a la cartelera, elige la función y el tipo de boleta. En muchos eventos el pago se coordina por WhatsApp; cuando el organizador valide el dinero en TAVA, recibes correo y código de boleta.',
+          'Entra a la cartelera: arriba verás los eventos activos (carrusel) y abajo los finalizados. Elige la función y el tipo de boleta.\n' +
+            '• De pago: se abre WhatsApp con el pedido completo (evento + tus datos); pagas como te indiquen y, al validar el organizador en TAVA, recibes correo y código.\n' +
+            '• Gratuitos: reservas en la web y la boleta llega al instante.',
           [
             { id: 'buy_cartelera', label: 'Ver cartelera', route: '/eventos' },
             { id: 'events_info', label: 'Info de eventos aquí' },
@@ -319,13 +321,13 @@ export function resolveTavoAction(
     case 'buy_how':
       return {
         reply: msg(
-          'Así compras en TAVA:\n' +
-            '1) Entra a la cartelera y abre el evento.\n' +
+          'Así compras o reservas en TAVA:\n' +
+            '1) Entra a la cartelera y abre un evento activo.\n' +
             '2) Elige tipo y cantidad (inicia sesión si te lo pide).\n' +
-            '3) Si el evento es por WhatsApp: se abre un mensaje con tu pedido; pagas como te indiquen.\n' +
-            '4) El administrador del evento valida el pago en el panel.\n' +
-            '5) Recibes PDF / QR por correo o en Mis boletas.\n' +
-            'Los precios están en la ficha de cada evento.',
+            '3) Evento de pago (WhatsApp): se abre un mensaje con evento, boletas, total y tus datos; coordina el pago.\n' +
+            '4) El organizador valida el pago en el panel → recibes PDF/QR por correo o en Mis boletas.\n' +
+            '5) Evento gratis: reserva en la ficha y la boleta se emite al instante.\n' +
+            'Ya no hay checkout Wompi en la web: solo WhatsApp o reserva gratuita.',
           [
             { id: 'buy_cartelera', label: 'Ir a cartelera', route: '/eventos' },
             { id: 'tickets_claim', label: 'Reclamar código', route: '/perfil', fragment: 'reclamar' },
@@ -362,7 +364,8 @@ export function resolveTavoAction(
       }
       return {
         reply: msg(
-          'Para publicar: creas el evento, configuras boletería (mín. $15.000 en boletas de pago), eliges comisión 8%–15%, aceptas el contrato y envías a revisión. El admin global decide si sale en cartelera.',
+          'Para publicar: creas el evento, configuras boletería, eliges modo de venta (gratis o WhatsApp), y si es de pago defines comisión 8%–15% + contrato. Luego envías a revisión. El admin global decide si sale en cartelera.\n' +
+            'Si luego editas solo texto/imagen/elenco, no vuelve a revisión. Solo cambios de dinero, boletas, aforo, comisión o modo de venta reabren revisión.',
           [
             { id: 'create_steps', label: 'Pasos para crear' },
             { id: 'create_commission', label: 'Comisión y contrato' },
@@ -382,11 +385,12 @@ export function resolveTavoAction(
           'Pasos:\n' +
             '1) Inicia sesión con rol organizador.\n' +
             '2) Ve a Gestionar eventos / Panel.\n' +
-            '3) Completa datos, aforo y boletería (pago ≥ $15.000).\n' +
-            '4) Elige comisión 8%–15% y acepta el contrato.\n' +
-            '5) Modo WhatsApp: número + mensaje base.\n' +
-            '6) Guarda y «Enviar a revisión».\n' +
-            '7) Tras aprobación del admin, puede ir a cartelera.',
+            '3) Completa datos y aforo.\n' +
+            '4) Modo de venta: Evento gratuito (boletas $0) o Por WhatsApp (pago).\n' +
+            '5) Si es de pago: boletas ≥ $15.000, comisión 8%–15% y contrato.\n' +
+            '6) WhatsApp: número + nota opcional (el sistema arma el pedido completo con comprador/evento).\n' +
+            '7) Guarda y «Enviar a revisión» la primera vez.\n' +
+            '8) Tras aprobación del admin, puede ir a cartelera.',
           [
             { id: 'create_steps', label: 'Ir al panel de eventos', route: '/admin' },
             { id: 'create_commission', label: 'Comisión' },
@@ -402,9 +406,10 @@ export function resolveTavoAction(
       }
       return {
         reply: msg(
-          'Comisión TAVA:\n' +
-            '• Eliges entre 8% y 15% sobre boletería vendida/confirmada por la página.\n' +
+          'Comisión TAVA (solo eventos de pago):\n' +
+            '• Eliges entre 8% y 15% sobre boletería confirmada por la página.\n' +
             '• Debes aceptar el contrato al crear el evento de pago.\n' +
+            '• Eventos gratuitos: sin comisión ni contrato.\n' +
             '• ~1 hora antes del evento te llega el monto a pagar al admin general.\n' +
             '• Cuando el admin confirma el dinero, se habilita el validador de ingreso.\n' +
             '• Ventas de esa última hora se ajustan después por correo.',
@@ -420,10 +425,11 @@ export function resolveTavoAction(
       return {
         reply: msg(
           'Flujo de aprobación:\n' +
-            '• Organizador crea y envía a revisión.\n' +
-            '• Queda pendiente (aún no en cartelera).\n' +
-            '• El admin global aprueba o rechaza.\n' +
-            '• Solo eventos aprobados y visibles salen en cartelera.',
+            '• Primera publicación: organizador envía a revisión → queda pendiente (aún no en cartelera).\n' +
+            '• El admin global aprueba o rechaza; solo aprobados y visibles salen en cartelera.\n' +
+            '• Edits después de aprobado: si cambias solo descripción, fotos, elenco, etc., NO vuelve a revisión.\n' +
+            '• Sí vuelve a revisión (y te avisa al admin) si cambias dinero, precios/cupos de boletas, aforo, comisión o modo de venta.\n' +
+            '• Ya no hay envío masivo de correos a asistentes desde el panel.',
           [
             { id: 'create_steps', label: 'Cómo crear' },
             { id: 'admin_panel', label: 'Ir al panel', route: '/admin' },
@@ -443,7 +449,7 @@ export function resolveTavoAction(
       return {
         reply: msg(
           'Validar pagos WhatsApp:\n' +
-            '1) El comprador genera el pedido en la ficha y te escribe por WhatsApp.\n' +
+            '1) El comprador genera el pedido en la ficha; WhatsApp llega con evento, boletas, total, referencia y datos del comprador.\n' +
             '2) Cuando recibas el dinero, abre el evento en el panel.\n' +
             '3) En «Pagos WhatsApp pendientes» pulsa «Validar pago y emitir».\n' +
             '4) El sistema emite boletas y envía correo + código al comprador.',
@@ -751,7 +757,21 @@ export function resolveTavoFreeText(
   if (/reclamar|c[oó]digo|mis boletas|pdf/.test(t)) {
     return resolveTavoAction('tickets', events, ctx);
   }
-  if (/pago|wompi|correo|email|dinero|venta/.test(t)) {
+  if (/gratis|gratuito|reserva|sin cobro/.test(t)) {
+    return resolveTavoAction('faq_payment', events, ctx);
+  }
+  if (/wompi|pasarela|pago en (el )?sistema/.test(t)) {
+    return resolveTavoAction('faq_payment', events, ctx);
+  }
+  if (/env[ií]o masivo|correo a asistentes|broadcast/.test(t)) {
+    return {
+      reply: msg(
+        'Esa función de correo masivo a asistentes ya no está en el panel. Para avisar a compradores usa tus canales (WhatsApp del evento, redes, etc.).',
+        menu()
+      ),
+    };
+  }
+  if (/pago|correo|email|dinero|venta/.test(t)) {
     return resolveTavoAction('faq', events, ctx);
   }
 

@@ -1,7 +1,7 @@
 <section class="page-header page-header--broadway">
   <div>
     <h1 class="tava-glow-text">Cartelera de eventos</h1>
-    <p>Selecciona tu función y asegura tu lugar — estilo gran teatro.</p>
+    <p>Activos en el escenario · Finalizados abajo — estilo gran teatro.</p>
   </div>
 </section>
 
@@ -11,58 +11,90 @@
   <button type="button" class="tava-btn-primary" (click)="load()">Buscar</button>
 </div>
 
-@if (liveEvents().length) {
-  <section class="live-section">
-    <header class="live-section__head">
-      <span class="live-section__pulse" aria-hidden="true"></span>
+@if (activeEvents().length) {
+  <section class="active-stage" aria-label="Eventos activos">
+    <header class="active-stage__head">
       <div>
-        <h2 class="tava-glow-text">¡Evento en curso!</h2>
-        <p>En este momento el público lo está disfrutando en vivo.</p>
+        <h2 class="tava-glow-text">En cartelera</h2>
+        <p>Funciones activas — desliza o usa las flechas para ver más.</p>
       </div>
+      <span class="active-stage__count">{{ activeEvents().length }} activo{{ activeEvents().length === 1 ? '' : 's' }}</span>
     </header>
-    <div class="live-grid">
-      @for (ev of liveEvents(); track ev.id) {
-        <article class="live-card tava-card">
-          <a [routerLink]="['/eventos', ev.id]" class="live-card__link">
-            <div class="live-card__img">
-              <img [src]="mediaUrl(ev.main_image_url)" [alt]="ev.name" loading="lazy" (error)="onImgError($event)" />
-              <span class="live-card__badge">EN VIVO</span>
-            </div>
-            <div class="live-card__body">
-              <h3>{{ ev.name }}</h3>
-              <p class="live-card__msg">{{ liveMessage(ev.id) }}</p>
-              <p class="live-card__meta">{{ formatEventDateTime(ev.event_date, ev.event_time) }} · {{ ev.city }}</p>
-            </div>
-          </a>
-        </article>
-      }
-    </div>
-  </section>
-}
 
-@if (upcomingEvents().length) {
-  <section class="show-section">
-    <h2 class="show-section__title">Próximas funciones</h2>
-    <div class="show-grid">
-      @for (ev of upcomingEvents(); track ev.id) {
-        <article class="show-card tava-card">
-          <a [routerLink]="['/eventos', ev.id]" class="show-card__link">
-            <div class="show-card__img">
-              <img [src]="mediaUrl(ev.main_image_url)" [alt]="ev.name" loading="lazy" (error)="onImgError($event)" />
-              <span class="show-card__cta-chip">{{ funnyCta(ev.id) }}</span>
-            </div>
-            <div class="show-card__body">
-              <span class="show-card__cat">{{ ev.category }}</span>
-              <h2>{{ ev.name }}</h2>
-              <p class="show-card__meta">{{ formatEventDateTime(ev.event_date, ev.event_time) }} · {{ ev.city }}</p>
-              <div class="show-card__tickets" aria-label="Boletas disponibles">
-                <span class="show-card__tickets-num">{{ ticketsLeft(ev) }}</span>
-                <span class="show-card__tickets-label">boletas<br />disponibles</span>
-              </div>
-              <span class="show-card__cta tava-btn-primary">Ver boletas</span>
-            </div>
-          </a>
-        </article>
+    <div class="carousel-frame">
+      <div class="carousel-frame__ornament carousel-frame__ornament--tl" aria-hidden="true"></div>
+      <div class="carousel-frame__ornament carousel-frame__ornament--tr" aria-hidden="true"></div>
+      <div class="carousel-frame__ornament carousel-frame__ornament--bl" aria-hidden="true"></div>
+      <div class="carousel-frame__ornament carousel-frame__ornament--br" aria-hidden="true"></div>
+      <div class="carousel-frame__curtain" aria-hidden="true"></div>
+
+      @if (activeEvents().length > 1) {
+        <button type="button" class="carousel-nav carousel-nav--prev" (click)="prevSlide()" aria-label="Anterior">
+          ‹
+        </button>
+        <button type="button" class="carousel-nav carousel-nav--next" (click)="nextSlide()" aria-label="Siguiente">
+          ›
+        </button>
+      }
+
+      <div class="carousel-viewport">
+        <div
+          class="carousel-track"
+          [style.transform]="'translateX(-' + activeIndex() * 100 + '%)'"
+        >
+          @for (ev of activeEvents(); track ev.id; let i = $index) {
+            <article class="carousel-slide" [class.carousel-slide--live]="getPhase(ev) === 'live'">
+              <a [routerLink]="['/eventos', ev.id]" class="carousel-slide__link">
+                <div class="carousel-slide__media">
+                  <img
+                    [src]="mediaUrl(ev.main_image_url)"
+                    [alt]="ev.name"
+                    [loading]="i === 0 ? 'eager' : 'lazy'"
+                    (error)="onImgError($event)"
+                  />
+                  <div class="carousel-slide__shade"></div>
+                  @if (getPhase(ev) === 'live') {
+                    <span class="carousel-slide__badge carousel-slide__badge--live">EN VIVO</span>
+                  } @else {
+                    <span class="carousel-slide__badge">{{ funnyCta(ev.id) }}</span>
+                  }
+                </div>
+                <div class="carousel-slide__body">
+                  <span class="carousel-slide__cat">{{ ev.category }}</span>
+                  <h3>{{ ev.name }}</h3>
+                  @if (getPhase(ev) === 'live') {
+                    <p class="carousel-slide__live-msg">{{ liveMessage(ev.id) }}</p>
+                  }
+                  <p class="carousel-slide__meta">
+                    {{ formatEventDateTime(ev.event_date, ev.event_time) }} · {{ ev.city }}
+                  </p>
+                  <div class="carousel-slide__foot">
+                    <div class="carousel-slide__tickets" aria-label="Boletas disponibles">
+                      <span class="carousel-slide__tickets-num">{{ ticketsLeft(ev) }}</span>
+                      <span class="carousel-slide__tickets-label">boletas<br />disponibles</span>
+                    </div>
+                    <span class="carousel-slide__cta tava-btn-primary">Ver boletas</span>
+                  </div>
+                </div>
+              </a>
+            </article>
+          }
+        </div>
+      </div>
+
+      @if (activeEvents().length > 1) {
+        <div class="carousel-dots" role="tablist" aria-label="Elegir evento">
+          @for (ev of activeEvents(); track ev.id; let i = $index) {
+            <button
+              type="button"
+              class="carousel-dots__dot"
+              [class.carousel-dots__dot--active]="activeIndex() === i"
+              (click)="goToSlide(i)"
+              [attr.aria-label]="'Ir a ' + ev.name"
+              [attr.aria-selected]="activeIndex() === i"
+            ></button>
+          }
+        </div>
       }
     </div>
   </section>
@@ -70,7 +102,8 @@
 
 @if (finishedEvents().length) {
   <section class="show-section show-section--past">
-    <h2 class="show-section__title">Funciones pasadas</h2>
+    <h2 class="show-section__title">Funciones finalizadas</h2>
+    <p class="show-section__sub">Ya bajaron el telón — puedes revisarlas, pero no hay venta activa.</p>
     <div class="show-grid show-grid--past">
       @for (ev of finishedEvents(); track ev.id) {
         <article class="show-card show-card--past tava-card">
@@ -92,7 +125,7 @@
   </section>
 }
 
-@if (loading() && !liveEvents().length && !upcomingEvents().length && !finishedEvents().length) {
+@if (loading() && !activeEvents().length && !finishedEvents().length) {
   <div class="empty load-error load-error--video">
     <tava-theatrical-loader title="Armando la cartelera" />
     @if (loadingStalled()) {
@@ -106,6 +139,6 @@
     <p>{{ loadError() }}</p>
     <button type="button" class="tava-btn-primary" (click)="load()">Reintentar</button>
   </div>
-} @else if (!liveEvents().length && !upcomingEvents().length && !finishedEvents().length) {
+} @else if (!activeEvents().length && !finishedEvents().length) {
   <p class="empty">No hay funciones publicadas. Vuelve pronto.</p>
 }

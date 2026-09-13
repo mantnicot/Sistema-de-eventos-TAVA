@@ -40,38 +40,331 @@
   }
 }
 
-.live-section {
-  max-width: 1280px;
-  margin: 0 auto 2.5rem;
-  padding: 0 1.75rem;
+.active-stage {
+  max-width: 1100px;
+  margin: 0 auto 3rem;
+  padding: 0 1.25rem;
 
   &__head {
     display: flex;
-    align-items: center;
+    align-items: flex-end;
+    justify-content: space-between;
     gap: 1rem;
     margin-bottom: 1.25rem;
+    flex-wrap: wrap;
 
     h2 {
       font-family: var(--tava-font-display);
       margin: 0;
       font-size: 2rem;
-      color: #ff6b6b;
     }
 
     p {
-      margin: 0.25rem 0 0;
+      margin: 0.35rem 0 0;
       color: var(--tava-cream-muted);
     }
   }
 
-  &__pulse {
-    width: 18px;
-    height: 18px;
-    border-radius: 50%;
-    background: #ff4444;
-    box-shadow: 0 0 0 0 rgba(255, 68, 68, 0.7);
-    animation: live-pulse 1.5s infinite;
-    flex-shrink: 0;
+  &__count {
+    font-size: 0.8rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--tava-gold);
+    border: 1px solid rgba(201, 162, 39, 0.45);
+    padding: 0.4rem 0.75rem;
+    border-radius: 999px;
+  }
+}
+
+.carousel-frame {
+  position: relative;
+  padding: 1.1rem 1.1rem 1.35rem;
+  border-radius: 18px;
+  background:
+    linear-gradient(165deg, rgba(72, 18, 28, 0.95), rgba(18, 8, 14, 0.98)),
+    radial-gradient(ellipse at top, rgba(201, 162, 39, 0.18), transparent 55%);
+  border: 2px solid rgba(201, 162, 39, 0.55);
+  box-shadow:
+    0 0 0 1px rgba(255, 220, 140, 0.12) inset,
+    0 24px 60px rgba(0, 0, 0, 0.45);
+  overflow: hidden;
+  animation: frame-glow 4.5s ease-in-out infinite;
+
+  &__curtain {
+    pointer-events: none;
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      90deg,
+      rgba(90, 10, 24, 0.35) 0%,
+      transparent 12%,
+      transparent 88%,
+      rgba(90, 10, 24, 0.35) 100%
+    );
+    z-index: 1;
+  }
+
+  &__ornament {
+    position: absolute;
+    width: 28px;
+    height: 28px;
+    border: 2px solid rgba(201, 162, 39, 0.75);
+    z-index: 3;
+    pointer-events: none;
+
+    &--tl {
+      top: 10px;
+      left: 10px;
+      border-right: none;
+      border-bottom: none;
+    }
+    &--tr {
+      top: 10px;
+      right: 10px;
+      border-left: none;
+      border-bottom: none;
+    }
+    &--bl {
+      bottom: 10px;
+      left: 10px;
+      border-right: none;
+      border-top: none;
+    }
+    &--br {
+      bottom: 10px;
+      right: 10px;
+      border-left: none;
+      border-top: none;
+    }
+  }
+}
+
+@keyframes frame-glow {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 1px rgba(255, 220, 140, 0.12) inset,
+      0 24px 60px rgba(0, 0, 0, 0.45),
+      0 0 24px rgba(201, 162, 39, 0.12);
+  }
+  50% {
+    box-shadow:
+      0 0 0 1px rgba(255, 220, 140, 0.2) inset,
+      0 24px 60px rgba(0, 0, 0, 0.45),
+      0 0 36px rgba(201, 162, 39, 0.28);
+  }
+}
+
+.carousel-viewport {
+  position: relative;
+  z-index: 2;
+  overflow: hidden;
+  border-radius: 12px;
+}
+
+.carousel-track {
+  display: flex;
+  width: 100%;
+  transition: transform 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
+}
+
+.carousel-slide {
+  flex: 0 0 100%;
+  min-width: 100%;
+  background: rgba(12, 6, 10, 0.55);
+
+  &--live {
+    box-shadow: inset 0 0 0 2px rgba(255, 80, 80, 0.45);
+  }
+
+  &__link {
+    display: grid;
+    grid-template-columns: 1.15fr 1fr;
+    text-decoration: none;
+    color: inherit;
+    min-height: 320px;
+  }
+
+  &__media {
+    position: relative;
+    min-height: 280px;
+    overflow: hidden;
+
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      transform: scale(1.02);
+      transition: transform 0.7s ease;
+    }
+  }
+
+  &:hover &__media img {
+    transform: scale(1.06);
+  }
+
+  &__shade {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent 55%, rgba(12, 6, 10, 0.55) 100%);
+    pointer-events: none;
+  }
+
+  &__badge {
+    position: absolute;
+    left: 1rem;
+    bottom: 1rem;
+    max-width: calc(100% - 2rem);
+    background: linear-gradient(90deg, var(--tava-burgundy), #8b1538);
+    color: #fff;
+    font-weight: 800;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 0.5rem 0.75rem;
+    border-radius: 8px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+
+    &--live {
+      top: 1rem;
+      bottom: auto;
+      background: #ff3333;
+      animation: live-pulse 1.5s infinite;
+    }
+  }
+
+  &__body {
+    padding: 1.35rem 1.5rem 1.5rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+
+    h3 {
+      font-family: var(--tava-font-display);
+      font-size: clamp(1.5rem, 3vw, 2.1rem);
+      margin: 0.35rem 0 0.65rem;
+      line-height: 1.15;
+    }
+  }
+
+  &__cat {
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--tava-burgundy);
+    font-weight: 700;
+  }
+
+  &__live-msg {
+    color: var(--tava-gold);
+    font-weight: 600;
+    margin: 0 0 0.65rem;
+    line-height: 1.4;
+    font-size: 0.92rem;
+  }
+
+  &__meta {
+    color: var(--tava-cream-muted);
+    margin: 0 0 1.1rem;
+    font-size: 0.92rem;
+  }
+
+  &__foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-top: auto;
+  }
+
+  &__tickets {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 0.55rem 0.75rem;
+    border-radius: 12px;
+    background: rgba(201, 162, 39, 0.12);
+    border: 1px solid rgba(201, 162, 39, 0.35);
+  }
+
+  &__tickets-num {
+    font-family: var(--tava-font-display);
+    font-size: 1.85rem;
+    font-weight: 700;
+    line-height: 1;
+    color: var(--tava-gold);
+  }
+
+  &__tickets-label {
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--tava-cream-muted);
+    line-height: 1.25;
+  }
+
+  &__cta {
+    font-size: 0.92rem !important;
+    padding: 0.65rem 1.25rem !important;
+  }
+}
+
+.carousel-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 4;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid rgba(201, 162, 39, 0.55);
+  background: rgba(20, 8, 14, 0.85);
+  color: var(--tava-gold);
+  font-size: 1.75rem;
+  line-height: 1;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  transition: background 0.2s ease, transform 0.2s ease;
+
+  &:hover {
+    background: rgba(201, 162, 39, 0.2);
+    transform: translateY(-50%) scale(1.05);
+  }
+
+  &--prev {
+    left: 0.35rem;
+  }
+  &--next {
+    right: 0.35rem;
+  }
+}
+
+.carousel-dots {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  justify-content: center;
+  gap: 0.45rem;
+  margin-top: 1rem;
+
+  &__dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 999px;
+    border: none;
+    padding: 0;
+    background: rgba(255, 255, 255, 0.28);
+    cursor: pointer;
+    transition: width 0.25s ease, background 0.25s ease;
+
+    &--active {
+      width: 26px;
+      background: var(--tava-gold);
+    }
   }
 }
 
@@ -87,74 +380,6 @@
   }
 }
 
-.live-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
-  gap: 1.5rem;
-}
-
-.live-card {
-  border: 2px solid rgba(255, 80, 80, 0.55);
-  overflow: hidden;
-  padding: 0;
-  background: linear-gradient(145deg, rgba(80, 10, 20, 0.95), rgba(30, 8, 18, 0.98));
-
-  &__link {
-    text-decoration: none;
-    color: inherit;
-    display: block;
-  }
-
-  &__img {
-    position: relative;
-    height: 220px;
-    overflow: hidden;
-
-    img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-  }
-
-  &__badge {
-    position: absolute;
-    top: 1rem;
-    left: 1rem;
-    background: #ff3333;
-    color: #fff;
-    font-weight: 800;
-    font-size: 0.85rem;
-    letter-spacing: 0.08em;
-    padding: 0.45rem 0.85rem;
-    border-radius: 999px;
-    animation: live-pulse 1.5s infinite;
-  }
-
-  &__body {
-    padding: 1.25rem 1.35rem 1.5rem;
-
-    h3 {
-      font-family: var(--tava-font-display);
-      font-size: 1.65rem;
-      margin: 0 0 0.5rem;
-    }
-  }
-
-  &__msg {
-    color: var(--tava-gold);
-    font-weight: 600;
-    margin: 0 0 0.65rem;
-    line-height: 1.4;
-  }
-
-  &__meta {
-    color: var(--tava-cream-muted);
-    margin: 0;
-    font-size: 0.9rem;
-  }
-}
-
 .show-section {
   max-width: 1280px;
   margin: 0 auto 2.5rem;
@@ -163,8 +388,14 @@
   &__title {
     font-family: var(--tava-font-display);
     font-size: 1.5rem;
-    margin: 0 0 1.25rem;
+    margin: 0 0 0.35rem;
     color: var(--tava-gold);
+  }
+
+  &__sub {
+    margin: 0 0 1.25rem;
+    color: var(--tava-cream-muted);
+    font-size: 0.92rem;
   }
 
   &--past .show-section__title {
@@ -174,28 +405,23 @@
 
 .show-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 1.75rem;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1.5rem;
 
   &--past {
-    opacity: 0.85;
+    opacity: 0.88;
   }
 }
 
 .show-card {
   overflow: hidden;
   padding: 0;
-  border: 2px solid rgba(201, 162, 39, 0.25);
-  transition: transform var(--tava-transition), box-shadow var(--tava-transition);
+  border: 2px solid rgba(120, 120, 120, 0.35);
+  filter: grayscale(0.35);
+  transition: transform var(--tava-transition);
 
-  &:hover:not(.show-card--past) {
-    transform: translateY(-8px) scale(1.02);
-    box-shadow: 0 20px 48px rgba(0, 0, 0, 0.35), 0 0 0 2px rgba(201, 162, 39, 0.55);
-  }
-
-  &--past {
-    border-color: rgba(120, 120, 120, 0.35);
-    filter: grayscale(0.35);
+  &:hover {
+    transform: translateY(-4px);
   }
 
   &__link {
@@ -208,7 +434,7 @@
 
   &__img {
     position: relative;
-    height: 300px;
+    height: 220px;
     background-color: var(--tava-velvet);
     overflow: hidden;
 
@@ -218,23 +444,6 @@
       object-fit: cover;
       display: block;
     }
-  }
-
-  &__cta-chip {
-    position: absolute;
-    bottom: 0.85rem;
-    left: 0.85rem;
-    right: 0.85rem;
-    background: linear-gradient(90deg, var(--tava-burgundy), #8b1538);
-    color: #fff;
-    font-weight: 800;
-    font-size: 0.82rem;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    padding: 0.55rem 0.75rem;
-    border-radius: 8px;
-    text-align: center;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
   }
 
   &__past-badge {
@@ -250,7 +459,7 @@
   }
 
   &__body {
-    padding: 1.15rem 1.25rem 1.35rem;
+    padding: 1rem 1.15rem 1.25rem;
     display: flex;
     flex-direction: column;
     flex: 1;
@@ -258,7 +467,7 @@
     h2 {
       font-family: var(--tava-font-display);
       margin: 0.35rem 0;
-      font-size: 1.45rem;
+      font-size: 1.25rem;
     }
   }
 
@@ -271,50 +480,16 @@
   }
 
   &__meta {
-    font-size: 0.88rem;
+    font-size: 0.85rem;
     color: var(--tava-cream-muted);
-    margin: 0 0 0.85rem;
-  }
-
-  &__tickets {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    margin: 0 0 1rem;
-    padding: 0.65rem 0.85rem;
-    border-radius: 12px;
-    background: rgba(201, 162, 39, 0.12);
-    border: 1px solid rgba(201, 162, 39, 0.35);
-    width: fit-content;
-  }
-
-  &__tickets-num {
-    font-family: var(--tava-font-display);
-    font-size: 2.25rem;
-    font-weight: 700;
-    line-height: 1;
-    color: var(--tava-gold);
-  }
-
-  &__tickets-label {
-    font-size: 0.72rem;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: var(--tava-cream-muted);
-    line-height: 1.25;
+    margin: 0 0 0.65rem;
   }
 
   &__missed {
-    font-size: 0.88rem;
+    font-size: 0.85rem;
     color: var(--tava-cream-muted);
     font-style: italic;
     margin: 0;
-  }
-
-  &__cta {
-    align-self: flex-start;
-    font-size: 0.95rem !important;
-    padding: 0.65rem 1.35rem !important;
   }
 }
 
@@ -324,10 +499,6 @@
   padding: 2rem;
 }
 
-.loading-msg {
-  animation: pulse 1.4s ease-in-out infinite;
-}
-
 .load-error {
   display: flex;
   flex-direction: column;
@@ -335,12 +506,35 @@
   gap: 0.75rem;
 }
 
-@keyframes pulse {
-  0%,
-  100% {
-    opacity: 0.55;
+@media (max-width: 760px) {
+  .carousel-slide__link {
+    grid-template-columns: 1fr;
+    min-height: 0;
   }
-  50% {
-    opacity: 1;
+
+  .carousel-slide__media {
+    min-height: 220px;
+    height: 220px;
+  }
+
+  .carousel-slide__shade {
+    background: linear-gradient(180deg, transparent 40%, rgba(12, 6, 10, 0.55) 100%);
+  }
+
+  .carousel-nav {
+    width: 38px;
+    height: 38px;
+    font-size: 1.45rem;
+
+    &--prev {
+      left: 0.15rem;
+    }
+    &--next {
+      right: 0.15rem;
+    }
+  }
+
+  .carousel-frame {
+    padding: 0.85rem 0.75rem 1.1rem;
   }
 }

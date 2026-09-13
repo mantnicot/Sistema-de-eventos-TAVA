@@ -1,4 +1,4 @@
-import { Component, inject, OnDestroy, OnInit, signal } from '@angular/core';
+import { Component, HostListener, inject, OnDestroy, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { Subscription } from 'rxjs';
@@ -29,9 +29,10 @@ export class EventsListComponent implements OnInit, OnDestroy {
   private readonly api = inject(ApiService);
   private readonly route = inject(ActivatedRoute);
   readonly events = signal<TavaEvent[]>([]);
-  readonly liveEvents = signal<TavaEvent[]>([]);
-  readonly upcomingEvents = signal<TavaEvent[]>([]);
+  /** Activos = en vivo + próximos (carrusel). */
+  readonly activeEvents = signal<TavaEvent[]>([]);
   readonly finishedEvents = signal<TavaEvent[]>([]);
+  readonly activeIndex = signal(0);
   readonly loading = signal(false);
   readonly loadingStalled = signal(false);
   readonly loadError = signal<string | null>(null);
@@ -47,6 +48,8 @@ export class EventsListComponent implements OnInit, OnDestroy {
   readonly ticketsLeft = totalTicketsAvailable;
   private loadSub?: Subscription;
   private stallTimer: ReturnType<typeof setTimeout> | null = null;
+  private autoplayTimer: ReturnType<typeof setInterval> | null = null;
+  private readonly AUTOPLAY_MS = 6000;
 
   ngOnInit(): void {
     this.route.queryParamMap.subscribe((q) => {
@@ -58,6 +61,13 @@ export class EventsListComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.loadSub?.unsubscribe();
     this.clearStallTimer();
+    this.stopAutoplay();
+  }
+
+  @HostListener('document:visibilitychange')
+  onVisibility(): void {
+    if (document.hidden) this.stopAutoplay();
+    else this.startAutoplay();
   }
 
   load(): void {
@@ -89,9 +99,10 @@ export class EventsListComponent implements OnInit, OnDestroy {
         this.loading.set(false);
         if (!cached?.length) {
           this.events.set([]);
-          this.liveEvents.set([]);
-          this.upcomingEvents.set([]);
+          this.activeEvents.set([]);
           this.finishedEvents.set([]);
+          this.activeIndex.set(0);
+          this.stopAutoplay();
         }
         this.loadError.set(
           'No pudimos cargar los eventos. Comprueba tu conexión e intenta de nuevo.'
@@ -100,12 +111,58 @@ export class EventsListComponent implements OnInit, OnDestroy {
     });
   }
 
+  prevSlide(): void {
+    const n = this.activeEvents().length;
+    if (n < 2) return;
+    this.activeIndex.set((this.activeIndex() - 1 + n) % n);
+    this.restartAutoplay();
+  }
+
+  nextSlide(): void {
+    const n = this.activeEvents().length;
+    if (n < 2) return;
+    this.activeIndex.set((this.activeIndex() + 1) % n);
+    this.restartAutoplay();
+  }
+
+  goToSlide(i: number): void {
+    if (i < 0 || i >= this.activeEvents().length) return;
+    this.activeIndex.set(i);
+    this.restartAutoplay();
+  }
+
   private applyEvents(e: TavaEvent[]): void {
     this.events.set(e);
     const split = splitEventsByPhase(e);
-    this.liveEvents.set(split.live);
-    this.upcomingEvents.set(split.upcoming);
+    const active = [...split.live, ...split.upcoming];
+    this.activeEvents.set(active);
     this.finishedEvents.set(split.finished);
+    if (this.activeIndex() >= active.length) {
+      this.activeIndex.set(0);
+    }
+    this.restartAutoplay();
+  }
+
+  private startAutoplay(): void {
+    this.stopAutoplay();
+    if (this.activeEvents().length < 2) return;
+    this.autoplayTimer = setInterval(() => {
+      const n = this.activeEvents().length;
+      if (n < 2) return;
+      this.activeIndex.set((this.activeIndex() + 1) % n);
+    }, this.AUTOPLAY_MS);
+  }
+
+  private stopAutoplay(): void {
+    if (this.autoplayTimer) {
+      clearInterval(this.autoplayTimer);
+      this.autoplayTimer = null;
+    }
+  }
+
+  private restartAutoplay(): void {
+    this.stopAutoplay();
+    this.startAutoplay();
   }
 
   private startStallTimer(): void {
