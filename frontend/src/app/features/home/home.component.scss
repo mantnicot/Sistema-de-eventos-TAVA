@@ -256,26 +256,6 @@
   }
 }
 
-.trust-strip {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 0.75rem;
-  max-width: 820px;
-  margin: 0 auto 3rem;
-  padding: 0 1.25rem;
-
-  &__item {
-    text-align: center;
-    padding: 0.85rem 0.5rem;
-    font-weight: 600;
-    font-size: 0.9rem;
-    color: var(--tava-cream);
-    background: #fff;
-    border: 1px solid rgba(58, 47, 42, 0.06);
-    border-radius: 12px;
-  }
-}
-
 @media (max-width: 720px) {
   .hero__search {
     flex-wrap: wrap;
@@ -325,9 +305,5 @@
   .poster-carousel__meter {
     left: 0.75rem;
     bottom: 0.75rem;
-  }
-
-  .trust-strip {
-    grid-template-columns: 1fr;
   }
 }
