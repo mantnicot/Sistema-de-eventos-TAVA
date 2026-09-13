@@ -8,12 +8,8 @@ import { readEventsCache, writeEventsCache } from '../../core/utils/events-cache
 import { onEventImageError } from '../../core/utils/event-image.util';
 import {
   formatEventDateTime,
-  formatEventTime,
-  funnyCtaForEvent,
   getEventPhase,
-  liveBannerMessage,
   splitEventsByPhase,
-  totalTicketsAvailable,
 } from '../../core/utils/event-timing.util';
 import { resolveMediaUrl } from '../../core/utils/media-url.util';
 import { TavaTheatricalLoaderComponent } from '../../shared/components/tava-theatrical-loader/tava-theatrical-loader.component';
@@ -29,10 +25,10 @@ export class EventsListComponent implements OnInit, OnDestroy {
   private readonly api = inject(ApiService);
   private readonly route = inject(ActivatedRoute);
   readonly events = signal<TavaEvent[]>([]);
-  /** Activos = en vivo + próximos (carrusel). */
   readonly activeEvents = signal<TavaEvent[]>([]);
   readonly finishedEvents = signal<TavaEvent[]>([]);
   readonly activeIndex = signal(0);
+  readonly autoplayPaused = signal(false);
   readonly loading = signal(false);
   readonly loadingStalled = signal(false);
   readonly loadError = signal<string | null>(null);
@@ -41,15 +37,11 @@ export class EventsListComponent implements OnInit, OnDestroy {
   readonly mediaUrl = resolveMediaUrl;
   readonly onImgError = onEventImageError;
   readonly formatEventDateTime = formatEventDateTime;
-  readonly formatEventTime = formatEventTime;
-  readonly funnyCta = funnyCtaForEvent;
-  readonly liveMessage = liveBannerMessage;
   readonly getPhase = getEventPhase;
-  readonly ticketsLeft = totalTicketsAvailable;
   private loadSub?: Subscription;
   private stallTimer: ReturnType<typeof setTimeout> | null = null;
   private autoplayTimer: ReturnType<typeof setInterval> | null = null;
-  private readonly AUTOPLAY_MS = 6000;
+  private readonly AUTOPLAY_MS = 5500;
 
   ngOnInit(): void {
     this.route.queryParamMap.subscribe((q) => {
@@ -67,7 +59,7 @@ export class EventsListComponent implements OnInit, OnDestroy {
   @HostListener('document:visibilitychange')
   onVisibility(): void {
     if (document.hidden) this.stopAutoplay();
-    else this.startAutoplay();
+    else if (!this.autoplayPaused()) this.startAutoplay();
   }
 
   load(): void {
@@ -111,24 +103,31 @@ export class EventsListComponent implements OnInit, OnDestroy {
     });
   }
 
-  prevSlide(): void {
+  prevSlide(event?: Event): void {
+    event?.stopPropagation();
+    event?.preventDefault();
     const n = this.activeEvents().length;
     if (n < 2) return;
     this.activeIndex.set((this.activeIndex() - 1 + n) % n);
-    this.restartAutoplay();
+    this.bumpAutoplay();
   }
 
-  nextSlide(): void {
+  nextSlide(event?: Event): void {
+    event?.stopPropagation();
+    event?.preventDefault();
     const n = this.activeEvents().length;
     if (n < 2) return;
     this.activeIndex.set((this.activeIndex() + 1) % n);
-    this.restartAutoplay();
+    this.bumpAutoplay();
   }
 
-  goToSlide(i: number): void {
-    if (i < 0 || i >= this.activeEvents().length) return;
-    this.activeIndex.set(i);
-    this.restartAutoplay();
+  toggleAutoplay(event?: Event): void {
+    event?.stopPropagation();
+    event?.preventDefault();
+    const paused = !this.autoplayPaused();
+    this.autoplayPaused.set(paused);
+    if (paused) this.stopAutoplay();
+    else this.startAutoplay();
   }
 
   private applyEvents(e: TavaEvent[]): void {
@@ -140,12 +139,20 @@ export class EventsListComponent implements OnInit, OnDestroy {
     if (this.activeIndex() >= active.length) {
       this.activeIndex.set(0);
     }
+    this.bumpAutoplay();
+  }
+
+  private bumpAutoplay(): void {
+    if (this.autoplayPaused()) {
+      this.stopAutoplay();
+      return;
+    }
     this.restartAutoplay();
   }
 
   private startAutoplay(): void {
     this.stopAutoplay();
-    if (this.activeEvents().length < 2) return;
+    if (this.autoplayPaused() || this.activeEvents().length < 2) return;
     this.autoplayTimer = setInterval(() => {
       const n = this.activeEvents().length;
       if (n < 2) return;
