@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <title>TAVA Teatro — Propuesta para teatros y espacios</title>
+  <style>
+    @page { size: A4; margin: 0; }
+    * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      font-family: "Segoe UI", Georgia, "Times New Roman", serif;
+      color: #2c241f;
+      background: #f4efe6;
+    }
+    .page {
+      width: 210mm;
+      min-height: 297mm;
+      margin: 0 auto;
+      padding: 16mm 16mm 18mm;
+      background:
+        radial-gradient(ellipse at top, rgba(201, 162, 39, 0.16), transparent 52%),
+        #faf7f1;
+      position: relative;
+      overflow: hidden;
+      page-break-after: always;
+    }
+    .page:last-child { page-break-after: auto; }
+    h1, h2, h3 { font-family: Georgia, "Times New Roman", serif; margin: 0; }
+    p { margin: 0 0 0.7rem; line-height: 1.45; }
+    a { color: #8a5a12; }
+    .kicker {
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      font-size: 11px;
+      color: #b8860b;
+      font-family: "Segoe UI", sans-serif;
+      font-weight: 700;
+    }
+    .gold { color: #b8860b; }
+    .muted { color: #6d6158; }
+    .cover {
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      background:
+        linear-gradient(165deg, rgba(20, 8, 12, 0.92), rgba(70, 16, 32, 0.88)),
+        #1a0c12;
+      color: #f7f1e6;
+    }
+    .cover .kicker { color: #e8d49b; }
+    .cover h1 {
+      font-size: 46px;
+      line-height: 1.05;
+      max-width: 150mm;
+      margin-top: 18mm;
+    }
+    .cover .lead {
+      font-size: 18px;
+      max-width: 145mm;
+      color: #f0e4c8;
+      line-height: 1.4;
+    }
+    .curtain-line {
+      height: 6px;
+      width: 72px;
+      background: linear-gradient(90deg, #c9a227, #f0d78c);
+      margin: 14px 0 18px;
+    }
+    .cover-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      font-family: "Segoe UI", sans-serif;
+      font-size: 12px;
+      color: #e8d49b;
+    }
+    .pill {
+      display: inline-block;
+      border: 1px solid rgba(232, 212, 155, 0.45);
+      border-radius: 999px;
+      padding: 6px 12px;
+    }
+    h2 { font-size: 28px; color: #7a1e32; line-height: 1.1; }
+    h3 { font-size: 16px; color: #7a1e32; margin: 0 0 6px; }
+    .sub { margin: 8px 0 14px; color: #6d6158; font-size: 14px; }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+    .card {
+      background: #fff;
+      border: 1px solid rgba(201, 162, 39, 0.28);
+      border-radius: 14px;
+      padding: 12px 13px;
+      box-shadow: 0 8px 20px rgba(58, 47, 42, 0.04);
+    }
+    .card strong { display: block; margin-bottom: 4px; }
+    .card p, .card li { font-size: 13px; }
+    ul { margin: 0; padding-left: 16px; }
+    li { margin: 0 0 4px; }
+    .scene {
+      font-family: Georgia, serif;
+      font-style: italic;
+      background: #fff8ea;
+      border-left: 4px solid #c9a227;
+      padding: 10px 12px;
+      margin-bottom: 12px;
+      font-size: 14px;
+    }
+    .flow {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      margin-top: 6px;
+    }
+    .node {
+      background: #fff;
+      border: 1.5px solid #c9a227;
+      border-radius: 12px;
+      padding: 8px 12px;
+      font-size: 13px;
+    }
+    .node b { color: #7a1e32; }
+    .arrow {
+      text-align: center;
+      color: #b8860b;
+      font-size: 16px;
+      line-height: 1;
+      height: 16px;
+    }
+    .split { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .tag {
+      display: inline-block;
+      background: #7a1e32;
+      color: #fff;
+      font-size: 10px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      border-radius: 999px;
+      padding: 3px 8px;
+      font-family: "Segoe UI", sans-serif;
+      margin-bottom: 6px;
+    }
+    .tag.gold { background: #b8860b; color: #fff; }
+    .tag.ink { background: #2c241f; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      background: #fff;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #efe6d8; vertical-align: top; }
+    th { background: #7a1e32; color: #fff; font-weight: 600; }
+    .steps { counter-reset: paso; }
+    .step {
+      display: grid;
+      grid-template-columns: 28px 1fr;
+      gap: 8px;
+      margin-bottom: 8px;
+      font-size: 13.5px;
+    }
+    .step::before {
+      counter-increment: paso;
+      content: counter(paso);
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: #c9a227;
+      color: #fff;
+      display: grid;
+      place-items: center;
+      font-family: "Segoe UI", sans-serif;
+      font-weight: 700;
+      font-size: 13px;
+    }
+    .prompt {
+      background: #1a1214;
+      color: #f7f1e6;
+      border-radius: 12px;
+      padding: 12px 14px;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 10.5px;
+      line-height: 1.45;
+      white-space: pre-wrap;
+    }
+    .footer-note {
+      position: absolute;
+      bottom: 8mm;
+      left: 16mm;
+      right: 16mm;
+      display: flex;
+      justify-content: space-between;
+      font-size: 10px;
+      color: #9a8b7a;
+      font-family: "Segoe UI", sans-serif;
+    }
+    .cover .footer-note { color: rgba(232, 212, 155, 0.7); }
+    .cta {
+      background: linear-gradient(135deg, #7a1e32, #a33b4d);
+      color: #fff;
+      border-radius: 16px;
+      padding: 14px 16px;
+      margin-top: 10px;
+    }
+    .cta a { color: #ffe7a3; }
+  </style>
+</head>
+<body>
+
+<section class="page cover">
+  <div>
+    <div class="kicker">TAVA Teatro · Propuesta para espacios</div>
+    <div class="curtain-line"></div>
+    <h1>Tu sala merece cartelera, no un chat perdido.</h1>
+    <p class="lead">Boletería digital para teatros, cafés-concierto, casas culturales y cualquier escenario que quiera vender entradas sin enredarse: el público elige en la web, paga por WhatsApp o reserva gratis, y entra con un código.</p>
+  </div>
+  <div class="cover-footer">
+    <div>
+      <div class="pill">@tavateatro</div>
+      <p style="margin:10px 0 0;">Para teatros y espacios que quieren operar funciones con orden, trazabilidad y menos “¿me confirmas el cupo?”.</p>
+    </div>
+    <div style="text-align:right;">
+      sistema-de-eventos-tava.vercel.app<br />
+      Septiembre 2026
+    </div>
+  </div>
+  <div class="footer-note"><span>Propuesta comercial</span><span>01</span></div>
+</section>
+
+<section class="page">
+  <div class="kicker">Acto I · El problema</div>
+  <h2>La función empieza antes del telón.</h2>
+  <p class="scene">“Hola, ¿queda boleta? Te mando el comprobante por aquí… espera, ¿a nombre de quién? ¿cuántas eran? ¿ya quedó o no?”</p>
+  <p>Eso no es taquilla. Es un ensayo improvisado cada fin de semana. Funciona mientras vendes 20 entradas. Se rompe cuando vendes 80, tienes dos locaciones o alguien llega a la puerta sin prueba clara de pago.</p>
+  <div class="grid-2">
+    <div class="card">
+      <strong>Lo que suele pasar hoy</strong>
+      <ul>
+        <li>Dinero y cupos mezclados en WhatsApp.</li>
+        <li>Nadie sabe cuántas boletas quedan de verdad.</li>
+        <li>La puerta depende de una lista a mano.</li>
+        <li>El organizador no tiene un registro para liquidar.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <strong>Lo que TAVA pone en escena</strong>
+      <ul>
+        <li>Cartelera pública con póster, fecha y ciudad.</li>
+        <li>Pedido con nombre, correo, cantidad y total.</li>
+        <li>Boleta con código cuando el pago está validado.</li>
+        <li>Ingreso en puerta sin adivinar si “sí pagó”.</li>
+      </ul>
+    </div>
+  </div>
+  <p class="sub" style="margin-top:14px;">TAVA no reemplaza el alma del teatro. Reemplaza el desorden de la boletería.</p>
+  <div class="footer-note"><span>TAVA Teatro</span><span>02</span></div>
+</section>
+
+<section class="page">
+  <div class="kicker">Acto II · La oferta</div>
+  <h2>Un sistema de eventos, no solo un link de pago.</h2>
+  <p class="sub">La plataforma ya está en línea. El espacio usa su propia cuenta de organizador. TAVA publica en cartelera cuando el evento está listo.</p>
+  <div class="grid-3">
+    <div class="card"><span class="tag">Público</span><strong>Cartelera</strong><p>Inicio con carrusel de pósters. Listado con descripción. Ficha de la función y compra o reserva.</p></div>
+    <div class="card"><span class="tag gold">Cobro</span><strong>WhatsApp</strong><p>El pedido se arma solo: evento, boletas, total, referencia y datos del comprador. Tú confirmas el dinero.</p></div>
+    <div class="card"><span class="tag ink">Gratis</span><strong>Reserva</strong><p>Eventos sin cobro: la persona reserva y recibe boleta al instante. Sin comisión.</p></div>
+  </div>
+  <div class="grid-2" style="margin-top:10px;">
+    <div class="card"><strong>Equipo del espacio</strong><p>Organizador crea la función. Validador controla el ingreso. Taquilla puede emitir boletas en sitio, si se asigna ese rol.</p></div>
+    <div class="card"><strong>Asistente Tavo</strong><p>Chat dentro de la web que orienta según el rol: comprar, crear evento, validar pago o entender la liquidación. Si no sabe, pasa a WhatsApp.</p></div>
+  </div>
+  <p style="margin-top:12px; font-size:14px;"><strong>Link vivo:</strong> <a href="https://sistema-de-eventos-tava.vercel.app">https://sistema-de-eventos-tava.vercel.app</a></p>
+  <div class="footer-note"><span>TAVA Teatro</span><span>03</span></div>
+</section>
+
+<section class="page">
+  <div class="kicker">Qué se lleva el espacio</div>
+  <h2>Menos improvisación. Más butacas ocupadas.</h2>
+  <table>
+    <thead><tr><th>Para el teatro</th><th>Para el público</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>Ficha de la obra: imagen, fecha, ciudad, aforo y tipos de boleta.</td>
+        <td>Ve la cartelera sin pedir “pásame el flyer”.</td>
+      </tr>
+      <tr>
+        <td>Pedido WhatsApp completo, no un “hola quiero ir”.</td>
+        <td>Sabe cuánto paga y a nombre de quién queda la boleta.</td>
+      </tr>
+      <tr>
+        <td>Validas el pago y el sistema emite correo + código.</td>
+        <td>Llega PDF / código. También puede verlo en su perfil.</td>
+      </tr>
+      <tr>
+        <td>Puerta con validador. Lista de asistentes en el panel.</td>
+        <td>Entra sin discutir en la fila.</td>
+      </tr>
+      <tr>
+        <td>Comisión clara (8% a 15%) y aviso cerca de la función.</td>
+        <td>Eventos gratis se reservan al instante, sin cobro.</td>
+      </tr>
+    </tbody>
+  </table>
+  <div class="card" style="margin-top:12px;">
+    <strong>Detalle que evita peleas con la cartelera</strong>
+    <p>Si el organizador cambia texto, fotos o elenco, el evento no vuelve a revisión. Vuelve a revisión solo si cambian dinero, precios, cupos, aforo, comisión o modo de venta. Así la página no se cae por un cambio de sinopsis.</p>
+  </div>
+  <div class="footer-note"><span>TAVA Teatro</span><span>04</span></div>
+</section>
+
+<section class="page">
+  <div class="kicker">Diagrama 1 · Compra de pago</div>
+  <h2>Cómo se vende una boleta por WhatsApp.</h2>
+  <p class="sub">El chat no inventa el pedido. La web lo arma y lo abre en WhatsApp.</p>
+  <div class="flow">
+    <div class="node"><b>1. Cartelera.</b> La persona abre la función activa y elige tipo y cantidad.</div>
+    <div class="arrow">↓</div>
+    <div class="node"><b>2. Cuenta.</b> Se registra o ingresa. Sin cuenta no hay boleta a su nombre.</div>
+    <div class="arrow">↓</div>
+    <div class="node"><b>3. Pedido.</b> El sistema crea la solicitud y abre WhatsApp con evento, fecha, lugar, boletas, total, referencia, nombre, correo y teléfono.</div>
+    <div class="arrow">↓</div>
+    <div class="node"><b>4. Pago.</b> El comprador paga como indique el espacio (transferencia, Nequi, efectivo coordinado, etc.).</div>
+    <div class="arrow">↓</div>
+    <div class="node"><b>5. Validación.</b> El organizador, ya con el dinero, marca el pago en el panel.</div>
+    <div class="arrow">↓</div>
+    <div class="node"><b>6. Boleta.</b> Se emite correo y código. El cupo queda descontado. Listo para la puerta.</div>
+  </div>
+  <p class="muted" style="margin-top:10px; font-size:12px;">Nota comercial: hoy no hay pasarela Wompi en la web. El cobro vive en el canal que el espacio ya usa, con el pedido ordenado por TAVA.</p>
+  <div class="footer-note"><span>Diagrama de flujo</span><span>05</span></div>
+</section>
+
+<section class="page">
+  <div class="kicker">Diagrama 2 · Función gratuita</div>
+  <h2>Cuando la entrada es $0, no hay drama de pago.</h2>
+  <div class="split">
+    <div class="flow">
+      <div class="node"><b>Organizador</b> marca el evento como gratuito y deja boletas en $0.</div>
+      <div class="arrow">↓</div>
+      <div class="node"><b>Público</b> elige cupo y confirma la reserva.</div>
+      <div class="arrow">↓</div>
+      <div class="node"><b>Sistema</b> emite la boleta al instante y descuenta el aforo.</div>
+      <div class="arrow">↓</div>
+      <div class="node"><b>Puerta</b> valida el código igual que en un evento de pago.</div>
+    </div>
+    <div>
+      <div class="card">
+        <span class="tag">Sin comisión</span>
+        <h3>Para talleres, muestras y invitaciones abiertas</h3>
+        <p>Sirve cuando el espacio no cobra entrada, pero sí necesita saber quién viene y no sobrecupar la sala.</p>
+      </div>
+      <div class="card" style="margin-top:10px;">
+        <span class="tag gold">Pago</span>
+        <h3>Mínimo en boletas de pago</h3>
+        <p>Las entradas cobradas deben costar al menos $15.000 COP. Cortesías pueden existir aparte. La comisión del sistema se elige entre 8% y 15% y se acepta en un contrato dentro del panel.</p>
+      </div>
+    </div>
+  </div>
+  <div class="footer-note"><span>Diagrama de flujo</span><span>06</span></div>
+</section>
+
+<section class="page">
+  <div class="kicker">Diagrama 3 · Del ensayo a la cartelera</div>
+  <h2>Así publica un organizador.</h2>
+  <div class="flow">
+    <div class="node"><b>1.</b> Crea el evento: nombre, fecha, ciudad, aforo, póster y descripción.</div>
+    <div class="arrow">↓</div>
+    <div class="node"><b>2.</b> Elige modo: gratuito o venta por WhatsApp (número del espacio + nota opcional).</div>
+    <div class="arrow">↓</div>
+    <div class="node"><b>3.</b> Arma boletas. Si hay cobro: precio, cupos, comisión 8–15% y contrato.</div>
+    <div class="arrow">↓</div>
+    <div class="node"><b>4.</b> Envía a revisión. TAVA aprueba y lo pone visible en cartelera.</div>
+    <div class="arrow">↓</div>
+    <div class="node"><b>5.</b> Durante la venta valida pagos WhatsApp y mira asistentes.</div>
+    <div class="arrow">↓</div>
+    <div class="node"><b>6.</b> Cerca de la función llega el aviso de liquidación de comisión. El admin general de TAVA confirma el pago y se habilita el ingreso.</div>
+  </div>
+  <div class="footer-note"><span>Diagrama de flujo</span><span>07</span></div>
+</section>
+
+<section class="page">
+  <div class="kicker">Diagrama 4 · Puerta y dinero</div>
+  <h2>Quién hace qué, sin cruces de rol.</h2>
+  <div class="grid-2">
+    <div class="card">
+      <span class="tag">Ingreso</span>
+      <h3>Validador</h3>
+      <div class="flow">
+        <div class="node">Abre el módulo de validación.</div>
+        <div class="arrow">↓</div>
+        <div class="node">Lee QR o escribe el código.</div>
+        <div class="arrow">↓</div>
+        <div class="node">El sistema dice si entra, si ya entró o si falta habilitar la puerta.</div>
+      </div>
+    </div>
+    <div class="card">
+      <span class="tag gold">Comisión</span>
+      <h3>Liquidación</h3>
+      <div class="flow">
+        <div class="node">Unas horas antes: aviso con el monto de comisión.</div>
+        <div class="arrow">↓</div>
+        <div class="node">El organizador paga a TAVA.</div>
+        <div class="arrow">↓</div>
+        <div class="node">TAVA confirma. Recién ahí la puerta queda libre para validar.</div>
+      </div>
+    </div>
+  </div>
+  <p class="sub">Las ventas de la última hora se ajustan después. Nadie “olvida” la comisión en una servilleta.</p>
+  <div class="footer-note"><span>Diagrama de flujo</span><span>08</span></div>
+</section>
+
+<section class="page">
+  <div class="kicker">Manual corto · Para el espacio</div>
+  <h2>Primera función en TAVA, sin manual de 40 páginas.</h2>
+  <div class="steps">
+    <div class="step"><div><strong>Pide tu acceso de organizador</strong> a TAVA. No uses cuentas ajenas ni claves de demostración.</div></div>
+    <div class="step"><div><strong>Entra al panel</strong> en <a href="https://sistema-de-eventos-tava.vercel.app/admin">/admin</a> y crea el evento con póster vertical, porque el carrusel de inicio muestra el centro de esa imagen.</div></div>
+    <div class="step"><div><strong>WhatsApp de ventas:</strong> pon el número con indicativo (ejemplo 57300…). La nota opcional va al final; el pedido completo lo escribe el sistema.</div></div>
+    <div class="step"><div><strong>Envía a revisión.</strong> Cuando TAVA apruebe, aparece en Inicio y en Todos los eventos.</div></div>
+    <div class="step"><div><strong>Cuando llegue un pago,</strong> busca el pedido pendiente y pulsa validar. Ahí sale el correo de la boleta.</div></div>
+    <div class="step"><div><strong>Asigna un validador</strong> para la puerta. Esa persona no necesita vender ni editar el evento.</div></div>
+    <div class="step"><div><strong>Antes de la función</strong> revisa el aviso de comisión y coordina el pago con TAVA para no bloquear el ingreso.</div></div>
+  </div>
+  <div class="card">
+    <strong>Lo que el público hace</strong>
+    <p>Entra a la web, elige la obra, se registra, compra por WhatsApp o reserva gratis, y llega con su código. Si no le llegó el correo, lo busca en spam o en su perfil.</p>
+  </div>
+  <div class="footer-note"><span>Manual de arranque</span><span>09</span></div>
+</section>
+
+<section class="page">
+  <div class="kicker">Telón · Siguiente paso</div>
+  <h2>Pruébalo con una función real, no con una promesa.</h2>
+  <p>La forma más honesta de decidir es publicar una fecha chica: un laboratorio, una función única o un taller. Si el flujo se siente claro para taquilla y para el público, se queda. Si no, se ajusta antes de una temporada larga.</p>
+  <div class="grid-2">
+    <div class="card">
+      <strong>Incluye</strong>
+      <ul>
+        <li>Cartelera y ficha pública.</li>
+        <li>Venta WhatsApp con pedido completo.</li>
+        <li>Reservas gratuitas.</li>
+        <li>Emisión de boleta y validación de ingreso.</li>
+        <li>Panel de organizador y asistente Tavo.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <strong>No prometemos</strong>
+      <ul>
+        <li>Pasarela bancaria propia (Wompi) en este momento.</li>
+        <li>Correo masivo a compradores desde el panel.</li>
+        <li>Que Tavo apruebe eventos o confirme pagos: eso lo hace una persona.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="cta">
+    <div class="kicker" style="color:#ffe7a3;">Escríbenos y abrimos el telón</div>
+    <p style="font-size:18px; margin:8px 0 4px;">TAVA Teatro</p>
+    <p>Web: <a href="https://sistema-de-eventos-tava.vercel.app">https://sistema-de-eventos-tava.vercel.app</a></p>
+    <p>Instagram: <a href="https://www.instagram.com/tavateatro/">@tavateatro</a></p>
+    <p>Correo: tavateatro@gmail.com</p>
+    <p style="margin:0;">WhatsApp: +57 300 326 8095</p>
+  </div>
+  <div class="footer-note"><span>Contacto</span><span>10</span></div>
+</section>
+
+<section class="page">
+  <div class="kicker">Anexo · Prompt para otra IA</div>
+  <h2>Copia este texto y pídele un PDF vendible.</h2>
+  <p class="sub">Última página a propósito: este bloque está hecho para pegarlo en ChatGPT, Claude, Gemini u otra IA que genere documentos. No inventes funciones que no están aquí.</p>
+  <div class="prompt">Eres un diseñador editorial y estratega comercial. Genera un PDF vendible, claro y atractivo (tono teatral, nunca corporativo aburrido ni exagerado) para ofrecer TAVA a teatros, salas y espacios culturales en Colombia.
+
+PRODUCTO
+TAVA es una plataforma web de cartelera y boletería ya publicada en https://sistema-de-eventos-tava.vercel.app
+Instagram: https://www.instagram.com/tavateatro/
+Correo: tavateatro@gmail.com
+WhatsApp: +57 300 326 8095
+
+CÓMO FUNCIONA (no inventes otra cosa)
+- Inicio: carrusel de pósters de eventos activos. La imagen debe encuadrar el centro del póster.
+- Todos los eventos: listado con descripción. Abajo o en sección aparte, funciones finalizadas.
+- Venta de pago: solo por WhatsApp. El comprador elige boletas en la web; se abre un mensaje COMPLETO con evento, fecha, lugar, tipo, cantidad, precio, total, referencia, nombre, correo, teléfono y nombres en boleta. El organizador valida el pago en el panel y entonces se emite correo + código/PDF. No hay checkout Wompi.
+- Eventos gratis: reserva inmediata, boletas a $0, sin comisión.
+- Boletas de pago: mínimo $15.000 COP. Comisión elegida por el organizador entre 8% y 15%, con contrato. Aviso de liquidación cerca de la función (aprox. 1 hora antes). El validador de ingreso queda bloqueado hasta que el admin general de TAVA confirme esa comisión. Ajuste posterior por ventas de última hora.
+- Roles: público, organizador del evento, validador de puerta, vendedor de taquilla, admin de plataforma TAVA. El organizador no es el admin global.
+- Primera publicación pasa por revisión de TAVA antes de salir en cartelera. Ediciones posteriores solo vuelven a revisión si cambian dinero, precios, cupos, aforo, comisión o modo de venta. No vuelven a revisión por texto, fotos o elenco.
+- No existe envío masivo de correos a asistentes.
+- Chat Tavo orienta por rol y, si hace falta, pasa a WhatsApp. No aprueba eventos ni confirma pagos.
+
+ESTRUCTURA DEL PDF (8 a 12 páginas A4)
+1. Portada con gancho.
+2. Problema de la taquilla improvisada.
+3. Qué es TAVA y el link grande.
+4. Beneficios para el espacio y para el público.
+5. Manual de arranque en 7 pasos.
+6. Al menos 4 diagramas de flujo dibujados (compra WhatsApp, reserva gratis, publicación del organizador, puerta + liquidación). Usa cajas y flechas, no solo texto.
+7. Qué incluye y qué no incluye.
+8. Llamado a la acción con web, Instagram, correo y WhatsApp.
+9. No incluyas contraseñas, usuarios demo ni datos internos de servidores.
+
+ESTILO
+Paleta crema, oro #C9A227 y burgundy #7A1E32. Tipografía con personalidad de teatro. Español de Colombia, frases cortas, concreto, vendible y honesto. Entregable: un PDF listo para enviar por WhatsApp a un teatro.</div>
+  <div class="footer-note"><span>Prompt para IA</span><span>11</span></div>
+</section>
+
+</body>
+</html>

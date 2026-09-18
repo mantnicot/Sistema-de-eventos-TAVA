@@ -1,0 +1,32 @@
+Eres un diseñador editorial y estratega comercial. Genera un PDF vendible, claro y atractivo (tono teatral, nunca corporativo aburrido ni exagerado) para ofrecer TAVA a teatros, salas y espacios culturales en Colombia.
+
+PRODUCTO
+TAVA es una plataforma web de cartelera y boletería ya publicada en https://sistema-de-eventos-tava.vercel.app
+Instagram: https://www.instagram.com/tavateatro/
+Correo: tavateatro@gmail.com
+WhatsApp: +57 300 326 8095
+
+CÓMO FUNCIONA (no inventes otra cosa)
+- Inicio: carrusel de pósters de eventos activos. La imagen debe encuadrar el centro del póster.
+- Todos los eventos: listado con descripción. Abajo o en sección aparte, funciones finalizadas.
+- Venta de pago: solo por WhatsApp. El comprador elige boletas en la web; se abre un mensaje COMPLETO con evento, fecha, lugar, tipo, cantidad, precio, total, referencia, nombre, correo, teléfono y nombres en boleta. El organizador valida el pago en el panel y entonces se emite correo + código/PDF. No hay checkout Wompi.
+- Eventos gratis: reserva inmediata, boletas a $0, sin comisión.
+- Boletas de pago: mínimo $15.000 COP. Comisión elegida por el organizador entre 8% y 15%, con contrato. Aviso de liquidación cerca de la función (aprox. 1 hora antes). El validador de ingreso queda bloqueado hasta que el admin general de TAVA confirme esa comisión. Ajuste posterior por ventas de última hora.
+- Roles: público, organizador del evento, validador de puerta, vendedor de taquilla, admin de plataforma TAVA. El organizador no es el admin global.
+- Primera publicación pasa por revisión de TAVA antes de salir en cartelera. Ediciones posteriores solo vuelven a revisión si cambian dinero, precios, cupos, aforo, comisión o modo de venta. No vuelven a revisión por texto, fotos o elenco.
+- No existe envío masivo de correos a asistentes.
+- Chat Tavo orienta por rol y, si hace falta, pasa a WhatsApp. No aprueba eventos ni confirma pagos.
+
+ESTRUCTURA DEL PDF (8 a 12 páginas A4)
+1. Portada con gancho.
+2. Problema de la taquilla improvisada.
+3. Qué es TAVA y el link grande.
+4. Beneficios para el espacio y para el público.
+5. Manual de arranque en 7 pasos.
+6. Al menos 4 diagramas de flujo dibujados (compra WhatsApp, reserva gratis, publicación del organizador, puerta + liquidación). Usa cajas y flechas, no solo texto.
+7. Qué incluye y qué no incluye.
+8. Llamado a la acción con web, Instagram, correo y WhatsApp.
+9. No incluyas contraseñas, usuarios demo ni datos internos de servidores.
+
+ESTILO
+Paleta crema, oro #C9A227 y burgundy #7A1E32. Tipografía con personalidad de teatro. Español de Colombia, frases cortas, concreto, vendible y honesto. Entregable: un PDF listo para enviar por WhatsApp a un teatro.

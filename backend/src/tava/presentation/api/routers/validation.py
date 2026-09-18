@@ -21,12 +21,13 @@ from tava.presentation.api.schemas import (
 router = APIRouter(prefix="/validation", tags=["Validación"])
 
 MESSAGES = {
-    ValidationResult.AUTHORIZED: "Acceso autorizado",
+    ValidationResult.AUTHORIZED: "Permiso autorizado",
     ValidationResult.ALREADY_USED: "Boleta ya utilizada",
     ValidationResult.CANCELLED: "Boleta cancelada",
-    ValidationResult.EVENT_DISABLED: "Evento no habilitado",
-    ValidationResult.INVALID: "Boleta inválida",
+    ValidationResult.EVENT_DISABLED: "Ingreso bloqueado o evento no habilitado",
+    ValidationResult.INVALID: "Boleta no válida",
     ValidationResult.NOT_AUTHORIZED: "No estás autorizado para validar este evento",
+    ValidationResult.WRONG_EVENT: "No corresponde a este evento",
 }
 
 
@@ -46,34 +47,58 @@ async def _require_event_ops_access(db: AsyncSession, user, event_id: UUID, staf
 
 
 async def _build_validation_response(
-    db: AsyncSession, result: ValidationResult, ticket: TicketModel | None
+    db: AsyncSession,
+    result: ValidationResult,
+    ticket: TicketModel | None,
+    *,
+    selected_event_id: UUID | None = None,
 ) -> ValidationResponse:
     holder_name = None
-    event_id = None
+    ticket_code = None
+    event_id = selected_event_id
     event_name = None
+    ticket_event_name = None
     ingresados = None
     boletas_vendidas = None
     pendientes = None
 
     if ticket:
         holder_name = ticket.holder_name
-        event_id = ticket.event_id
-        ev_result = await db.execute(select(EventModel.name).where(EventModel.id == ticket.event_id))
+        ticket_code = ticket.ticket_code
+        ticket_event_name_row = await db.execute(
+            select(EventModel.name).where(EventModel.id == ticket.event_id)
+        )
+        ticket_event_name = ticket_event_name_row.scalar_one_or_none()
+
+    stats_event_id = selected_event_id or (ticket.event_id if ticket else None)
+    if stats_event_id:
+        event_id = stats_event_id
+        ev_result = await db.execute(select(EventModel.name).where(EventModel.id == stats_event_id))
         event_name = ev_result.scalar_one_or_none()
         uc = ValidationUseCase(db)
-        stats = await uc.get_capacity_stats(ticket.event_id)
+        stats = await uc.get_capacity_stats(stats_event_id)
         if stats:
             ingresados = stats.get("ingresados")
             boletas_vendidas = stats.get("boletas_vendidas")
             pendientes = stats.get("pendientes_ingreso")
 
+    message = MESSAGES[result]
+    if result == ValidationResult.WRONG_EVENT and ticket_event_name:
+        message = f"No corresponde a este evento (es de: {ticket_event_name})"
+    elif result == ValidationResult.ALREADY_USED and holder_name:
+        message = f"Boleta ya utilizada — {holder_name}"
+    elif result == ValidationResult.AUTHORIZED and holder_name:
+        message = f"Permiso autorizado — {holder_name}"
+
     return ValidationResponse(
         result=result.value,
         ticket_id=ticket.id if ticket else None,
-        message=MESSAGES[result],
+        message=message,
         holder_name=holder_name,
+        ticket_code=ticket_code,
         event_id=event_id,
         event_name=event_name,
+        ticket_event_name=ticket_event_name,
         ingresados=ingresados,
         boletas_vendidas=boletas_vendidas,
         pendientes_ingreso=pendientes,
@@ -86,9 +111,18 @@ async def scan_qr(
     user=Depends(require_roles(UserRole.VALIDATOR, UserRole.ADMIN)),
     db: AsyncSession = Depends(get_db),
 ):
+    if body.event_id is not None:
+        await _require_event_ops_access(db, user, body.event_id, "validator")
     uc = ValidationUseCase(db)
-    result, ticket = await uc.validate_qr(body.qr_token, user.id, user.role)
-    return await _build_validation_response(db, result, ticket)
+    result, ticket = await uc.validate_qr(
+        body.qr_token,
+        user.id,
+        user.role,
+        expected_event_id=body.event_id,
+    )
+    return await _build_validation_response(
+        db, result, ticket, selected_event_id=body.event_id
+    )
 
 
 @router.get("/aforo/{event_id}")

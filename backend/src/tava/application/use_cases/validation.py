@@ -91,11 +91,18 @@ class ValidationUseCase:
         return ValidationResult.AUTHORIZED, ticket
 
     async def validate_qr(
-        self, qr_token: str, validator_id: UUID, user_role: UserRole
+        self,
+        qr_token: str,
+        validator_id: UUID,
+        user_role: UserRole,
+        *,
+        expected_event_id: UUID | None = None,
     ) -> tuple[ValidationResult, TicketModel | None]:
         ticket = await self._find_ticket(qr_token)
         if not ticket:
             return ValidationResult.INVALID, None
+        if expected_event_id is not None and ticket.event_id != expected_event_id:
+            return ValidationResult.WRONG_EVENT, ticket
         return await self._authorize_ticket(ticket, validator_id, user_role)
 
     async def get_capacity_stats(self, event_id: UUID) -> dict:

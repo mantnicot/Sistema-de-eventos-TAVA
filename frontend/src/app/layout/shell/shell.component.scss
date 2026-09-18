@@ -1,3 +1,28 @@
+.pruebas-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem 1rem;
+  padding: 0.45rem 1rem;
+  background: #1a5f2a;
+  color: #fff;
+  font-size: 0.82rem;
+  text-align: center;
+  position: sticky;
+  top: 0;
+  z-index: 20;
+
+  strong {
+    letter-spacing: 0.08em;
+    font-size: 0.75rem;
+  }
+
+  span {
+    opacity: 0.92;
+  }
+}
+
 .header {
   display: flex;
   align-items: center;
@@ -10,6 +35,10 @@
   z-index: 10;
   backdrop-filter: blur(16px);
   box-shadow: 0 4px 24px rgba(58, 47, 42, 0.06);
+}
+
+:host:has(.pruebas-banner) .header {
+  top: 2rem;
 }
 
 .brand {

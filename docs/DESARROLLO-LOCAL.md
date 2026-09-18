@@ -6,7 +6,19 @@
 - Python 3.12+ (backend)
 - Node.js 20+ (frontend)
 
-## Opción A — Script Windows
+## Opción A — Pruebas locales (recomendado para validar sin tocar prod)
+
+1. Doble clic en **`TAVA-PRUEBAS.bat`** (o el icono **TAVA PRUEBAS** del Escritorio).
+2. Espera a que abran las ventanas API + Web.
+3. Entra a http://localhost:4200 — verás la cinta verde **PRUEBAS LOCAL**.
+4. Admin demo: `admin@tavateatro.com` / `AdminTava2026!`
+5. Para apagar Postgres: **`TAVA-Detener-PRUEBAS.bat`**
+
+Si aún no tienes el icono: ejecuta `scripts\crear-acceso-escritorio-pruebas.bat`.
+
+> **No uses** `npm run start:pruebas` para esto: ese modo apunta a la API de Render (datos reales).
+
+## Opción B — Script Windows genérico
 
 Doble clic en `TAVA-Iniciar.bat` o `iniciar-local.bat` en la raíz del proyecto.
 

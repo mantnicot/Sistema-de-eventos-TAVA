@@ -284,6 +284,7 @@ class EventStaffResponse(BaseModel):
 
 class ValidateQrRequest(BaseModel):
     qr_token: str
+    event_id: UUID | None = None
 
 
 class ValidationResponse(BaseModel):
@@ -291,8 +292,10 @@ class ValidationResponse(BaseModel):
     ticket_id: UUID | None = None
     message: str
     holder_name: str | None = None
+    ticket_code: str | None = None
     event_id: UUID | None = None
     event_name: str | None = None
+    ticket_event_name: str | None = None
     ingresados: int | None = None
     boletas_vendidas: int | None = None
     pendientes_ingreso: int | None = None

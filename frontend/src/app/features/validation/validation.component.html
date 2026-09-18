@@ -1,29 +1,32 @@
-<section class="validate">
-  <header class="validate__head">
-    <h1 class="tava-glow-text">Validar ingreso</h1>
-    @if (stats().event_name) {
-      <p class="validate__event">{{ stats().event_name }}</p>
-    }
+<section class="door">
+  <header class="door__head">
+    <div>
+      <p class="door__kicker">Validación de ingreso</p>
+      <h1>{{ selectedEventLabel() }}</h1>
+    </div>
+    <div class="door__stats">
+      <div class="door__stat door__stat--ok">
+        <span>Ingresaron</span>
+        <strong>{{ stats().ingresados }}</strong>
+      </div>
+      <div class="door__stat">
+        <span>Vendidas</span>
+        <strong>{{ stats().boletas_vendidas }}</strong>
+      </div>
+      <div class="door__stat door__stat--pending">
+        <span>Pendientes</span>
+        <strong>{{ stats().pendientes_ingreso }}</strong>
+      </div>
+    </div>
   </header>
 
-  <div class="validate__stats">
-    <div class="stat tava-card stat--ok">
-      <span>Ingresados</span>
-      <strong>{{ stats().ingresados }}</strong>
-    </div>
-    <div class="stat tava-card">
-      <span>Vendidas</span>
-      <strong>{{ stats().boletas_vendidas }}</strong>
-    </div>
-    <div class="stat tava-card stat--pending">
-      <span>Pendientes</span>
-      <strong>{{ stats().pendientes_ingreso }}</strong>
-    </div>
-  </div>
-
-  <label class="validate__pick">
-    Evento
-    <select [(ngModel)]="selectedEventId" (ngModelChange)="onEventChange()" name="eventPick">
+  <label class="door__pick">
+    Evento de esta puerta
+    <select
+      [ngModel]="selectedEventId()"
+      (ngModelChange)="onEventChange($event)"
+      name="eventPick"
+    >
       <option value="">— Selecciona —</option>
       @for (ev of events(); track ev.id) {
         <option [value]="ev.id">{{ ev.name }} · {{ ev.event_date }}</option>
@@ -31,39 +34,75 @@
     </select>
   </label>
 
-  <div class="validate__layout">
-    <div class="validate__scanner tava-card">
-      <div id="qr-reader" class="validate__camera"></div>
-      @if (cameraError) {
-        <p class="validate__warn">{{ cameraError }}</p>
+  <div class="door__stage">
+    <div class="door__camera-wrap">
+      <div id="qr-reader" class="door__camera"></div>
+      @if (!selectedEventId()) {
+        <div class="door__camera-mask">
+          <p>Selecciona el evento para empezar a escanear</p>
+        </div>
+      } @else if (scanningBusy()) {
+        <div class="door__camera-mask door__camera-mask--soft">
+          <p>Validando…</p>
+        </div>
       }
-      <button type="button" class="validate__toggle" (click)="toggleCamera()">
-        {{ cameraActive ? 'Apagar cámara' : 'Activar cámara' }}
-      </button>
-      <div class="validate__manual">
-        <input
-          type="text"
-          placeholder="Token QR o código numérico..."
-          [(ngModel)]="qrToken"
-          (keyup.enter)="scan()"
-          autocomplete="off"
-        />
-        <button type="button" class="tava-btn-primary" (click)="scan()">Validar</button>
+      @if (cameraError) {
+        <p class="door__warn">{{ cameraError }}</p>
+      }
+      <div class="door__camera-actions">
+        <button type="button" class="door__ghost" (click)="toggleCamera()" [disabled]="!selectedEventId()">
+          {{ cameraActive ? 'Apagar cámara' : 'Activar cámara' }}
+        </button>
       </div>
     </div>
 
-    <div class="validate__result-panel">
-      @if (lastResult) {
-        <div class="result-banner tava-card" [class.result-banner--ok]="lastStatus === 'ok'" [class.result-banner--warn]="lastStatus === 'warn'" [class.result-banner--error]="lastStatus === 'error'">
-          <p class="result-banner__msg">{{ lastResult }}</p>
-          @if (lastHolderName) {
-            <p class="result-banner__name">{{ lastHolderName }}</p>
-          }
-        </div>
-      }
+    <div class="door__manual">
+      <input
+        type="text"
+        placeholder="Código o token manual…"
+        [(ngModel)]="qrToken"
+        (keyup.enter)="scan()"
+        autocomplete="off"
+        [disabled]="!selectedEventId()"
+      />
+      <button type="button" class="tava-btn-primary" (click)="scan()" [disabled]="!selectedEventId() || !qrToken.trim()">
+        Validar
+      </button>
+    </div>
 
-      <div class="attendees tava-card">
-        <h2>Asistentes</h2>
+    <p class="door__hint">Apunta al QR. Verás el nombre y si el permiso está autorizado.</p>
+  </div>
+
+  @if (lastTone) {
+    <div
+      class="door-result"
+      [class.door-result--ok]="lastTone === 'ok'"
+      [class.door-result--warn]="lastTone === 'warn'"
+      [class.door-result--deny]="lastTone === 'deny'"
+      role="status"
+      aria-live="assertive"
+    >
+      <p class="door-result__headline">{{ lastHeadline }}</p>
+      @if (lastHolderName) {
+        <p class="door-result__name">{{ lastHolderName }}</p>
+      }
+      <p class="door-result__msg">{{ lastMessage }}</p>
+      @if (lastTicketCode) {
+        <p class="door-result__code">{{ lastTicketCode }}</p>
+      }
+      @if (lastExtra) {
+        <p class="door-result__extra">{{ lastExtra }}</p>
+      }
+      <button type="button" class="door-result__dismiss" (click)="clearResult()">Seguir</button>
+    </div>
+  }
+
+  <section class="door-list">
+    <button type="button" class="door-list__toggle" (click)="toggleAttendees()">
+      {{ showAttendees() ? 'Ocultar asistentes' : 'Ver lista de asistentes' }}
+    </button>
+    @if (showAttendees()) {
+      <div class="door-list__panel">
         <p class="muted">{{ stats().ingresados }} de {{ stats().boletas_vendidas }} han ingresado</p>
         <tava-list-search
           [query]="attendeeQuery()"
@@ -72,28 +111,25 @@
           [shown]="filteredAttendees().length"
           [total]="attendees().length"
         />
-        <ul class="attendees__list">
+        <ul class="door-list__items">
           @for (a of filteredAttendees(); track a.ticket_id) {
-            <li class="attendees__item" [class.attendees__item--in]="a.is_used">
-              <span class="attendees__dot" aria-hidden="true"></span>
-              <span class="attendees__name">
+            <li [class.door-list__item--in]="a.is_used">
+              <span class="door-list__dot" aria-hidden="true"></span>
+              <span class="door-list__name">
                 {{ a.holder_name || 'Sin nombre' }}
                 @if (a.ticket_code) {
-                  <small class="attendees__code">#{{ a.ticket_code }}</small>
-                }
-                @if (a.recipient_email) {
-                  <small class="attendees__code">{{ a.recipient_email }}</small>
+                  <small>#{{ a.ticket_code }}</small>
                 }
               </span>
-              <span class="attendees__status">{{ a.is_used ? 'Ingresó' : 'Pendiente' }}</span>
+              <span class="door-list__status">{{ a.is_used ? 'Ingresó' : 'Pendiente' }}</span>
             </li>
           } @empty {
             <li class="muted">
-              {{ attendees().length ? 'Nadie coincide con esa búsqueda.' : 'No hay boletas vendidas para este evento.' }}
+              {{ attendees().length ? 'Nadie coincide con esa búsqueda.' : 'No hay boletas para este evento.' }}
             </li>
           }
         </ul>
       </div>
-    </div>
-  </div>
+    }
+  </section>
 </section>

@@ -1,9 +1,16 @@
+@if (isLocalPruebas) {
+  <div class="pruebas-banner" role="status">
+    <strong>{{ envLabel }}</strong>
+    <span>Base y API en tu PC · no afecta producción (Vercel/Render)</span>
+  </div>
+}
+
 <header class="header">
   <a routerLink="/inicio" class="brand" title="TAVA Teatro — Eventos" (click)="closeMenu()">
     <img src="/logo-tava.png" alt="TAVA Teatro" class="brand__logo" width="52" height="52" />
     <span class="brand__text">
       <span class="brand__mark">TAVA</span>
-      <span class="brand__sub">Teatro · Boletería</span>
+      <span class="brand__sub">{{ isLocalPruebas ? 'Pruebas locales' : 'Teatro · Boletería' }}</span>
     </span>
   </a>
 

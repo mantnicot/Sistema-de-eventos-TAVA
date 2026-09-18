@@ -70,3 +70,4 @@ class ValidationResult(str, enum.Enum):
     EVENT_DISABLED = "evento_no_habilitado"
     INVALID = "boleta_invalida"
     NOT_AUTHORIZED = "no_autorizado"
+    WRONG_EVENT = "boleta_otro_evento"

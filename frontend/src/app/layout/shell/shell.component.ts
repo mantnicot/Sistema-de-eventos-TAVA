@@ -11,6 +11,7 @@ import { SessionIdleService } from '../../core/services/session-idle.service';
 import { ApiWarmupService } from '../../core/services/api-warmup.service';
 import { ApiKeepAliveService } from '../../core/services/api-keep-alive.service';
 import { EventsPrefetchService } from '../../core/services/events-prefetch.service';
+import { environment } from '../../../environments/environment';
 
 @Component({
   selector: 'app-shell',
@@ -36,6 +37,10 @@ export class ShellComponent implements OnInit, OnDestroy {
   private readonly keepAlive = inject(ApiKeepAliveService);
   private readonly eventsPrefetch = inject(EventsPrefetchService);
   private navSub?: Subscription;
+
+  /** Solo visible en arranque local (TAVA-PRUEBAS / start:local). */
+  readonly isLocalPruebas = !!environment.localPruebas;
+  readonly envLabel = environment.envLabel || 'PRUEBAS LOCAL';
 
   menuOpen = false;
   readonly pendingReviewCount = signal(0);
