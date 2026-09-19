@@ -306,8 +306,8 @@ export class ValidationComponent implements AfterViewInit, OnDestroy {
       case 'acceso_autorizado':
         this.showResult({
           tone: 'ok',
-          headline: 'Permiso autorizado',
-          message: 'Puede ingresar',
+          headline: 'PUEDE ENTRAR',
+          message: 'Boleta válida · permiso autorizado',
           holder,
           code,
           extra: '',
@@ -317,8 +317,8 @@ export class ValidationComponent implements AfterViewInit, OnDestroy {
       case 'boleta_ya_utilizada':
         this.showResult({
           tone: 'warn',
-          headline: 'Ya utilizada',
-          message: 'Esta boleta ya ingresó',
+          headline: 'YA INGRESÓ',
+          message: 'Esta boleta ya fue usada',
           holder,
           code,
           extra: '',
@@ -328,19 +328,19 @@ export class ValidationComponent implements AfterViewInit, OnDestroy {
       case 'boleta_otro_evento':
         this.showResult({
           tone: 'deny',
-          headline: 'No corresponde',
-          message: 'Esta boleta no es de este evento',
+          headline: 'EVENTO INCORRECTO',
+          message: 'Esta boleta no es de esta función',
           holder,
           code,
-          extra: res.ticket_event_name ? `Es de: ${res.ticket_event_name}` : '',
+          extra: res.ticket_event_name ? `Pertenece a: ${res.ticket_event_name}` : '',
         });
         this.playFeedback(false);
         break;
       case 'boleta_cancelada':
         this.showResult({
           tone: 'deny',
-          headline: 'Cancelada',
-          message: 'La boleta fue cancelada',
+          headline: 'NO PUEDE ENTRAR',
+          message: 'La boleta está cancelada',
           holder,
           code,
           extra: '',
@@ -350,8 +350,8 @@ export class ValidationComponent implements AfterViewInit, OnDestroy {
       case 'evento_no_habilitado':
         this.showResult({
           tone: 'deny',
-          headline: 'Ingreso bloqueado',
-          message: res.message || 'El evento no está habilitado para ingreso',
+          headline: 'INGRESO BLOQUEADO',
+          message: 'El admin debe liquidar el evento en Revisión',
           holder,
           code,
           extra: '',
@@ -361,8 +361,8 @@ export class ValidationComponent implements AfterViewInit, OnDestroy {
       case 'no_autorizado':
         this.showResult({
           tone: 'deny',
-          headline: 'Sin permiso',
-          message: 'No estás autorizado para validar este evento',
+          headline: 'SIN PERMISO',
+          message: 'Tu usuario no puede validar este evento',
           holder,
           code,
           extra: '',
@@ -372,8 +372,8 @@ export class ValidationComponent implements AfterViewInit, OnDestroy {
       default:
         this.showResult({
           tone: 'deny',
-          headline: 'No válida',
-          message: res.message || 'QR no reconocido',
+          headline: 'NO VÁLIDA',
+          message: 'No reconocimos esta boleta',
           holder,
           code,
           extra: '',

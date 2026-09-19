@@ -189,67 +189,89 @@
 .door-result {
   position: fixed;
   inset: 0;
-  z-index: 40;
+  z-index: 50;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0.35rem;
-  padding: 1.5rem;
-  text-align: center;
+  padding: 1.25rem;
+  background: rgba(12, 8, 6, 0.55);
+  backdrop-filter: blur(4px);
   animation: door-pop 0.22s ease;
 
-  &--ok {
-    background: rgba(18, 110, 55, 0.96);
+  &__card {
+    width: min(92vw, 420px);
+    border-radius: 22px;
+    padding: 1.75rem 1.35rem 1.4rem;
+    text-align: center;
     color: #fff;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
   }
 
-  &--warn {
-    background: rgba(150, 90, 0, 0.96);
-    color: #fff;
+  &--ok &__card {
+    background: linear-gradient(160deg, #1b8a45, #146534);
   }
 
-  &--deny {
-    background: rgba(150, 28, 28, 0.96);
-    color: #fff;
+  &--warn &__card {
+    background: linear-gradient(160deg, #c47a00, #8a5500);
+  }
+
+  &--deny &__card {
+    background: linear-gradient(160deg, #d32f2f, #8e1b1b);
+  }
+
+  &__icon {
+    margin: 0 0 0.35rem;
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    margin-inline: auto;
+    font-size: 2rem;
+    font-weight: 800;
+    background: rgba(255, 255, 255, 0.18);
+    line-height: 1;
   }
 
   &__headline {
-    margin: 0;
-    font-size: clamp(1.6rem, 7vw, 2.4rem);
+    margin: 0.55rem 0 0;
+    font-size: clamp(1.55rem, 6.5vw, 2.1rem);
     font-weight: 800;
     letter-spacing: 0.04em;
     text-transform: uppercase;
+    line-height: 1.1;
   }
 
   &__name {
-    margin: 0.35rem 0 0;
+    margin: 0.85rem 0 0;
     font-family: var(--tava-font-display);
-    font-size: clamp(2rem, 9vw, 3.4rem);
+    font-size: clamp(1.85rem, 8vw, 2.75rem);
     line-height: 1.05;
   }
 
   &__msg {
-    margin: 0.4rem 0 0;
+    margin: 0.65rem 0 0;
     font-size: 1.05rem;
-    opacity: 0.95;
+    font-weight: 600;
+    opacity: 0.96;
   }
 
   &__code,
   &__extra {
-    margin: 0.25rem 0 0;
+    margin: 0.4rem 0 0;
     font-size: 0.95rem;
     opacity: 0.9;
   }
 
   &__dismiss {
-    margin-top: 1.25rem;
-    border: 1px solid rgba(255, 255, 255, 0.55);
-    background: transparent;
+    margin-top: 1.35rem;
+    border: 1px solid rgba(255, 255, 255, 0.65);
+    background: rgba(255, 255, 255, 0.12);
     color: #fff;
     border-radius: 999px;
-    padding: 0.65rem 1.4rem;
+    padding: 0.75rem 1.5rem;
     font-weight: 700;
+    font-size: 0.95rem;
     cursor: pointer;
   }
 }

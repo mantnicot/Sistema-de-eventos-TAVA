@@ -1018,9 +1018,28 @@
   color: #6b4e00;
 }
 
+.badge--warn {
+  background: rgba(180, 35, 24, 0.14);
+  color: #9b1c1c;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  margin-left: 0.35rem;
+}
+
 .badge--ok {
   background: rgba(46, 125, 50, 0.15);
   color: #2e7d32;
+}
+
+.settlement-queue {
+  border: 1px solid rgba(180, 35, 24, 0.2);
+}
+
+.admin-list__item--settlement {
+  border-left: 3px solid #c62828;
+  padding-left: 0.75rem;
 }
 
 .admin__tab-badge {

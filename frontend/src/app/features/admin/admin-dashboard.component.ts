@@ -131,6 +131,17 @@ export class AdminDashboardComponent implements OnInit {
   readonly adminEventsError = signal<string | null>(null);
   readonly reviewQueue = signal<TavaEvent[]>([]);
   readonly reviewLoading = signal(false);
+  readonly settlementQueue = signal<
+    {
+      event_id: string;
+      event_name: string;
+      event_date: string;
+      bruto: number;
+      fee_due: number;
+      commission_rate: number | null;
+    }[]
+  >([]);
+  readonly settlementQueueLoading = signal(false);
   rejectReasonText = '';
   readonly rejectingId = signal<string | null>(null);
 
@@ -355,19 +366,21 @@ export class AdminDashboardComponent implements OnInit {
     );
   }
 
-  confirmSettlementPayment(): void {
-    const eventId = this.editingId();
-    if (!eventId || !this.isPlatformAdmin()) return;
+  confirmSettlementPayment(eventId?: string, eventName?: string): void {
+    const id = eventId || this.editingId();
+    if (!id || !this.isPlatformAdmin()) return;
+    const label = eventName ? `«${eventName}»` : 'este evento';
     this.notify.confirm(
-      'Confirmar liquidación',
-      '¿Confirmas que el organizador pagó la comisión? Se habilitará el ingreso por validador.',
+      'Evento liquidado',
+      `¿Confirmas que el organizador pagó la comisión de ${label}? Se habilitará el ingreso por validador.`,
       () => {
         this.notify.loadingTheatrical('Confirmando', 'admin');
-        this.api.post(`/events/${eventId}/settlement/confirm`, {}).subscribe({
+        this.api.post(`/events/${id}/settlement/confirm`, {}).subscribe({
           next: () => {
             this.notify.hide();
             this.notify.success('Liquidación', 'Ingreso habilitado para el validador');
-            this.loadSettlement(eventId);
+            if (this.editingId() === id) this.loadSettlement(id);
+            this.loadSettlementQueue();
             this.loadAdminEvents();
           },
           error: (err) => {
@@ -410,6 +423,7 @@ export class AdminDashboardComponent implements OnInit {
           if (kpis) this.kpis.set(kpis);
         });
       this.loadReviewQueue();
+      this.loadSettlementQueue();
     } else {
       this.adminLoading.set(false);
     }
@@ -428,6 +442,83 @@ export class AdminDashboardComponent implements OnInit {
       error: () => {
         this.reviewQueue.set([]);
         this.reviewLoading.set(false);
+      },
+    });
+  }
+
+  loadSettlementQueue(): void {
+    if (!this.isPlatformAdmin()) return;
+    this.settlementQueueLoading.set(true);
+    this.api.get<TavaEvent[]>('/events/admin/all').subscribe({
+      next: (events) => {
+        const candidates = (events ?? []).filter(
+          (ev) =>
+            ev.commission_rate != null &&
+            !!ev.pre_settlement_notified_at &&
+            !ev.pre_settlement_confirmed_at &&
+            ev.entry_unlocked === false
+        );
+        if (!candidates.length) {
+          this.settlementQueue.set([]);
+          this.settlementQueueLoading.set(false);
+          return;
+        }
+        let pending = candidates.length;
+        const rows: {
+          event_id: string;
+          event_name: string;
+          event_date: string;
+          bruto: number;
+          fee_due: number;
+          commission_rate: number | null;
+        }[] = [];
+        for (const ev of candidates) {
+          this.api
+            .get<{
+              bruto: number;
+              fee_due: number;
+              commission_rate: number | null;
+              entry_unlocked: boolean;
+              pre_settlement_confirmed_at: string | null;
+              pre_settlement_notified_at: string | null;
+              requires_commission: boolean;
+            }>(`/events/${ev.id}/settlement`)
+            .subscribe({
+              next: (s) => {
+                if (
+                  s.requires_commission &&
+                  s.pre_settlement_notified_at &&
+                  !s.pre_settlement_confirmed_at &&
+                  !s.entry_unlocked
+                ) {
+                  rows.push({
+                    event_id: ev.id,
+                    event_name: ev.name,
+                    event_date: ev.event_date,
+                    bruto: s.bruto,
+                    fee_due: s.fee_due,
+                    commission_rate: s.commission_rate,
+                  });
+                }
+                pending -= 1;
+                if (pending <= 0) {
+                  this.settlementQueue.set(rows);
+                  this.settlementQueueLoading.set(false);
+                }
+              },
+              error: () => {
+                pending -= 1;
+                if (pending <= 0) {
+                  this.settlementQueue.set(rows);
+                  this.settlementQueueLoading.set(false);
+                }
+              },
+            });
+        }
+      },
+      error: () => {
+        this.settlementQueue.set([]);
+        this.settlementQueueLoading.set(false);
       },
     });
   }

@@ -81,19 +81,29 @@
       [class.door-result--deny]="lastTone === 'deny'"
       role="status"
       aria-live="assertive"
+      (click)="clearResult()"
     >
-      <p class="door-result__headline">{{ lastHeadline }}</p>
-      @if (lastHolderName) {
-        <p class="door-result__name">{{ lastHolderName }}</p>
-      }
-      <p class="door-result__msg">{{ lastMessage }}</p>
-      @if (lastTicketCode) {
-        <p class="door-result__code">{{ lastTicketCode }}</p>
-      }
-      @if (lastExtra) {
-        <p class="door-result__extra">{{ lastExtra }}</p>
-      }
-      <button type="button" class="door-result__dismiss" (click)="clearResult()">Seguir</button>
+      <div class="door-result__card" (click)="$event.stopPropagation()">
+        <p class="door-result__icon" aria-hidden="true">
+          @if (lastTone === 'ok') { ✓ }
+          @else if (lastTone === 'warn') { ! }
+          @else { ✕ }
+        </p>
+        <p class="door-result__headline">{{ lastHeadline }}</p>
+        @if (lastHolderName) {
+          <p class="door-result__name">{{ lastHolderName }}</p>
+        }
+        <p class="door-result__msg">{{ lastMessage }}</p>
+        @if (lastTicketCode) {
+          <p class="door-result__code">Código {{ lastTicketCode }}</p>
+        }
+        @if (lastExtra) {
+          <p class="door-result__extra">{{ lastExtra }}</p>
+        }
+        <button type="button" class="door-result__dismiss" (click)="clearResult()">
+          Seguir escaneando
+        </button>
+      </div>
     </div>
   }
 

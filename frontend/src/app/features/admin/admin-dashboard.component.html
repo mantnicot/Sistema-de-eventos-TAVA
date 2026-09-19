@@ -4,10 +4,10 @@
     <nav class="admin__tabs">
       @if (isPlatformAdmin()) {
         <button type="button" [class.active]="tab() === 'kpis'" (click)="tab.set('kpis')">Métricas</button>
-        <button type="button" [class.active]="tab() === 'review'" (click)="tab.set('review')">
+        <button type="button" [class.active]="tab() === 'review'" (click)="tab.set('review'); loadSettlementQueue()">
           Revisión
-          @if (reviewQueue().length) {
-            <span class="admin__tab-badge">{{ reviewQueue().length }}</span>
+          @if (reviewQueue().length + settlementQueue().length) {
+            <span class="admin__tab-badge">{{ reviewQueue().length + settlementQueue().length }}</span>
           }
         </button>
       }
@@ -64,6 +64,41 @@
         </div>
       } @else {
         <p class="muted">No hay eventos esperando revisión.</p>
+      }
+    </section>
+
+    <section class="review-workspace tava-card settlement-queue">
+      <h2>Liquidación · Habilitar ingreso</h2>
+      <p class="muted">
+        Aquí confirmas que el organizador pagó la comisión. Sin esto el validador no puede leer boletas en la puerta.
+      </p>
+      @if (settlementQueueLoading()) {
+        <p class="muted">Buscando eventos por liquidar…</p>
+      } @else if (settlementQueue().length) {
+        <div class="admin-list">
+          @for (item of settlementQueue(); track item.event_id) {
+            <article class="admin-list__item admin-list__item--settlement">
+              <div>
+                <strong>{{ item.event_name }}</strong>
+                <span class="badge badge--warn">Ingreso bloqueado</span>
+                <p class="muted">
+                  {{ item.event_date }} · Comisión: ${{ item.fee_due | number }}
+                  @if (item.commission_rate != null) {
+                    ({{ item.commission_rate * 100 | number:'1.0-1' }}%)
+                  }
+                  · Bruto: ${{ item.bruto | number }}
+                </p>
+              </div>
+              <div class="admin-list__actions">
+                <button type="button" class="tava-btn-primary" (click)="confirmSettlementPayment(item.event_id, item.event_name)">
+                  Evento liquidado · Habilitar ingreso
+                </button>
+              </div>
+            </article>
+          }
+        </div>
+      } @else {
+        <p class="muted">Ningún evento espera confirmación de liquidación ahora.</p>
       }
     </section>
   }
@@ -292,21 +327,11 @@
 
           @if (settlementInfo()?.requires_commission) {
             <section class="ticketing-block">
-              <h3>Liquidación comisión</h3>
-              <p>
-                Bruto confirmado: ${{ settlementInfo()!.bruto | number }} ·
-                Comisión: ${{ settlementInfo()!.fee_due | number }}
-                ({{ (settlementInfo()!.commission_rate || 0) * 100 | number:'1.0-1' }}%)
-              </p>
+              <h3>Estado del ingreso</h3>
               <p class="muted">
                 Ingreso validador:
-                {{ settlementInfo()!.entry_unlocked ? 'HABILITADO' : 'BLOQUEADO hasta confirmar pago al admin general' }}
+                {{ settlementInfo()!.entry_unlocked ? 'HABILITADO' : 'BLOQUEADO — el admin global lo habilita en la pestaña Revisión' }}
               </p>
-              @if (settlementInfo()!.pre_settlement_notified_at && !settlementInfo()!.pre_settlement_confirmed_at && isPlatformAdmin()) {
-                <button type="button" class="tava-btn-primary" (click)="confirmSettlementPayment()">
-                  Confirmar dinero recibido (habilitar ingreso)
-                </button>
-              }
             </section>
           }
         }
