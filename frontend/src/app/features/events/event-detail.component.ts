@@ -106,18 +106,37 @@ export class EventDetailComponent implements OnInit, OnDestroy {
     return embed ? this.sanitizer.bypassSecurityTrustResourceUrl(embed) : null;
   }
 
-  /** Embed de Google Maps a partir de ciudad + dirección del evento. */
-  mapsEmbed(city?: string, address?: string): SafeResourceUrl | null {
-    const query = [address, city].map((p) => (p || '').trim()).filter(Boolean).join(', ');
-    if (!query) return null;
-    const url = `https://www.google.com/maps?q=${encodeURIComponent(query)}&hl=es&z=16&output=embed`;
-    return this.sanitizer.bypassSecurityTrustResourceUrl(url);
-  }
+  /** URL del iframe (estable; no regenerar en cada CD o el mapa parpadea). */
+  readonly mapsEmbedSrc = signal<SafeResourceUrl | null>(null);
+  readonly mapsOpenHref = signal<string | null>(null);
+  readonly venueLabel = signal('');
 
-  mapsOpenUrl(city?: string, address?: string): string | null {
-    const query = [address, city].map((p) => (p || '').trim()).filter(Boolean).join(', ');
-    if (!query) return null;
-    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+  private refreshMaps(ev: TavaEventDetail | null): void {
+    if (!ev) {
+      this.mapsEmbedSrc.set(null);
+      this.mapsOpenHref.set(null);
+      this.venueLabel.set('');
+      return;
+    }
+    const city = (ev.city || '').trim();
+    const address = (ev.address || '').trim();
+    const label = [address, city].filter(Boolean).join(' · ') || city;
+    this.venueLabel.set(label);
+
+    // Sin dirección de calle el mapa solo muestra la ciudad entera; no embeber.
+    if (!address) {
+      this.mapsEmbedSrc.set(null);
+      this.mapsOpenHref.set(
+        city ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(city)}` : null
+      );
+      return;
+    }
+
+    const query = `${address}, ${city || 'Colombia'}`;
+    const embed =
+      `https://maps.google.com/maps?q=${encodeURIComponent(query)}&hl=es&z=16&ie=UTF8&output=embed`;
+    this.mapsEmbedSrc.set(this.sanitizer.bypassSecurityTrustResourceUrl(embed));
+    this.mapsOpenHref.set(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`);
   }
 
   quantity = 1;
@@ -183,6 +202,7 @@ export class EventDetailComponent implements OnInit, OnDestroy {
     this.startStallTimer();
     this.loadError.set(null);
     this.event.set(null);
+    this.refreshMaps(null);
     this.relatedEvents.set([]);
 
     this.eventSub = this.api.get<TavaEventDetail>(`/events/${id}`).subscribe({
@@ -194,6 +214,7 @@ export class EventDetailComponent implements OnInit, OnDestroy {
           ticket_types: e.ticket_types ?? [],
         };
         this.event.set(detail);
+        this.refreshMaps(detail);
         this.loading.set(false);
         if (detail.ticket_types.length) {
           this.selectedTypeId.set(detail.ticket_types[0].id);
