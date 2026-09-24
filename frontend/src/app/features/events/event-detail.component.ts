@@ -106,6 +106,20 @@ export class EventDetailComponent implements OnInit, OnDestroy {
     return embed ? this.sanitizer.bypassSecurityTrustResourceUrl(embed) : null;
   }
 
+  /** Embed de Google Maps a partir de ciudad + dirección del evento. */
+  mapsEmbed(city?: string, address?: string): SafeResourceUrl | null {
+    const query = [address, city].map((p) => (p || '').trim()).filter(Boolean).join(', ');
+    if (!query) return null;
+    const url = `https://www.google.com/maps?q=${encodeURIComponent(query)}&hl=es&z=16&output=embed`;
+    return this.sanitizer.bypassSecurityTrustResourceUrl(url);
+  }
+
+  mapsOpenUrl(city?: string, address?: string): string | null {
+    const query = [address, city].map((p) => (p || '').trim()).filter(Boolean).join(', ');
+    if (!query) return null;
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+  }
+
   quantity = 1;
   singleHolderMode = true;
   holderName = '';

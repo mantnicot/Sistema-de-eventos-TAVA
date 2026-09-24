@@ -264,6 +264,43 @@
   }
 }
 
+.map-block__address {
+  margin: 0 0 0.85rem;
+  color: var(--tava-ink-muted, #5c5346);
+  font-size: 0.98rem;
+}
+
+.map-block__frame {
+  position: relative;
+  padding-bottom: 62%;
+  height: 0;
+  min-height: 220px;
+  border-radius: var(--tava-radius);
+  overflow: hidden;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  background: #e8e4dc;
+
+  iframe {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border: 0;
+  }
+}
+
+.map-block__link {
+  display: inline-block;
+  margin-top: 0.85rem;
+  font-weight: 600;
+  color: var(--tava-gold, #c9a227);
+  text-decoration: none;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
 .meta {
   font-size: 0.9rem;
   opacity: 0.85;

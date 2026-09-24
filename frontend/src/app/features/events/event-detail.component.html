@@ -132,6 +132,27 @@
             </div>
           </section>
         }
+
+        @if (mapsEmbed(ev.city, ev.address); as mapSrc) {
+          <section class="tava-card block map-block">
+            <h2>Ubicación</h2>
+            <p class="map-block__address">{{ ev.city }}@if (ev.address) { · {{ ev.address }} }</p>
+            <div class="map-block__frame">
+              <iframe
+                [src]="mapSrc"
+                title="Mapa — {{ ev.name }}"
+                loading="lazy"
+                referrerpolicy="no-referrer-when-downgrade"
+                allowfullscreen
+              ></iframe>
+            </div>
+            @if (mapsOpenUrl(ev.city, ev.address); as openUrl) {
+              <a class="map-block__link" [href]="openUrl" target="_blank" rel="noopener noreferrer">
+                Abrir en Google Maps
+              </a>
+            }
+          </section>
+        }
       </div>
 
       <aside class="detail__buy tava-card">
