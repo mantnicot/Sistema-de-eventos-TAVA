@@ -206,9 +206,9 @@ def _draw_ticket_page(
     c.roundRect(tx + 2, ty + 2, tw - 4, th - 4, 8, fill=0, stroke=1)
 
     logo_h = 1.35 * cm
-    terms_h = 8.0 * cm
-    qr_h = 8.2 * cm
-    info_h = 3.2 * cm
+    terms_h = 5.6 * cm
+    qr_h = 11.4 * cm
+    info_h = 3.7 * cm
     header_h = th - terms_h - qr_h - info_h - logo_h - pad * 2 - 0.5 * cm
 
     top_y = ty + th - pad
@@ -266,10 +266,15 @@ def _draw_ticket_page(
     c.setFillColor(INK)
     c.setFont("Helvetica", 10)
     c.drawCentredString(cx, iy, f"Asistente: {holder_name}")
-    iy -= 0.58 * cm
+    iy -= 0.55 * cm
     c.setFont("Helvetica-Bold", 11)
-    c.drawCentredString(cx, iy, f"{ticket_type_name} · ${price:,.0f} COP")
-    iy -= 0.52 * cm
+    c.drawCentredString(cx, iy, ticket_type_name)
+    iy -= 0.62 * cm
+    c.setFillColor(GOLD_DARK)
+    c.setFont("Helvetica-Bold", 15)
+    c.drawCentredString(cx, iy, f"Valor de la boleta: {_money_label(price)}")
+    iy -= 0.55 * cm
+    c.setFillColor(INK)
     c.setFont("Helvetica", 9.5)
     c.drawCentredString(cx, iy, f"{event_date.isoformat()} · {event_time.strftime('%H:%M')}")
     iy -= 0.48 * cm
@@ -285,7 +290,7 @@ def _draw_ticket_page(
     c.setFont("Helvetica-Bold", 8.5)
     c.drawCentredString(cx, qr_bottom + qr_h - 0.6 * cm, "ESCANEA EL CÓDIGO EN LA ENTRADA")
 
-    qr_size = min(inner_w - 1.6 * cm, qr_h - 3.4 * cm, 6.6 * cm)
+    qr_size = min(inner_w - 0.8 * cm, qr_h - 2.5 * cm)
     qr = qrcode.QRCode(version=1, box_size=12, border=2)
     qr.add_data(qr_token)
     qr.make(fit=True)
@@ -347,6 +352,23 @@ def _draw_ticket_page(
     c.drawCentredString(cx, logo_y - 0.22 * cm, "Grupo TAVA Teatro")
 
     c.showPage()
+
+
+def unit_paid_price(order_total: Decimal | None, fallback: Decimal, count: int) -> Decimal:
+    """Valor impreso en la boleta: lo pagado por cada una, o el precio del tipo si no hay cobro."""
+    n = max(int(count or 1), 1)
+    total = Decimal(str(order_total or 0))
+    if total > 0:
+        return (total / Decimal(n)).quantize(Decimal("1"))
+    return Decimal(str(fallback or 0)).quantize(Decimal("1"))
+
+
+def _money_label(price: Decimal) -> str:
+    amount = int(Decimal(str(price or 0)).quantize(Decimal("1")))
+    if amount <= 0:
+        return "Gratis"
+    grouped = f"{amount:,}".replace(",", ".")
+    return f"${grouped} COP"
 
 
 def build_tickets_pdf(

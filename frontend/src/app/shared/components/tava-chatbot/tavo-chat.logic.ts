@@ -305,8 +305,10 @@ export function resolveTavoAction(
     case 'buy':
       return {
         reply: msg(
-          'Entra a la cartelera: arriba verás los eventos activos (carrusel) y abajo los finalizados. Elige la función y el tipo de boleta.\n' +
-            '• De pago: se abre WhatsApp con el pedido completo (evento + tus datos); pagas como te indiquen y, al validar el organizador en TAVA, recibes correo y código.\n' +
+          'Entra a la cartelera, elige la función y el tipo de boleta.\n' +
+            '• De pago: pagas en línea (Wompi). El precio ya incluye el cobro de la pasarela y está redondeado. La boleta sale cuando el pago queda aprobado.\n' +
+            '• Si ese pago no abre, sigue por el WhatsApp del evento.\n' +
+            '• En la ficha hay un botón «Preguntas» al teléfono de quien creó el evento.\n' +
             '• Gratuitos: reservas en la web y la boleta llega al instante.',
           [
             { id: 'buy_cartelera', label: 'Ver cartelera', route: '/eventos' },
@@ -324,10 +326,11 @@ export function resolveTavoAction(
           'Así compras o reservas en TAVA:\n' +
             '1) Entra a la cartelera y abre un evento activo.\n' +
             '2) Elige tipo y cantidad (inicia sesión si te lo pide).\n' +
-            '3) Evento de pago (WhatsApp): se abre un mensaje con evento, boletas, total y tus datos; coordina el pago.\n' +
-            '4) El organizador valida el pago en el panel → recibes PDF/QR por correo o en Mis boletas.\n' +
-            '5) Evento gratis: reserva en la ficha y la boleta se emite al instante.\n' +
-            'Ya no hay checkout Wompi en la web: solo WhatsApp o reserva gratuita.',
+            '3) Evento de pago: pagas en línea. El total es mayor al precio registrado porque suma el cobro de Wompi y se redondea a centenas (16.235 → 16.300).\n' +
+            '4) Si el pago en línea no abre, el pedido sigue por WhatsApp del evento. Ahí sí espera validación.\n' +
+            '5) Cuando el pago queda aprobado, recibes PDF/QR por correo o en Mis boletas.\n' +
+            '6) Evento gratis: reserva en la ficha y la boleta se emite al instante.\n' +
+            '7) «Preguntas del evento» abre un mensaje al teléfono de quien lo creó.',
           [
             { id: 'buy_cartelera', label: 'Ir a cartelera', route: '/eventos' },
             { id: 'tickets_claim', label: 'Reclamar código', route: '/perfil', fragment: 'reclamar' },
@@ -364,8 +367,7 @@ export function resolveTavoAction(
       }
       return {
         reply: msg(
-          'Para publicar: creas el evento, configuras boletería, eliges modo de venta (gratis o WhatsApp), y si es de pago defines comisión 8%–15% + contrato. Luego envías a revisión. El admin global decide si sale en cartelera.\n' +
-            'Si luego editas solo texto/imagen/elenco, no vuelve a revisión. Solo cambios de dinero, boletas, aforo, comisión o modo de venta reabren revisión.',
+          'Para publicar: creas el evento, pones teléfono de contacto, boletas y, si es de pago, comisión 8%–15% y el contrato. El público paga en línea. TAVA recibe el dinero y te lo gira después de la función, menos la comisión. En el panel solo ves tus eventos. Luego envías a revisión.',
           [
             { id: 'create_steps', label: 'Pasos para crear' },
             { id: 'create_commission', label: 'Comisión y contrato' },
@@ -383,14 +385,14 @@ export function resolveTavoAction(
       return {
         reply: msg(
           'Pasos:\n' +
-            '1) Inicia sesión con rol organizador.\n' +
-            '2) Ve a Gestionar eventos / Panel.\n' +
-            '3) Completa datos y aforo.\n' +
-            '4) Modo de venta: Evento gratuito (boletas $0) o Por WhatsApp (pago).\n' +
-            '5) Si es de pago: boletas ≥ $15.000, comisión 8%–15% y contrato.\n' +
-            '6) WhatsApp: número + nota opcional (el sistema arma el pedido completo con comprador/evento).\n' +
-            '7) Guarda y «Enviar a revisión» la primera vez.\n' +
-            '8) Tras aprobación del admin, puede ir a cartelera.',
+            '1) Inicia sesión con rol organizador. El panel se llama «Mis eventos» y solo muestra los tuyos.\n' +
+            '2) Completa datos, lugar y aforo.\n' +
+            '3) Teléfono de contacto: sirve para el botón «Preguntas» y por si el pago en línea falla.\n' +
+            '4) Modo: gratuito ($0) o pago en línea.\n' +
+            '5) En pago: escribes el precio que quieres recibir. El sistema avisa el precio mayor que verá el público.\n' +
+            '6) Comisión 8%–15% y contrato (TAVA cobra, retiene la comisión y te gira el resto después de la función).\n' +
+            '7) Video vertical de celular si subes trailer.\n' +
+            '8) Guarda y «Enviar a revisión».',
           [
             { id: 'create_steps', label: 'Ir al panel de eventos', route: '/admin' },
             { id: 'create_commission', label: 'Comisión' },
@@ -406,13 +408,14 @@ export function resolveTavoAction(
       }
       return {
         reply: msg(
-          'Comisión TAVA (solo eventos de pago):\n' +
-            '• Eliges entre 8% y 15% sobre boletería confirmada por la página.\n' +
-            '• Debes aceptar el contrato al crear el evento de pago.\n' +
+          'Comisión y pago (eventos de pago):\n' +
+            '• Eliges entre 8% y 15% sobre el precio que registraste, no sobre el recargo de Wompi.\n' +
+            '• El público paga en línea un valor mayor, redondeado a centenas.\n' +
+            '• TAVA recibe ese dinero. Después de la función te gira el precio registrado menos la comisión.\n' +
+            '• No tienes que validar cada pago en línea: la boleta sale cuando Wompi aprueba.\n' +
+            '• WhatsApp solo es respaldo si el pago en línea no abre.\n' +
             '• Eventos gratuitos: sin comisión ni contrato.\n' +
-            '• ~1 hora antes del evento te llega el monto a pagar al admin general.\n' +
-            '• Cuando el admin confirma el dinero, se habilita el validador de ingreso.\n' +
-            '• Ventas de esa última hora se ajustan después por correo.',
+            '• La puerta no se bloquea esperando que pagues la comisión: el dinero ya está en TAVA.',
           [
             { id: 'settlement', label: 'Liquidación T-1h' },
             { id: 'create_steps', label: 'Cómo crear' },
@@ -448,11 +451,8 @@ export function resolveTavoAction(
       }
       return {
         reply: msg(
-          'Validar pagos WhatsApp:\n' +
-            '1) El comprador genera el pedido en la ficha; WhatsApp llega con evento, boletas, total, referencia y datos del comprador.\n' +
-            '2) Cuando recibas el dinero, abre el evento en el panel.\n' +
-            '3) En «Pagos WhatsApp pendientes» pulsa «Validar pago y emitir».\n' +
-            '4) El sistema emite boletas y envía correo + código al comprador.',
+          'Los pagos en línea no se validan a mano: Wompi avisa a TAVA y la boleta se emite sola.\n' +
+            'WhatsApp solo aparece si ese pago no pudo abrirse. En ese caso, cuando el dinero sí llegó, en el evento usa «Validar pago y emitir».',
           [
             { id: 'admin_panel', label: 'Ir al panel', route: '/admin' },
             { id: 'menu', label: '← Menú' },
@@ -464,7 +464,7 @@ export function resolveTavoAction(
       if (ctx.role === 'validator') {
         return {
           reply: msg(
-            'Si el ingreso está bloqueado: falta que el organizador pague la comisión (aviso ~1h antes) y que el Administrador General confirme el dinero en el panel. Hasta entonces el validador no autoriza entrada.',
+            'Una boleta pagada se puede leer en puerta. El ingreso ya no se bloquea por la comisión: TAVA cobra al público y le paga al organizador después de la función.',
             [
               { id: 'validate_entry', label: 'Cómo validar' },
               { id: 'menu', label: '← Menú' },
@@ -481,11 +481,9 @@ export function resolveTavoAction(
       }
       return {
         reply: msg(
-          'Liquidación:\n' +
-            '• ~1 hora antes: correo/aviso con bruto y comisión (% elegido).\n' +
-            '• Organizador paga al Administrador General.\n' +
-            '• Admin general confirma en el panel → se habilita el ingreso.\n' +
-            '• Después del evento: ajuste por ventas extras de esa última hora.',
+          'Después de la función TAVA te gira el precio registrado de las boletas pagadas, menos la comisión (8%–15%).\n' +
+            'El recargo de Wompi no entra en esa cuenta. En «Mis eventos» solo ves tus obras.\n' +
+            'Los pagos en línea no los validas tú. WhatsApp solo si el pago en línea no abrió.',
           [
             { id: 'admin_panel', label: 'Ir al panel', route: '/admin' },
             { id: 'create_commission', label: 'Comisión y contrato' },
@@ -579,7 +577,7 @@ export function resolveTavoAction(
     case 'faq_payment':
       return {
         reply: msg(
-          'Hoy los eventos de pago cobran por WhatsApp: generas el pedido en la web, pagas como te indiquen y el organizador valida en TAVA. Entonces se emite la boleta. Los eventos gratuitos se reservan en la misma ficha y la boleta llega al instante.',
+          'Los eventos de pago se cobran en línea. El precio de la ficha ya incluye el costo de Wompi y está redondeado. La boleta sale al aprobarse el pago. Si el pago no abre, continúa por el WhatsApp del evento. Los gratuitos se reservan en la ficha y la boleta llega al instante.',
           [
             { id: 'buy_how', label: 'Cómo comprar' },
             { id: 'faq', label: '← FAQ' },
@@ -606,7 +604,7 @@ export function resolveTavoAction(
       }
       return {
         reply: msg(
-          'La comisión (8%–15%) la acuerda el organizador con TAVA al crear el evento. Se liquida cerca del inicio de la función. Si eres comprador, solo pagas el valor de tu boleta en la ficha / WhatsApp del evento.',
+          'La comisión (8%–15%) se descuenta del precio que registró el organizador. Tú pagas el valor que ves en la ficha, que ya incluye el cobro del pago en línea. TAVA le gira al organizador después de la función.',
           [
             { id: 'faq', label: '← FAQ' },
             { id: 'whatsapp', label: 'WhatsApp con mi duda' },

@@ -118,19 +118,23 @@ def _apply_commission_fields(data: dict, body: EventCreateRequest, *, existing: 
     # EventCreate always sends commission_rate (possibly null)
     if body.commission_rate is not None:
         rate = normalize_commission_rate(body.commission_rate)
-        if not body.contract_accepted and not (existing and existing.contract_accepted_at):
+        same_contract = bool(
+            existing
+            and existing.contract_accepted_at
+            and existing.contract_version == CONTRACT_VERSION
+        )
+        if not body.contract_accepted and not same_contract:
             raise HTTPException(
                 status_code=400,
-                detail="Debes aceptar el contrato de comisión de TAVA para eventos de pago.",
+                detail="Debes aceptar el contrato de pago de TAVA para eventos de pago.",
             )
         data["commission_rate"] = rate
         data["contract_version"] = CONTRACT_VERSION
-        data["contract_accepted_at"] = existing.contract_accepted_at if existing and existing.contract_accepted_at else datetime.now(UTC)
+        data["contract_accepted_at"] = (
+            existing.contract_accepted_at if same_contract else datetime.now(UTC)
+        )
         # El bloqueo de ingreso ocurre 1h antes (worker); hasta entonces queda habilitado
-        if existing is None:
-            data["entry_unlocked"] = True
-        elif existing.pre_settlement_notified_at and not existing.pre_settlement_confirmed_at:
-            data["entry_unlocked"] = False
+        data["entry_unlocked"] = True
     elif body.commission_rate is None and existing is None:
         data["commission_rate"] = None
         data["entry_unlocked"] = True

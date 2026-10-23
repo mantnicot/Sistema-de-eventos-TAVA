@@ -96,6 +96,17 @@
   }
 }
 
+.detail__ask {
+  display: inline-flex;
+  margin: 0 0 0.85rem;
+  padding: 0.55rem 0.9rem;
+  border-radius: 999px;
+  background: #128c7e;
+  color: #fff;
+  font-weight: 700;
+  text-decoration: none;
+}
+
 .detail__buy {
   position: sticky;
   top: 1rem;
@@ -627,5 +638,13 @@
   a {
     display: inline-block;
     text-decoration: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tava-reveal {
+    animation: none;
+    opacity: 1;
+    transform: none;
   }
 }

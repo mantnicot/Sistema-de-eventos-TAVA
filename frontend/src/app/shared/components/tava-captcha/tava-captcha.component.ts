@@ -1,13 +1,16 @@
 import {
   AfterViewInit,
   Component,
+  effect,
   ElementRef,
   EventEmitter,
+  inject,
   OnDestroy,
   Output,
   ViewChild,
 } from '@angular/core';
 import { environment } from '../../../../environments/environment';
+import { SiteSettingsService } from '../../../core/services/site-settings.service';
 
 declare global {
   interface Window {
@@ -36,15 +39,28 @@ declare global {
   styleUrl: './tava-captcha.component.scss',
 })
 export class TavaCaptchaComponent implements AfterViewInit, OnDestroy {
+  private readonly site = inject(SiteSettingsService);
   @ViewChild('hcaptchaHost') hcaptchaHost?: ElementRef<HTMLDivElement>;
   @Output() tokenChange = new EventEmitter<string>();
 
+  enabled = false;
   readonly useHcaptcha = Boolean(environment.hcaptchaSiteKey);
   devConfirmed = false;
   private widgetId: number | null = null;
   private scriptLoaded = false;
 
+  constructor() {
+    this.site.loadAppearance();
+    effect(() => {
+      const app = this.site.appearance();
+      if (!app) return;
+      this.enabled = !!app.captcha_enabled;
+      if (!this.enabled) this.tokenChange.emit('captcha-disabled');
+    });
+  }
+
   ngAfterViewInit(): void {
+    if (!this.enabled) this.tokenChange.emit('captcha-disabled');
     if (this.useHcaptcha) {
       void this.initHcaptcha();
     }

@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 from decimal import Decimal
 from uuid import UUID
 
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from tava.domain.event_timing import BOGOTA_TZ, event_end_datetime, event_start_datetime
@@ -22,13 +22,22 @@ class SettlementUseCase:
         self._session = session
 
     async def sales_bruto(self, event_id: UUID) -> Decimal:
+        """Suma el precio registrado de las boletas pagadas, sin el recargo de la pasarela."""
         result = await self._session.execute(
-            select(func.coalesce(func.sum(OrderModel.total_amount), 0)).where(
+            select(OrderModel).where(
                 OrderModel.event_id == event_id,
                 OrderModel.payment_status == PaymentStatus.PAID,
             )
         )
-        return Decimal(str(result.scalar_one() or 0)).quantize(Decimal("0.01"))
+        total = Decimal("0")
+        for order in result.scalars().all():
+            payload = order.pending_payload or {}
+            raw = payload.get("base_amount")
+            if raw is not None and str(raw).strip() != "":
+                total += Decimal(str(raw))
+            else:
+                total += Decimal(str(order.total_amount or 0))
+        return total.quantize(Decimal("0.01"))
 
     def fee_for(self, bruto: Decimal, rate: Decimal | None) -> Decimal:
         if not rate or bruto <= 0:
@@ -149,9 +158,8 @@ class SettlementUseCase:
         event.pre_settlement_bruto = bruto
         event.pre_settlement_fee = fee
         event.pre_settlement_notified_at = datetime.now(BOGOTA_TZ)
-        # Bloquear ingreso hasta confirmación del admin general
-        if not event.pre_settlement_confirmed_at:
-            event.entry_unlocked = False
+        # El dinero ya está en TAVA: la puerta no se bloquea por la comisión.
+        event.entry_unlocked = True
 
         rate_pct = float(Decimal(str(event.commission_rate or 0)) * 100)
         recipients = await self._organizer_and_admins(event)

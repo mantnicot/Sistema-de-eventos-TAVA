@@ -29,6 +29,7 @@ import {
   savePurchaseDraft,
 } from '../../core/utils/purchase-draft.util';
 import { parseHttpError } from '../../core/utils/http-error.util';
+import { CheckoutFees, DEFAULT_CHECKOUT_FEES, publicCharge } from '../../core/utils/public-price.util';
 
 @Component({
   selector: 'app-event-detail',
@@ -70,6 +71,7 @@ export class EventDetailComponent implements OnInit, OnDestroy {
   readonly ticketsLeft = totalTicketsAvailable;
 
   readonly onImgError = onEventImageError;
+  readonly fees = signal<CheckoutFees>(DEFAULT_CHECKOUT_FEES);
 
   onTicketTypeChange(typeId: string): void {
     this.selectedTypeId.set(typeId);
@@ -154,9 +156,16 @@ export class EventDetailComponent implements OnInit, OnDestroy {
     return ev.ticket_types.find((t) => t.id === id) ?? null;
   }
 
+  unitPublic(price: number): number {
+    return publicCharge(price, this.fees());
+  }
+
   totalPrice(): number {
     const tt = this.selectedTicketType();
-    return (tt?.price ?? 0) * this.quantity;
+    const base = (tt?.price ?? 0) * this.quantity;
+    const ev = this.event();
+    if (!ev || this.isFreeSale(ev) || base <= 0) return base;
+    return publicCharge(base, this.fees());
   }
 
   isWhatsAppSale(ev: TavaEventDetail): boolean {
@@ -165,6 +174,16 @@ export class EventDetailComponent implements OnInit, OnDestroy {
 
   isFreeSale(ev: TavaEventDetail): boolean {
     return ev.theatrical_details?.sale_mode === 'free';
+  }
+
+  questionsLink(ev: TavaEventDetail): string | null {
+    const phone = (ev.theatrical_details?.whatsapp_number ?? '').replace(/[^\d]/g, '');
+    if (!phone) return null;
+    const text =
+      `Hola, vi el evento "${ev.name}" en TAVA Teatro y tengo una pregunta.\n` +
+      `Fecha: ${ev.event_date} · Hora: ${this.formatEventTime(ev.event_time)}\n` +
+      `Lugar: ${ev.city}${ev.address ? ' · ' + ev.address : ''}`;
+    return `https://api.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(text)}`;
   }
 
   whatsappSaleLink(ev: TavaEventDetail): string {
@@ -181,6 +200,10 @@ export class EventDetailComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.holderName = this.auth.user()?.full_name ?? '';
+    this.api.get<CheckoutFees>('/settings/checkout-fees').subscribe({
+      next: (fees) => this.fees.set({ ...DEFAULT_CHECKOUT_FEES, ...fees }),
+      error: () => this.fees.set(DEFAULT_CHECKOUT_FEES),
+    });
     this.route.paramMap.subscribe(() => this.loadEvent());
   }
 
@@ -328,13 +351,12 @@ export class EventDetailComponent implements OnInit, OnDestroy {
     const free = this.isFreeSale(ev);
     const confirmMsg = free
       ? `Vas a reservar ${this.quantity} boleta(s) gratis para "${ev.name}". Se emitirán al instante.`
-      : this.isWhatsAppSale(ev)
-        ? `Vas a solicitar ${this.quantity} boleta(s) para "${ev.name}" por $${total.toLocaleString('es-CO')} COP. Se abrirá WhatsApp; la boleta se emite cuando validen tu pago.`
-        : `Vas a comprar ${this.quantity} boleta(s) para "${ev.name}" ` +
-          `por $${total.toLocaleString('es-CO')} COP. Revisa los nombres antes de continuar.`;
+      : `Vas a pagar ${this.quantity} boleta(s) de "${ev.name}" ` +
+        `por $${total.toLocaleString('es-CO')} COP (incluye el cobro del pago en línea). ` +
+        `Se abre el pago seguro. Si no puede abrirse, continúa por WhatsApp.`;
 
     this.notify.confirm(
-      free ? 'Confirmar reserva' : this.isWhatsAppSale(ev) ? 'Continuar por WhatsApp' : 'Confirmar compra',
+      free ? 'Confirmar reserva' : 'Pagar boletas',
       confirmMsg,
       () => {
       if (this.purchasing) return;

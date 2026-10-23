@@ -15,22 +15,21 @@ export const IMAGE_EVENT_SPEC: MediaUploadSpec = {
 };
 
 export const VIDEO_TRAILER_SPEC: MediaUploadSpec = {
-  title: 'Video trailer',
+  title: 'Video trailer (vertical, celular)',
   lines: [
-    'Resolución recomendada: 1920 × 1080 px (Full HD, 16:9)',
-    'Formato: MP4 (H.264) o WebM · Máximo 80 MB',
-    'Duración ideal: 30 segundos – 2 minutos',
-    'Recomendado: enlace de YouTube/Vimeo (no se pierde al redeploy) en lugar de subir archivo',
-    'Si subes archivo, usa Cloudinary configurado en Render para que persista',
+    'Formato de celular: 1080 × 1920 px (vertical 9:16)',
+    'MP4 (H.264) o WebM · Máximo 80 MB',
+    'Duración ideal: 15 segundos – 1 minuto',
+    'Se muestra completo, sin recortar los lados',
   ],
 };
 
 export const VIDEO_LOADER_SPEC: MediaUploadSpec = {
-  title: 'Video del loader (carga)',
+  title: 'Video del loader (vertical)',
   lines: [
-    'Resolución: 1920 × 1080 px (16:9) · MP4 H.264',
+    'Formato de celular: 1080 × 1920 px (9:16) · MP4 H.264',
     'Duración: 3–15 seg en loop, sin audio fuerte',
-    'Peso máximo: 80 MB · Se muestra al cargar cartelera, eventos y popups',
+    'Peso máximo: 80 MB · Se ve más amplio al cargar cartelera, eventos y popups',
   ],
 };
 

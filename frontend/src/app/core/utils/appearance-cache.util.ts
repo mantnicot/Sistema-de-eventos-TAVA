@@ -1,6 +1,6 @@
 import { SiteAppearance } from '../services/site-settings.service';
 
-const CACHE_KEY = 'tava_appearance_cache_v1';
+const CACHE_KEY = 'tava_appearance_cache_v2';
 
 export function readAppearanceCache(): SiteAppearance | null {
   try {

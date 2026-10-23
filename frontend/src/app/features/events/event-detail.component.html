@@ -35,7 +35,7 @@
     <div class="detail__layout">
       <div class="detail__main">
         @if (ev.trailer_url) {
-          <section class="tava-card block trailer-block">
+          <section class="tava-card block trailer-block tava-reveal" style="--i: 0">
             <h2>Trailer</h2>
             @if (trailerVideo(ev.trailer_url); as videoSrc) {
               <tava-theatrical-video
@@ -61,7 +61,7 @@
         }
 
         @if (ev.main_image_url) {
-          <section class="tava-card block poster-block">
+          <section class="tava-card block poster-block tava-reveal" style="--i: 1">
             <h2>Poster</h2>
             <img
               class="poster-block__img"
@@ -73,14 +73,14 @@
           </section>
         }
 
-        <section class="tava-card block">
+        <section class="tava-card block tava-reveal" style="--i: 2">
           <h2>Sinopsis</h2>
           <p>{{ ev.theatrical_details?.synopsis || ev.description }}</p>
         </section>
 
         @if (ev.theatrical_details; as td) {
           @if (td.cast_members?.length) {
-            <section class="tava-card block artists">
+            <section class="tava-card block artists tava-reveal" style="--i: 3">
               <h2>Artistas</h2>
               <div class="artists__grid">
                 @for (member of td.cast_members; track member.name) {
@@ -101,7 +101,7 @@
           }
 
           @if (td.director || (td.cast && td.cast.length > 0)) {
-            <section class="tava-card block">
+            <section class="tava-card block tava-reveal" style="--i: 4">
               <h2>Ficha artística</h2>
               @if (td.director) {
                 <p><strong>Dirección artística:</strong> {{ td.director }}</p>
@@ -123,7 +123,7 @@
         }
 
         @if (ev.gallery.length) {
-          <section class="gallery block">
+          <section class="gallery block tava-reveal" style="--i: 5">
             <h2>Galería</h2>
             <div class="gallery__grid">
               @for (m of ev.gallery; track m.id) {
@@ -134,7 +134,7 @@
         }
 
         @if (venueLabel()) {
-          <section class="tava-card block map-block">
+          <section class="tava-card block map-block tava-reveal" style="--i: 6">
             <h2>Ubicación</h2>
             <p class="map-block__address">
               <strong>Dirección del evento:</strong>
@@ -165,8 +165,13 @@
         }
       </div>
 
-      <aside class="detail__buy tava-card">
+      <aside class="detail__buy tava-card tava-reveal" style="--i: 2">
         <h2 class="detail__buy-title">Boletas</h2>
+        @if (questionsLink(ev); as ask) {
+          <a class="detail__ask tava-btn-shine" [href]="ask" target="_blank" rel="noopener noreferrer">
+            Preguntas del evento
+          </a>
+        }
 
         @if (!canBuy(ev)) {
           <div class="detail__missed">
@@ -198,9 +203,7 @@
             {{
               isFreeSale(ev)
                 ? 'Evento gratuito: reserva tu cupo y recibe la boleta al instante.'
-                : isWhatsAppSale(ev)
-                  ? 'Elige boletas aquí y continúa por WhatsApp. La boleta se envía cuando validen tu pago.'
-                  : funnyCta(ev.id)
+                : 'El pago es en línea. El precio ya incluye el cobro de la pasarela, redondeado. Si ese pago no abre, sigue por WhatsApp.'
             }}
           </p>
 
@@ -221,6 +224,12 @@
             </section>
           }
 
+          @if (!isFreeSale(ev)) {
+            <p class="hint">
+              El valor que ves es el que pagas. Es mayor al que registró el organizador porque suma el cobro del pago en línea y se redondea (por ejemplo 16.235 queda en 16.300).
+            </p>
+          }
+
           <div class="detail__tickets-meter" aria-label="Boletas disponibles">
             <span class="detail__tickets-num">{{ ticketsLeft(ev) }}</span>
             <span class="detail__tickets-label">boletas disponibles</span>
@@ -236,7 +245,7 @@
                 (change)="onTicketTypeChange(tt.id)"
               />
               {{ tt.name }} —
-              {{ tt.price > 0 ? ('$' + (tt.price | number) + ' COP') : 'Gratis' }}
+              {{ tt.price > 0 ? ('$' + (unitPublic(tt.price) | number) + ' COP') : 'Gratis' }}
               ({{ tt.quantity_available }} disp.)
             </label>
           }
@@ -317,14 +326,17 @@
 
           @if (selectedTicketType(); as st) {
             <p class="hint hint--total">
-              Total estimado: <strong>${{ totalPrice() | number:'1.0-0' }} COP</strong>
-              ({{ quantity }} × ${{ st.price | number:'1.0-0' }})
+              Total a pagar: <strong>${{ totalPrice() | number:'1.0-0' }} COP</strong>
+              @if (!isFreeSale(ev) && st.price > 0) {
+                <span> · precio registrado ${{ (st.price * quantity) | number:'1.0-0' }}</span>
+              }
             </p>
           }
 
           <button
             type="button"
-            class="tava-btn-primary detail__buy-btn"
+            class="tava-btn-primary detail__buy-btn tava-btn-shine"
+            style="--shine-delay: 850ms"
             (click)="comprar()"
             [disabled]="!selectedTypeId() || (auth.isLoggedIn() && !legalAccepted) || purchasing"
           >
@@ -337,9 +349,7 @@
                     : 'Registrarme para comprar'
                   : isFreeSale(ev)
                     ? 'Reservar boletas gratis'
-                    : isWhatsAppSale(ev)
-                      ? 'Continuar por WhatsApp'
-                      : 'Comprar boletas'
+                    : 'Pagar boletas'
             }}
           </button>
         } @else {

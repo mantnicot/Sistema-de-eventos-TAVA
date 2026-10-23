@@ -1,11 +1,12 @@
 import asyncio
+import logging
 from decimal import Decimal
 import secrets
 import string
 from urllib.parse import quote
 from uuid import UUID, uuid4
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -13,12 +14,14 @@ from tava.application.use_cases.seating import SeatingUseCase, seating_enabled
 from tava.config import get_settings
 from tava.domain.enums import PaymentProvider, PaymentStatus, UserRole
 from tava.domain.event_timing import tickets_purchase_allowed
+from tava.domain.public_price import public_total
 from tava.infrastructure.persistence.models import EventModel, OrderModel, TicketModel, TicketTypeModel, UserModel
 from tava.infrastructure.persistence.repositories.sqlalchemy_user_repository import SQLAlchemyUserRepository
 from tava.infrastructure.security.ticket_codes import assign_unique_ticket_code, backfill_missing_ticket_codes
 from tava.infrastructure.security.ticket_tokens import generate_qr_token, generate_security_hash
 from tava.infrastructure.services.email import last_email_failure, send_tickets_confirmation_email
-from tava.infrastructure.services.ticket_pdf import build_tickets_pdf
+from tava.infrastructure.services.ticket_pdf import build_tickets_pdf, unit_paid_price
+from tava.infrastructure.services.site_settings import get_checkout_fees
 from tava.infrastructure.services.wompi import (
     amount_in_cents,
     build_checkout_url,
@@ -26,6 +29,7 @@ from tava.infrastructure.services.wompi import (
 )
 
 settings = get_settings()
+logger = logging.getLogger("tava.tickets")
 CLAIM_CODE_ALPHABET = string.ascii_uppercase + string.digits
 DEFAULT_PLATFORM_FEE_RATE = Decimal("0.10")
 
@@ -192,6 +196,7 @@ class TicketUseCase:
         payment_provider: PaymentProvider | None = None,
         payment_reference: str | None = None,
         seat_ids: list[UUID] | None = None,
+        charge_amount: Decimal | None = None,
     ) -> tuple[OrderModel, list[TicketModel], EventModel, TicketTypeModel]:
         if quantity < 1 or quantity > 20:
             raise ValueError("Cantidad inválida (1-20)")
@@ -206,7 +211,8 @@ class TicketUseCase:
             raise ValueError("Cantidad no disponible")
 
         names = self._normalize_holder_names(quantity, holder_names, buyer_display_name)
-        total = ticket_type.price * quantity
+        base = (ticket_type.price * quantity).quantize(Decimal("0.01"))
+        total = base if charge_amount is None else Decimal(str(charge_amount)).quantize(Decimal("0.01"))
         provider = payment_provider or (PaymentProvider.MANUAL if seller_id else PaymentProvider.MANUAL)
         order = OrderModel(
             buyer_id=buyer_id,
@@ -218,13 +224,14 @@ class TicketUseCase:
             payment_reference=payment_reference,
             claim_code=await self._assign_unique_claim_code(),
             pending_payload=(
-                None
+                {"base_amount": str(base)}
                 if issue_tickets
                 else {
                     "ticket_type_id": str(ticket_type_id),
                     "quantity": quantity,
                     "holder_names": names,
                     "seat_ids": [str(s) for s in seat_ids] if seat_ids else None,
+                    "base_amount": str(base),
                 }
             ),
             legal_accepted=True,
@@ -344,7 +351,7 @@ class TicketUseCase:
         # Conservar datos de contacto externo; quitar payload de emisión
         kept = {
             k: payload.get(k)
-            for k in ("external_buyer_name", "external_buyer_email", "buyer_phone")
+            for k in ("external_buyer_name", "external_buyer_email", "buyer_phone", "base_amount")
             if payload.get(k)
         }
         order.pending_payload = kept or None
@@ -375,6 +382,7 @@ class TicketUseCase:
         quantity: int,
         holder_names: list[str] | None,
         seat_ids: list[UUID] | None = None,
+        charge_amount: Decimal | None = None,
     ) -> dict:
         event = await self._load_event(event_id)
         self._assert_tickets_on_sale(event)
@@ -397,6 +405,7 @@ class TicketUseCase:
             payment_provider=PaymentProvider.WHATSAPP,
             payment_reference=payment_reference,
             seat_ids=seat_ids,
+            charge_amount=charge_amount,
         )
         payload = dict(order.pending_payload or {})
         payload["buyer_phone"] = user_phone
@@ -518,6 +527,7 @@ class TicketUseCase:
         quantity: int,
         holder_names: list[str] | None,
         seat_ids: list[UUID] | None = None,
+        charge_amount: Decimal | None = None,
     ) -> dict:
         payment_reference = f"TAVA-{uuid4().hex[:12].upper()}"
         order, _, event, tt = await self.create_order(
@@ -533,6 +543,7 @@ class TicketUseCase:
             payment_provider=PaymentProvider.WOMPI,
             payment_reference=payment_reference,
             seat_ids=seat_ids,
+            charge_amount=charge_amount,
         )
         redirect_url = f"{settings.frontend_url.rstrip('/')}/compra/resultado?order_id={order.id}"
         cents = amount_in_cents(order.total_amount)
@@ -644,7 +655,7 @@ class TicketUseCase:
             age_rating=age,
             main_image_url=event.main_image_url,
             ticket_type_name=ticket_type.name,
-            price=ticket_type.price,
+            price=unit_paid_price(order.total_amount, ticket_type.price, len(tickets)),
             tickets=[(t.qr_token, t.holder_name or buyer.full_name, t.ticket_code or "") for t in tickets],
         )
         buyer_send = send_tickets_confirmation_email(
@@ -703,7 +714,7 @@ class TicketUseCase:
             age_rating=age,
             main_image_url=event.main_image_url,
             ticket_type_name=ticket_type.name,
-            price=ticket_type.price,
+            price=unit_paid_price(order.total_amount, ticket_type.price, len(tickets)),
             tickets=[(t.qr_token, t.holder_name or buyer_name, t.ticket_code or "") for t in tickets],
         )
         buyer_send = send_tickets_confirmation_email(
@@ -925,65 +936,50 @@ class TicketUseCase:
             )
             return response
 
-        # Ventas de pago: preferir WhatsApp (validación manual) cuando el evento así lo define
-        if sale_mode == "whatsapp":
-            return await self.create_whatsapp_pending_order(
-                user_id=user_id,
-                user_name=user_name,
-                user_email=user_email,
-                user_phone=user_phone,
-                event_id=event_id,
-                ticket_type_id=ticket_type_id,
-                quantity=quantity,
-                holder_names=holder_names,
-                seat_ids=seat_ids,
-            )
-
-        if wompi_configured():
-            return await self.create_wompi_checkout(
-                user_id=user_id,
-                user_name=user_name,
-                user_email=user_email,
-                event_id=event_id,
-                ticket_type_id=ticket_type_id,
-                quantity=quantity,
-                holder_names=holder_names,
-                seat_ids=seat_ids,
-            )
-
-        # Sin Wompi: también canalizar por WhatsApp si hay número
-        details = event.theatrical_details if isinstance(event.theatrical_details, dict) else {}
-        if str(details.get("whatsapp_number") or "").strip():
-            return await self.create_whatsapp_pending_order(
-                user_id=user_id,
-                user_name=user_name,
-                user_email=user_email,
-                user_phone=user_phone,
-                event_id=event_id,
-                ticket_type_id=ticket_type_id,
-                quantity=quantity,
-                holder_names=holder_names,
-                seat_ids=seat_ids,
-            )
-
-        order, tickets, event, tt = await self.create_order(
-            event_id=event_id,
-            ticket_type_id=ticket_type_id,
-            quantity=quantity,
-            buyer_id=user_id,
-            seller_id=None,
-            holder_names=holder_names,
-            buyer_display_name=user_name,
-            mark_paid=True,
-            issue_tickets=True,
-            payment_provider=PaymentProvider.MANUAL,
-            seat_ids=seat_ids,
+        fees = await get_checkout_fees(self._session)
+        charged = public_total(
+            total,
+            percent=fees["fee_percent"],
+            fixed=fees["fee_fixed_cop"],
+            iva=fees["fee_iva"],
         )
-        buyer_model = await self._users.get_model_by_email(user_email)
-        response = self._order_response(order, tickets, event, tt)
-        response["payment_required"] = False
-        response["email_pending"] = bool(buyer_model)
-        return response
+        details = event.theatrical_details if isinstance(event.theatrical_details, dict) else {}
+        wa_number = str(details.get("whatsapp_number") or "").strip()
+
+        # Wompi es el cobro principal. WhatsApp solo si la pasarela no puede abrir el pago.
+        if wompi_configured():
+            try:
+                return await self.create_wompi_checkout(
+                    user_id=user_id,
+                    user_name=user_name,
+                    user_email=user_email,
+                    event_id=event_id,
+                    ticket_type_id=ticket_type_id,
+                    quantity=quantity,
+                    holder_names=holder_names,
+                    seat_ids=seat_ids,
+                    charge_amount=charged,
+                )
+            except Exception:
+                logger.exception("Checkout Wompi falló; se intenta WhatsApp")
+
+        if wa_number:
+            return await self.create_whatsapp_pending_order(
+                user_id=user_id,
+                user_name=user_name,
+                user_email=user_email,
+                user_phone=user_phone,
+                event_id=event_id,
+                ticket_type_id=ticket_type_id,
+                quantity=quantity,
+                holder_names=holder_names,
+                seat_ids=seat_ids,
+                charge_amount=charged,
+            )
+
+        raise ValueError(
+            "No pudimos abrir el pago en línea y este evento no tiene teléfono de contacto para continuar por WhatsApp."
+        )
 
     async def sell_as_seller(
         self,
@@ -1079,7 +1075,7 @@ class TicketUseCase:
             age_rating=age,
             main_image_url=event.main_image_url,
             ticket_type_name=tt.name,
-            price=tt.price,
+            price=unit_paid_price(order.total_amount, tt.price, len(order.tickets)),
             tickets=[(t.qr_token, t.holder_name or "", t.ticket_code or "") for t in order.tickets],
         )
 
@@ -1099,6 +1095,11 @@ class TicketUseCase:
             raise ValueError("No autorizado")
         if ticket.is_cancelled:
             raise ValueError("Boleta cancelada")
+        issued = await self._session.scalar(
+            select(func.count())
+            .select_from(TicketModel)
+            .where(TicketModel.order_id == order.id, TicketModel.is_cancelled.is_(False))
+        )
         age = None
         if event.theatrical_details and isinstance(event.theatrical_details, dict):
             age = event.theatrical_details.get("age_rating")
@@ -1112,7 +1113,7 @@ class TicketUseCase:
             age_rating=age,
             main_image_url=event.main_image_url,
             ticket_type_name=tt.name,
-            price=tt.price,
+            price=unit_paid_price(order.total_amount, tt.price, int(issued or 1)),
             tickets=[(ticket.qr_token, ticket.holder_name or "", ticket.ticket_code or "")],
         )
 

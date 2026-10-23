@@ -1078,3 +1078,35 @@
     align-items: center;
   }
 }
+
+$tava-gold: #c9a227;
+$tava-ease-out: cubic-bezier(0.22, 0.61, 0.36, 1);
+
+.admin-action {
+  transition:
+    transform 180ms $tava-ease-out,
+    box-shadow 180ms $tava-ease-out;
+
+  &:not(:disabled):hover,
+  &:not(:disabled):focus-visible {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px -4px rgba($tava-gold, 0.45);
+  }
+
+  &:not(:disabled):active {
+    transform: translateY(0) scaleX(0.97);
+    transition-duration: 90ms;
+    box-shadow:
+      inset 8px 0 10px -8px rgba(0, 0, 0, 0.35),
+      inset -8px 0 10px -8px rgba(0, 0, 0, 0.35);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-action,
+  .admin-action:hover,
+  .admin-action:active {
+    transition: none;
+    transform: none;
+  }
+}

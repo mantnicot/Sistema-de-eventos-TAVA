@@ -1,0 +1,101 @@
+// =============================================================
+// TAVA Teatro · Movimiento global (solo CSS, sin librerías)
+// Importar al final de styles.scss:   @use 'styles/motion';
+// No cambia colores de marca: solo usa el dorado #c9a227 en sombras.
+// =============================================================
+
+$tava-gold: #c9a227;
+$tava-ease-out: cubic-bezier(0.22, 0.61, 0.36, 1);
+
+[class*='tava-btn'] {
+  transition:
+    transform 180ms $tava-ease-out,
+    box-shadow 180ms $tava-ease-out;
+  will-change: transform;
+}
+
+[class*='tava-btn']:not(:disabled):not([aria-disabled='true']) {
+  &:hover,
+  &:focus-visible {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px -4px rgba($tava-gold, 0.45);
+  }
+
+  &:active {
+    transform: translateY(0) scaleX(0.97);
+    transition-duration: 90ms;
+    box-shadow:
+      inset 8px 0 10px -8px rgba(0, 0, 0, 0.35),
+      inset -8px 0 10px -8px rgba(0, 0, 0, 0.35),
+      0 2px 6px -2px rgba($tava-gold, 0.3);
+  }
+}
+
+@keyframes tava-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.tava-reveal {
+  animation: tava-reveal 400ms $tava-ease-out both;
+  animation-delay: calc(var(--i, 0) * 90ms);
+}
+
+@keyframes tava-shine {
+  from {
+    transform: translateX(-130%) skewX(-20deg);
+  }
+  to {
+    transform: translateX(260%) skewX(-20deg);
+  }
+}
+
+.tava-btn-shine {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 45%;
+    pointer-events: none;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(255, 248, 225, 0.55) 50%,
+      transparent 100%
+    );
+    transform: translateX(-130%) skewX(-20deg);
+    animation: tava-shine 900ms ease-out 1 both;
+    animation-delay: var(--shine-delay, 550ms);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [class*='tava-btn'],
+  [class*='tava-btn']:hover,
+  [class*='tava-btn']:focus-visible,
+  [class*='tava-btn']:active {
+    transition: none !important;
+    transform: none !important;
+  }
+
+  .tava-reveal {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  .tava-btn-shine::after {
+    animation: none !important;
+    display: none;
+  }
+}

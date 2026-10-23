@@ -24,6 +24,7 @@ import { EVENT_IMAGE_PLACEHOLDER, onEventImageError } from '../../core/utils/eve
 import { formatEventDateTime, formatEventTime } from '../../core/utils/event-timing.util';
 import { matchesSearch } from '../../core/utils/list-search.util';
 import { parseHttpError } from '../../core/utils/http-error.util';
+import { CheckoutFees, DEFAULT_CHECKOUT_FEES, publicCharge } from '../../core/utils/public-price.util';
 import { mergeSeatingPreview, applyBlockTicketType, applySeatTicketType } from '../../core/utils/seating-preview.util';
 import {
   countLayoutSeats,
@@ -158,7 +159,7 @@ export class AdminDashboardComponent implements OnInit {
   seatingAssignTicketTypeId: string | null = null;
 
   theatrical: TheatricalDetails = {
-    sale_mode: 'whatsapp',
+    sale_mode: 'system',
     whatsapp_number: '',
     whatsapp_message: '',
   };
@@ -206,7 +207,8 @@ export class AdminDashboardComponent implements OnInit {
     requires_commission: boolean;
   } | null>(null);
 
-  appearanceForm = { loader_video_url: '', loader_video_enabled: true };
+  appearanceForm = { loader_video_url: '', loader_video_enabled: true, captcha_enabled: false };
+  checkoutFees: CheckoutFees = { ...DEFAULT_CHECKOUT_FEES };
 
   ticketTypesDraft: TicketTypeDraft[] = [];
   ticketTypesTouched = false;
@@ -271,6 +273,10 @@ export class AdminDashboardComponent implements OnInit {
 
   isFreeSaleMode(): boolean {
     return this.theatrical.sale_mode === 'free';
+  }
+
+  publicPreview(price: number): number {
+    return publicCharge(Number(price) || 0, this.checkoutFees);
   }
 
   onSaleModeChange(mode: string): void {
@@ -417,6 +423,7 @@ export class AdminDashboardComponent implements OnInit {
           finalize(() => {
             this.adminLoading.set(false);
             this.loadAppearanceForm();
+            this.loadCheckoutFees();
           })
         )
         .subscribe((kpis) => {
@@ -426,6 +433,7 @@ export class AdminDashboardComponent implements OnInit {
       this.loadSettlementQueue();
     } else {
       this.adminLoading.set(false);
+      this.loadCheckoutFees();
     }
 
     this.loadAdminEvents();
@@ -620,6 +628,27 @@ export class AdminDashboardComponent implements OnInit {
 
   formatSidebarTime(time: string): string {
     return formatEventTime(time);
+  }
+
+  private loadCheckoutFees(): void {
+    this.api.get<CheckoutFees>('/settings/checkout-fees').subscribe({
+      next: (fees) => (this.checkoutFees = { ...DEFAULT_CHECKOUT_FEES, ...fees }),
+      error: () => (this.checkoutFees = { ...DEFAULT_CHECKOUT_FEES }),
+    });
+  }
+
+  saveCheckoutFees(): void {
+    this.api.put<CheckoutFees>('/settings/checkout-fees', {
+      fee_percent: Number(this.checkoutFees.fee_percent),
+      fee_fixed_cop: Number(this.checkoutFees.fee_fixed_cop),
+      fee_iva: Number(this.checkoutFees.fee_iva),
+    }).subscribe({
+      next: (fees) => {
+        this.checkoutFees = { ...DEFAULT_CHECKOUT_FEES, ...fees };
+        this.notify.success('Pagos', 'Tarifa de Wompi actualizada. El precio al público usa estos números.');
+      },
+      error: () => this.notify.error('Pagos', 'No se pudo guardar la tarifa'),
+    });
   }
 
   private loadAppearanceForm(): void {
@@ -881,7 +910,7 @@ export class AdminDashboardComponent implements OnInit {
     this.ticketTypesTouched = false;
     this.duplicateGalleryDraft = [];
     this.theatrical = {
-      sale_mode: 'whatsapp',
+      sale_mode: 'system',
       whatsapp_number: '',
       whatsapp_message: '',
     };
@@ -1120,12 +1149,14 @@ export class AdminDashboardComponent implements OnInit {
     };
     this.theatrical = { ...(ev.theatrical_details ?? {}) };
     this.theatrical.sale_mode =
-      this.theatrical.sale_mode === 'free' ? 'free' : 'whatsapp';
+      this.theatrical.sale_mode === 'free' ? 'free' : 'system';
     this.theatrical.whatsapp_number = this.theatrical.whatsapp_number ?? '';
     this.theatrical.whatsapp_message = this.theatrical.whatsapp_message ?? '';
     const rate = ev.commission_rate != null ? Number(ev.commission_rate) : null;
     this.commissionRatePercent = rate != null ? Math.round(rate * 100) : 10;
-    this.contractAccepted = !!ev.contract_accepted_at;
+    this.contractAccepted =
+      !!ev.contract_accepted_at &&
+      (!this.contractVersion || ev.contract_version === this.contractVersion);
     this.loadWhatsappOrders(ev.id);
     this.loadSettlement(ev.id);
     const td = ev.theatrical_details;
@@ -1173,7 +1204,7 @@ export class AdminDashboardComponent implements OnInit {
           sale_mode:
             detail.theatrical_details?.sale_mode === 'free'
               ? 'free'
-              : 'whatsapp',
+              : 'system',
           whatsapp_number: detail.theatrical_details?.whatsapp_number ?? '',
           whatsapp_message: detail.theatrical_details?.whatsapp_message ?? '',
         };
@@ -1228,6 +1259,10 @@ export class AdminDashboardComponent implements OnInit {
         this.notify.warning('Contrato', 'Debes aceptar el contrato de comisión para eventos de pago.');
         return;
       }
+      if (!this.theatrical.whatsapp_number?.trim()) {
+        this.notify.warning('Teléfono', 'Escribe el teléfono de contacto del evento. Ahí llegan las preguntas y el respaldo si el pago en línea no abre.');
+        return;
+      }
     }
     if (this.isFreeSaleMode()) {
       const paid = this.ticketTypesDraft.find((t) => Number(t.price) > 0);
@@ -1250,15 +1285,12 @@ export class AdminDashboardComponent implements OnInit {
       contract_accepted: this.hasPaidTicketsDraft() ? this.contractAccepted : false,
       theatrical_details: {
         ...this.theatrical,
-        sale_mode: this.theatrical.sale_mode ?? 'whatsapp',
+        sale_mode: this.theatrical.sale_mode === 'free' ? 'free' : 'system',
         whatsapp_number:
-          this.theatrical.sale_mode === 'whatsapp'
-            ? this.theatrical.whatsapp_number?.trim() || null
-            : null,
-        whatsapp_message:
-          this.theatrical.sale_mode === 'whatsapp'
-            ? this.theatrical.whatsapp_message?.trim() || null
-            : null,
+          this.theatrical.sale_mode === 'free'
+            ? null
+            : this.theatrical.whatsapp_number?.trim() || null,
+        whatsapp_message: this.theatrical.whatsapp_message?.trim() || null,
         cast: members.map((m) => m.name),
         cast_members: members,
         seating: {

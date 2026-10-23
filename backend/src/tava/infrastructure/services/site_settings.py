@@ -8,6 +8,10 @@ from tava.infrastructure.persistence.models import SiteSettingModel
 
 KEY_LOADER_VIDEO_URL = "loader_video_url"
 KEY_LOADER_VIDEO_ENABLED = "loader_video_enabled"
+KEY_CAPTCHA_ENABLED = "captcha_enabled"
+KEY_WOMPI_FEE_PERCENT = "wompi_fee_percent"
+KEY_WOMPI_FEE_FIXED = "wompi_fee_fixed"
+KEY_WOMPI_FEE_IVA = "wompi_fee_iva"
 
 # Claves legacy (video de fondo difuminado — ya no se usa en el frontend)
 KEY_HERO_VIDEO_URL = "hero_video_url"
@@ -41,6 +45,7 @@ async def get_public_appearance(session: AsyncSession) -> dict:
                     KEY_LOADER_VIDEO_ENABLED,
                     KEY_HERO_VIDEO_URL,
                     KEY_HERO_VIDEO_ENABLED,
+                    KEY_CAPTCHA_ENABLED,
                 ]
             )
         )
@@ -62,6 +67,7 @@ async def get_public_appearance(session: AsyncSession) -> dict:
     data = {
         "loader_video_url": loader_url,
         "loader_video_enabled": enabled,
+        "captcha_enabled": _parse_enabled(rows.get(KEY_CAPTCHA_ENABLED), default=False),
     }
     _appearance_cache = data
     _appearance_cache_at = now
@@ -80,6 +86,49 @@ async def set_setting(session: AsyncSession, key: str, value: str) -> None:
     else:
         session.add(SiteSettingModel(key=key, value=value))
     await session.flush()
+
+
+async def captcha_is_enabled(session: AsyncSession) -> bool:
+    data = await get_public_appearance(session)
+    return bool(data.get("captcha_enabled"))
+
+
+async def get_checkout_fees(session: AsyncSession) -> dict:
+    from decimal import Decimal
+
+    from tava.domain.public_price import DEFAULT_FEE_FIXED, DEFAULT_FEE_IVA, DEFAULT_FEE_PERCENT
+
+    result = await session.execute(
+        select(SiteSettingModel).where(
+            SiteSettingModel.key.in_([KEY_WOMPI_FEE_PERCENT, KEY_WOMPI_FEE_FIXED, KEY_WOMPI_FEE_IVA])
+        )
+    )
+    rows = {r.key: r.value for r in result.scalars().all()}
+
+    def _dec(raw: str | None, fallback: Decimal) -> Decimal:
+        try:
+            if raw is None or str(raw).strip() == "":
+                return fallback
+            return Decimal(str(raw))
+        except Exception:
+            return fallback
+
+    percent = _dec(rows.get(KEY_WOMPI_FEE_PERCENT), DEFAULT_FEE_PERCENT)
+    fixed = _dec(rows.get(KEY_WOMPI_FEE_FIXED), DEFAULT_FEE_FIXED)
+    iva = _dec(rows.get(KEY_WOMPI_FEE_IVA), DEFAULT_FEE_IVA)
+    return {
+        "fee_percent": float(percent),
+        "fee_fixed_cop": float(fixed),
+        "fee_iva": float(iva),
+        "rounding_step": 100,
+    }
+
+
+async def set_checkout_fees(session: AsyncSession, *, percent: float, fixed: float, iva: float) -> dict:
+    await set_setting(session, KEY_WOMPI_FEE_PERCENT, str(percent))
+    await set_setting(session, KEY_WOMPI_FEE_FIXED, str(fixed))
+    await set_setting(session, KEY_WOMPI_FEE_IVA, str(iva))
+    return await get_checkout_fees(session)
 
 
 async def ensure_default_settings(session: AsyncSession) -> None:

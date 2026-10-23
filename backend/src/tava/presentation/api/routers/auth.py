@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from tava.application.use_cases.auth import AuthUseCase
 from tava.config import get_settings
 from tava.infrastructure.persistence.database import get_db
-from tava.infrastructure.services.captcha import verify_captcha
+from tava.infrastructure.services.captcha import ensure_captcha
 from tava.domain.enums import UserRole
 from tava.infrastructure.services.email import email_status_summary, email_transport_ready
 from tava.presentation.api.dependencies import get_current_user, require_roles
@@ -107,7 +107,7 @@ async def resend_verification(email: str = Query(...), db: AsyncSession = Depend
 
 @router.post("/register", response_model=RegisterResponse)
 async def register(body: RegisterRequest, db: AsyncSession = Depends(get_db)):
-    if not await verify_captcha(body.captcha_token):
+    if not await ensure_captcha(db, body.captcha_token):
         raise_user_error(400, "CAPTCHA_INVALID", "Verificación captcha inválida")
     try:
         plain_password = _resolve_password(body)
@@ -141,7 +141,7 @@ async def register(body: RegisterRequest, db: AsyncSession = Depends(get_db)):
 
 @router.post("/forgot-password")
 async def forgot_password(body: ForgotPasswordRequest, db: AsyncSession = Depends(get_db)):
-    if not await verify_captcha(body.captcha_token):
+    if not await ensure_captcha(db, body.captcha_token):
         raise_user_error(400, "CAPTCHA_INVALID", "Verificación captcha inválida")
     try:
         uc = AuthUseCase(db)
@@ -172,7 +172,7 @@ async def forgot_password(body: ForgotPasswordRequest, db: AsyncSession = Depend
 
 @router.post("/reset-password")
 async def reset_password(body: ResetPasswordRequest, db: AsyncSession = Depends(get_db)):
-    if not await verify_captcha(body.captcha_token):
+    if not await ensure_captcha(db, body.captcha_token):
         raise_user_error(400, "CAPTCHA_INVALID", "Verificación captcha inválida")
     try:
         plain_password = _resolve_password(body)
@@ -197,7 +197,7 @@ async def reset_password(body: ResetPasswordRequest, db: AsyncSession = Depends(
 
 @router.post("/login", response_model=dict)
 async def login(body: LoginRequest, db: AsyncSession = Depends(get_db)):
-    if not await verify_captcha(body.captcha_token):
+    if not await ensure_captcha(db, body.captcha_token):
         raise_user_error(400, "CAPTCHA_INVALID", "Verificación captcha inválida")
     try:
         plain_password = _resolve_password(body)

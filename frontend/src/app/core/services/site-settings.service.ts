@@ -6,6 +6,7 @@ import { ApiService } from './api.service';
 export interface SiteAppearance {
   loader_video_url: string;
   loader_video_enabled: boolean;
+  captcha_enabled?: boolean;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -37,6 +38,7 @@ export class SiteSettingsService {
             this.appearance.set({
               loader_video_url: '',
               loader_video_enabled: true,
+              captcha_enabled: false,
             });
           }
         },

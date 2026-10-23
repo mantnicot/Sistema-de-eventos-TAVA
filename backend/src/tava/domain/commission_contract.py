@@ -3,56 +3,56 @@ from __future__ import annotations
 
 from decimal import Decimal
 
-CONTRACT_VERSION = "v1.0-2026-comision"
+CONTRACT_VERSION = "v2.0-2026-pago-posterior"
 MIN_PAID_TICKET_COP = Decimal("15000")
 MIN_COMMISSION_RATE = Decimal("0.08")
 MAX_COMMISSION_RATE = Decimal("0.15")
 
 COMMISSION_CONTRACT_TEXT = """
-CONTRATO DE USO DE PLATAFORMA Y COMISIÓN POR CANALIZACIÓN DE VENTAS — TAVA TEATRO
+CONTRATO DE USO DE PLATAFORMA, COBRO EN LÍNEA Y PAGO POSTERIOR — TAVA TEATRO
 
 Al crear, publicar o gestionar un evento de pago en la plataforma TAVA Teatro (“la Plataforma”),
 el Usuario Organizador (“el Organizador”) declara haber leído, entendido y aceptado de forma libre,
 expresa e inequívoca las siguientes condiciones:
 
-1. OBJETO. La Plataforma permite difundir el evento, canalizar solicitudes de boletería, registrar
-ventas y confirmaciones de pago, emitir comprobantes digitales (correo, código, PDF/QR) y facilitar
-el control de acceso. El cobro al público puede realizarse fuera de la pasarela de la Plataforma
-(por ejemplo, WhatsApp u otros medios acordados).
+1. OBJETO. La Plataforma difunde el evento, vende boletería, cobra al público, emite comprobantes
+digitales (correo, código, PDF/QR) y permite el control de acceso. El cobro principal es en línea
+(Wompi: PSE, Nequi, tarjeta u otros medios que ofrezca la pasarela). Si ese cobro no puede abrirse,
+la compra puede continuar por el WhatsApp de contacto que el Organizador registró en el evento.
 
-2. COMISIÓN. El Organizador se obliga a pagar a TAVA Teatro una comisión igual al porcentaje que
-seleccione al crear o actualizar el evento, entre el ocho por ciento (8%) y el quince por ciento (15%),
-calculada sobre el valor bruto total de la boletería vendida y/o confirmada a través de la Plataforma
-(pedidos registrados, pagos validados en el sistema y/o boletas emitidas por ese canal), sin deducir
-costos de publicidad, producción, pasarela u otros.
+2. PRECIO. El Organizador registra el valor que quiere recibir por cada boleta. El precio que ve
+el público es mayor: incluye el costo de la pasarela y se redondea hacia arriba a la centena
+siguiente. Ese recargo no forma parte de la comisión de TAVA.
 
-3. MOMENTO DE PAGO. El Organizador deberá pagar la comisión correspondiente a las ventas acumuladas
-antes del inicio del evento, conforme al aviso y liquidación que genere la Plataforma (en particular,
-el requerimiento enviado aproximadamente una (1) hora antes de la hora programada). Las ventas
-adicionales registradas entre ese momento y el cierre del evento serán ajustadas y cobradas con
-posterioridad, mediante notificación o correo electrónico.
+3. COMISIÓN. TAVA Teatro retiene el porcentaje que el Organizador elija al crear o actualizar el
+evento, entre el ocho por ciento (8%) y el quince por ciento (15%), calculado solo sobre el precio
+registrado de las boletas efectivamente pagadas, no sobre el recargo de la pasarela.
 
-4. CONDICIÓN PARA HABILITAR INGRESO. El Organizador reconoce que la habilitación del módulo de
-validación e ingreso de asistentes queda condicionada a que el Administrador General de TAVA
-confirme en la Plataforma la recepción del pago de la comisión adeudada hasta ese momento. Mientras
-no exista dicha confirmación, el acceso por validador podrá permanecer bloqueado.
+4. EL DINERO LO RECIBE TAVA. Los pagos en línea entran a la cuenta de la Plataforma. El Organizador
+no cobra directo al público por ese canal y no valida esos pagos uno a uno. La boleta se emite
+cuando la pasarela confirma el pago.
 
-5. VERACIDAD Y VALIDACIÓN DE PAGOS. El Organizador es responsable de validar en la Plataforma
-únicamente pagos efectivamente recibidos. La emisión de boletas (correo, código o envío) tras esa
-validación genera obligaciones frente al comprador y cuenta para el cálculo de la comisión.
+5. PAGO AL ORGANIZADOR DESPUÉS DE LA FUNCIÓN. TAVA girará al Organizador, con posterioridad a la
+presentación del evento, el valor de las boletas pagadas (precio registrado) menos la comisión
+pactada. El Organizador puede consultar en su panel únicamente sus eventos y el estado de esas
+ventas. El giro se hace por transferencia; los tiempos bancarios pueden sumar días hábiles después
+de la función.
 
-6. MORA E INCUMPLIMIENTO. Si el Organizador no paga la comisión en los plazos indicados, TAVA podrá,
-sin perjuicio de otras acciones: (a) mantener o reactivar el bloqueo del validador; (b) suspender o
-retirar el evento de cartelera; (c) retener funcionalidades de emisión o gestión; (d) exigir el capital
-adeudado, intereses de mora a la tasa máxima legal permitida y costos de cobro; (e) iniciar cobro
-persuasivo, prejurídico o judicial.
+6. RESPALDO POR WHATSAPP. Si el pago en línea falla, el pedido puede enviarse al teléfono del
+evento. En ese caso el Organizador solo emite boleta cuando el dinero sí llegó. Esas boletas
+también cuentan para la comisión y para el giro posterior.
 
-7. TOLERANCIA. La tolerancia, demora o acuerdos parciales de TAVA no implican renuncia a derechos ni
-novación de la obligación.
+7. INGRESO. Una boleta pagada y emitida puede validarse en puerta. El ingreso no queda bloqueado
+a la espera de que el Organizador le pague la comisión a TAVA, porque el dinero ya está en la
+Plataforma.
 
-8. ACEPTACIÓN ELECTRÓNICA. La casilla de aceptación, el registro del usuario, la fecha y hora, y la
-versión del texto constituyen prueba del consentimiento del Organizador, con valor de documento
-electrónico.
+8. MORA E INCUMPLIMIENTO. Si hay pedidos de respaldo cobrados por fuera y no reportados, o datos
+falsos de venta, TAVA podrá suspender el evento, retirar la cartelera y exigir lo adeudado.
+
+9. TOLERANCIA. La tolerancia o demora de TAVA no implica renuncia a estos derechos.
+
+10. ACEPTACIÓN ELECTRÓNICA. La casilla de aceptación, el usuario, la fecha y esta versión del texto
+son prueba del consentimiento del Organizador.
 
 Versión: {version}.
 """.strip()

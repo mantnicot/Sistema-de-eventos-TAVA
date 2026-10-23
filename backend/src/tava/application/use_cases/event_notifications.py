@@ -26,7 +26,7 @@ from tava.infrastructure.services.email import (
     send_event_review_request_email,
     send_ticket_cancelled_email,
 )
-from tava.infrastructure.services.ticket_pdf import build_tickets_pdf
+from tava.infrastructure.services.ticket_pdf import build_tickets_pdf, unit_paid_price
 
 settings = get_settings()
 
@@ -273,7 +273,7 @@ class EventNotificationUseCase:
                         age_rating=age,
                         main_image_url=event.main_image_url,
                         ticket_type_name=ticket_type.name,
-                        price=ticket_type.price,
+                        price=unit_paid_price(order.total_amount, ticket_type.price, len(active_tickets)),
                         tickets=[
                             (t.qr_token, t.holder_name or buyer.full_name, t.ticket_code or "")
                             for t in active_tickets

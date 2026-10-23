@@ -15,7 +15,7 @@
         <a routerLink="/eventos" class="link">Seguir explorando</a>
       </div>
     } @else if (status.payment_status === 'rechazado') {
-      <p class="err">El pago no fue aprobado. No se genero ningun cobro exitoso en TAVA.</p>
+      <p class="err">El pago en línea no fue aprobado. Vuelve a la ficha del evento: puedes intentar de nuevo o escribir por «Preguntas» para seguir por WhatsApp.</p>
       <a routerLink="/eventos" class="tava-btn-primary">Volver a eventos</a>
     } @else {
       <p>Tu pago sigue en proceso. Si acabas de pagar, esto puede tardar unos segundos.</p>

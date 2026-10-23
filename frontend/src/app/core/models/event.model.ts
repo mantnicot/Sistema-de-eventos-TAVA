@@ -18,6 +18,7 @@ export interface TheatricalDetails {
   credits?: string;
   seating?: SeatingConfig;
   sale_mode?: 'system' | 'whatsapp' | 'free';
+  /** Teléfono del organizador: preguntas del evento y respaldo si Wompi no abre. */
   whatsapp_number?: string;
   whatsapp_message?: string;
 }

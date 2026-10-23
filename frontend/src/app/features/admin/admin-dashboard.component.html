@@ -210,7 +210,13 @@
       <div class="admin-events-main">
       <form class="tava-card admin-form admin-form--wide" (ngSubmit)="saveEvent()">
         <h2>{{ editingId() ? 'Editar evento' : 'Nuevo evento' }}</h2>
-        <p class="muted">El rol y las obras de cada vendedor o validador se asignan en la pestaña <button type="button" class="link-btn" (click)="tab.set('users')">Personas</button>.</p>
+        @if (!isPlatformAdmin()) {
+          <p class="muted">
+            Aquí solo ves tus eventos. El público paga en línea. TAVA recibe ese dinero y te lo gira después de la función, menos la comisión que elijas.
+          </p>
+        } @else {
+          <p class="muted">El rol y las obras de cada vendedor o validador se asignan en la pestaña <button type="button" class="link-btn" (click)="tab.set('users')">Personas</button>.</p>
+        }
         <label>Nombre <input [(ngModel)]="eventForm.name" name="name" required /></label>
         <label>Descripción <textarea [(ngModel)]="eventForm.description" name="desc" rows="3" required></textarea></label>
         <label>Categoría <input [(ngModel)]="eventForm.category" name="cat" /></label>
@@ -244,9 +250,24 @@
             Venta de boletas
             <select [(ngModel)]="theatrical.sale_mode" name="saleMode" (ngModelChange)="onSaleModeChange($event)">
               <option value="free">Evento gratuito (solo reserva)</option>
-              <option value="whatsapp">Por WhatsApp (recomendado)</option>
+              <option value="system">Pago en línea (Wompi)</option>
             </select>
           </label>
+          @if (theatrical.sale_mode !== 'free') {
+            <p class="muted">
+              El cobro principal es Wompi. No se apaga: si ese pago no puede abrirse, la compra sigue por el WhatsApp de este teléfono.
+            </p>
+            <label>
+              Teléfono de contacto (preguntas y respaldo)
+              <input
+                [(ngModel)]="theatrical.whatsapp_number"
+                name="whatsappNumber"
+                placeholder="Ej. 573001234567"
+                required
+              />
+            </label>
+            <p class="muted">Quien vea el evento tendrá un botón «Preguntas» que abre un mensaje directo a este número.</p>
+          }
           @if (theatrical.sale_mode === 'free') {
             <p class="muted">
               Sin cobro ni comisión. La gente reserva en la web y recibe boleta/QR al instante. Usa boletas a $0.
@@ -254,28 +275,6 @@
             <button type="button" class="ghost-btn" (click)="ensureFreeTicketDraft()">
               Preparar boleta gratuita $0
             </button>
-          }
-          @if (theatrical.sale_mode === 'whatsapp') {
-            <label>
-              Número de WhatsApp
-              <input
-                [(ngModel)]="theatrical.whatsapp_number"
-                name="whatsappNumber"
-                placeholder="Ej. 573001234567"
-              />
-            </label>
-            <label>
-              Nota opcional (se agrega al final del mensaje automático)
-              <textarea
-                [(ngModel)]="theatrical.whatsapp_message"
-                name="whatsappMessage"
-                rows="3"
-                placeholder="Ej. Horario de atención, datos de transferencia…"
-              ></textarea>
-            </label>
-            <p class="muted">
-              El comprador elige boletas en la web; se abre WhatsApp con el pedido completo (evento, comprador y total). Tú validas el pago en el panel y ahí se envía correo + código.
-            </p>
           }
         </section>
 
@@ -297,7 +296,7 @@
             </details>
             <label class="check-row">
               <input type="checkbox" [(ngModel)]="contractAccepted" name="contractAccepted" [disabled]="!hasPaidTicketsDraft()" />
-              Acepto el contrato y me comprometo a pagar la comisión seleccionada
+              Acepto el contrato: TAVA cobra al público, retiene la comisión y me gira el resto después de la función
             </label>
           </section>
         } @else {
@@ -514,13 +513,20 @@
                 </label>
               </div>
               <div class="row">
-                <label>Precio (COP)
+                <label>Precio que quieres recibir (COP)
                   <input type="number" min="0" [(ngModel)]="tt.price" [name]="'ttp' + i" (ngModelChange)="onTicketDraftChange()" />
                 </label>
                 <label>Cupos
                   <input type="number" min="0" [(ngModel)]="tt.quantity_available" [name]="'ttq' + i" (ngModelChange)="onTicketDraftChange()" />
                 </label>
               </div>
+              @if (theatrical.sale_mode !== 'free' && tt.price > 0) {
+                <p class="muted">
+                  El público verá cerca de ${{ publicPreview(tt.price) | number:'1.0-0' }} por 1 boleta
+                  (se suma el cobro de Wompi y se redondea hacia arriba, por ejemplo 16.235 → 16.300).
+                  Si compran varias, el fijo de la pasarela se cobra una sola vez en el pedido.
+                </p>
+              }
               <label>Beneficios
                 <input [(ngModel)]="tt.benefits" [name]="'ttb' + i" placeholder="Ej. Palco, bebida, meet & greet" (ngModelChange)="onTicketDraftChange()" />
               </label>
@@ -637,11 +643,16 @@
   @if (tab() === 'appearance' && isPlatformAdmin()) {
     <form class="tava-card admin-form" (ngSubmit)="saveAppearance()">
       <h2>Video del loader</h2>
-      <p class="muted">Sube un MP4 corto de una obra o escena. Se reproducirá al cargar cartelera, eventos y ventanas de espera.</p>
+      <p class="muted">Sube un video vertical de celular. Se ve un 50% más amplio al cargar cartelera, eventos y ventanas de espera.</p>
       <label class="check-row">
         <input type="checkbox" [(ngModel)]="appearanceForm.loader_video_enabled" name="enabled" />
         Activar video del loader
       </label>
+      <label class="check-row">
+        <input type="checkbox" [(ngModel)]="appearanceForm.captcha_enabled" name="captchaEnabled" />
+        Pedir captcha al ingresar y registrarse
+      </label>
+      <p class="muted">Déjalo apagado mientras no quieras incomodar a la gente. Puedes encenderlo cuando haga falta.</p>
       <tava-file-upload
         label="Subir video del loader"
         kind="video"
@@ -655,6 +666,25 @@
         <p class="muted">Sin video personalizado: se muestra un respaldo simple de TAVA.</p>
       }
       <button type="submit" class="tava-btn-primary">Guardar apariencia</button>
+    </form>
+
+    <form class="tava-card admin-form" (ngSubmit)="saveCheckoutFees()">
+      <h2>Cobro en línea</h2>
+      <p class="muted">
+        Wompi queda siempre como pago principal. Estos números arman el precio que ve el público
+        y se redondean hacia arriba a la centena. Si el pago no abre, la compra sigue por el teléfono del evento.
+      </p>
+      <label>Porcentaje (0.0265 = 2,65%)
+        <input type="number" step="0.0001" min="0" [(ngModel)]="checkoutFees.fee_percent" name="feePercent" />
+      </label>
+      <label>Valor fijo COP
+        <input type="number" min="0" [(ngModel)]="checkoutFees.fee_fixed_cop" name="feeFixed" />
+      </label>
+      <label>IVA sobre la comisión (0.19 = 19%)
+        <input type="number" step="0.01" min="0" [(ngModel)]="checkoutFees.fee_iva" name="feeIva" />
+      </label>
+      <p class="muted">Ejemplo: boleta registrada en $15.000 → el público paga ${{ publicPreview(15000) | number:'1.0-0' }}.</p>
+      <button type="submit" class="tava-btn-primary">Guardar tarifa</button>
     </form>
   }
 </section>
