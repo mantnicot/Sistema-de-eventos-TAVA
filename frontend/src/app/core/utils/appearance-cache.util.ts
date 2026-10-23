@@ -8,7 +8,7 @@ export function readAppearanceCache(): SiteAppearance | null {
     if (!raw) return null;
     const parsed = JSON.parse(raw) as SiteAppearance;
     if (typeof parsed.loader_video_enabled !== 'boolean') return null;
-    return parsed;
+    return { ...parsed, captcha_enabled: !!parsed.captcha_enabled };
   } catch {
     return null;
   }

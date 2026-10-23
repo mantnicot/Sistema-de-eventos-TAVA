@@ -6,7 +6,7 @@ import { ApiService } from './api.service';
 export interface SiteAppearance {
   loader_video_url: string;
   loader_video_enabled: boolean;
-  captcha_enabled?: boolean;
+  captcha_enabled: boolean;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -29,8 +29,9 @@ export class SiteSettingsService {
       .subscribe({
         next: (a) => {
           this.loadedAt = Date.now();
-          this.appearance.set(a);
-          writeAppearanceCache(a);
+          const normalized = { ...a, captcha_enabled: !!a.captcha_enabled };
+          this.appearance.set(normalized);
+          writeAppearanceCache(normalized);
         },
         error: () => {
           this.loadedAt = Date.now();

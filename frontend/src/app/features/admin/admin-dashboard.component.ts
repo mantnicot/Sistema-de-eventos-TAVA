@@ -654,13 +654,13 @@ export class AdminDashboardComponent implements OnInit {
   private loadAppearanceForm(): void {
     const app = this.site.appearance();
     if (app) {
-      this.appearanceForm = { ...app };
+      this.appearanceForm = { ...app, captcha_enabled: !!app.captcha_enabled };
       return;
     }
     this.site.loadAppearance();
     setTimeout(() => {
       const a = this.site.appearance();
-      if (a) this.appearanceForm = { ...a };
+      if (a) this.appearanceForm = { ...a, captcha_enabled: !!a.captcha_enabled };
     }, 400);
   }
 
