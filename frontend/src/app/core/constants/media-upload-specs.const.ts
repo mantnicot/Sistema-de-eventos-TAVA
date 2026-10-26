@@ -24,15 +24,6 @@ export const VIDEO_TRAILER_SPEC: MediaUploadSpec = {
   ],
 };
 
-export const VIDEO_LOADER_SPEC: MediaUploadSpec = {
-  title: 'Video del loader (vertical)',
-  lines: [
-    'Formato de celular: 1080 × 1920 px (9:16) · MP4 H.264',
-    'Duración: 3–15 seg en loop, sin audio fuerte',
-    'Peso máximo: 80 MB · Se ve más amplio al cargar cartelera, eventos y popups',
-  ],
-};
-
 export const GALLERY_IMAGE_SPEC: MediaUploadSpec = {
   title: 'Foto de galería',
   lines: [

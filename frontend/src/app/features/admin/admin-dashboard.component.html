@@ -642,29 +642,12 @@
 
   @if (tab() === 'appearance' && isPlatformAdmin()) {
     <form class="tava-card admin-form" (ngSubmit)="saveAppearance()">
-      <h2>Video del loader</h2>
-      <p class="muted">Sube un video vertical de celular. Se ve un 50% más amplio al cargar cartelera, eventos y ventanas de espera.</p>
-      <label class="check-row">
-        <input type="checkbox" [(ngModel)]="appearanceForm.loader_video_enabled" name="enabled" />
-        Activar video del loader
-      </label>
+      <h2>Apariencia</h2>
       <label class="check-row">
         <input type="checkbox" [(ngModel)]="appearanceForm.captcha_enabled" name="captchaEnabled" />
         Pedir captcha al ingresar y registrarse
       </label>
       <p class="muted">Déjalo apagado mientras no quieras incomodar a la gente. Puedes encenderlo cuando haga falta.</p>
-      <tava-file-upload
-        label="Subir video del loader"
-        kind="video"
-        accept="video/mp4,video/webm"
-        [specs]="videoLoaderSpec"
-        (uploaded)="appearanceForm.loader_video_url = $event"
-      />
-      @if (appearanceForm.loader_video_url) {
-        <p class="muted">Video activo: {{ appearanceForm.loader_video_url }}</p>
-      } @else {
-        <p class="muted">Sin video personalizado: se muestra un respaldo simple de TAVA.</p>
-      }
       <button type="submit" class="tava-btn-primary">Guardar apariencia</button>
     </form>
 

@@ -1,47 +1,108 @@
+:host {
+  display: block;
+  width: 100%;
+}
+
 .theatrical-loader {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   text-align: center;
-  padding: 2.5rem 1.25rem;
-  min-height: 280px;
-  gap: 0.75rem;
-}
-
-.theatrical-loader__scene {
-  position: relative;
-  width: min(480px, 92vw);
-  height: 300px;
-  margin-bottom: 0.5rem;
-  overflow: hidden;
-  border-radius: 16px;
-  background: radial-gradient(circle at 50% 35%, rgba(201, 162, 39, 0.18), rgba(18, 7, 11, 0.96) 62%);
-  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.24), 0 0 0 1px rgba(201, 162, 39, 0.26);
-}
-
-.theatrical-loader__video {
-  position: relative;
-  z-index: 1;
   width: 100%;
-  height: 100%;
-  object-fit: contain;
-  display: block;
-  background: #12070b;
+  padding: 1.25rem 0 0.5rem;
+  gap: 0.85rem;
 }
 
-.theatrical-loader__fallback {
+.escena {
+  position: relative;
+  width: 100%;
+  height: var(--alto-escena, 42vh);
+  overflow: hidden;
+}
+
+.escena > * {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  will-change: transform, opacity;
+}
+
+.halo {
+  width: var(--halo-w);
+  height: var(--halo-w);
+  margin: calc(var(--halo-w) / -2) 0 0 calc(var(--halo-w) / -2);
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(201, 162, 39, 0.18) 0%, rgba(201, 162, 39, 0.1) 45%, rgba(201, 162, 39, 0) 100%);
+  opacity: 0;
+  z-index: 0;
+}
+
+.luz {
+  width: var(--luz-w);
+  height: calc(var(--alto-escena) * 1.5);
+  margin: calc(var(--alto-escena) * -0.75) 0 0 calc(var(--luz-w) / -2);
+  background: radial-gradient(50% 50% at 50% 50%, rgba(232, 212, 155, 0.6) 0%, rgba(232, 212, 155, 0.38) 35%, rgba(201, 162, 39, 0.12) 65%, rgba(201, 162, 39, 0) 100%);
+  opacity: 0;
+  z-index: 1;
+}
+
+.proscenio {
+  height: 1px;
+  width: var(--proscenio-w);
+  margin-left: calc(var(--proscenio-w) / -2);
+  top: calc(50% + var(--logo-h) / 2 + var(--logo-h) * 0.07);
+  background: linear-gradient(90deg, rgba(201, 162, 39, 0), #c9a227 30%, #b8860b 50%, #c9a227 70%, rgba(201, 162, 39, 0));
+  transform-origin: 50% 50%;
+  z-index: 1;
+}
+
+.logo {
+  width: var(--logo-w);
+  height: var(--logo-h);
+  margin: calc(var(--logo-h) / -2) 0 0 calc(var(--logo-w) / -2);
+  transform-origin: 50% 92%;
+  z-index: 2;
+}
+
+.logo img {
   position: absolute;
   inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--tava-gold);
-  font-family: var(--tava-font-display);
-  font-size: 2.4rem;
-  letter-spacing: 0.18em;
-  background: linear-gradient(135deg, #1a080d, #3d1020 48%, #0f0608);
-  animation: fallback-pulse 1.8s ease-in-out infinite;
+  width: 100%;
+  height: 100%;
+  display: block;
+  user-select: none;
+}
+
+.logo .velado {
+  opacity: 0.3;
+}
+
+.logo .pleno {
+  clip-path: inset(0 50% 0 50%);
+}
+
+.mascara {
+  width: var(--masc-w);
+  height: var(--masc-h);
+  margin: calc(var(--masc-h) / -2) 0 0 calc(var(--masc-w) / -2);
+  transform-origin: 50% 40%;
+  filter: drop-shadow(0 calc(var(--logo-h) * 0.03) calc(var(--logo-h) * 0.04) rgba(58, 47, 42, 0.16));
+}
+
+.mascara svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  overflow: visible;
+}
+
+.comedia {
+  z-index: 4;
+}
+
+.tragedia {
+  z-index: 3;
 }
 
 .theatrical-loader__title {
@@ -58,36 +119,11 @@
   font-size: 0.95rem;
   color: var(--tava-cream-muted);
   line-height: 1.45;
-  min-height: 2.8em;
-  animation: msg-fade 0.5s ease;
+  min-height: 1.4em;
 }
 
-@keyframes fallback-pulse {
-  0%,
-  100% {
-    opacity: 0.7;
-  }
-  50% {
-    opacity: 1;
-  }
-}
-
-@keyframes msg-fade {
-  from {
-    opacity: 0.4;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-@media (max-width: 480px) {
-  .theatrical-loader {
-    min-height: 240px;
-    padding: 1.5rem 1rem;
-  }
-
-  .theatrical-loader__scene {
-    height: 170px;
+@media (prefers-reduced-motion: reduce) {
+  .escena > * {
+    transition: none;
   }
 }

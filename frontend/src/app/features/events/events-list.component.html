@@ -79,7 +79,7 @@
 
   @if (loading() && !activeEvents().length && !finishedEvents().length) {
     <div class="empty">
-      <tava-theatrical-loader title="Armando la cartelera" />
+      <tava-theatrical-loader title="Armando la cartelera" [moving]="!loadingStalled()" />
       @if (loadingStalled()) {
         <p>El servidor sigue despertando. Puedes esperar un poco más o reintentar.</p>
         <button type="button" class="tava-btn-primary" (click)="load()">Reintentar</button>
@@ -87,7 +87,7 @@
     </div>
   } @else if (loadError()) {
     <div class="empty">
-      <tava-theatrical-loader title="El servidor se demoro mucho" />
+      <tava-theatrical-loader title="El servidor se demoro mucho" [moving]="false" />
       <p>{{ loadError() }}</p>
       <button type="button" class="tava-btn-primary" (click)="load()">Reintentar</button>
     </div>

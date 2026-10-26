@@ -1,25 +1,59 @@
 <div class="theatrical-loader" role="status" aria-live="polite" aria-busy="true">
-  <div class="theatrical-loader__scene" [class.theatrical-loader__scene--fallback]="videoFailed()" aria-hidden="true">
-    <div class="theatrical-loader__fallback">
-      <span>TAVA</span>
+  <div
+    class="escena"
+    #escena
+    role="progressbar"
+    aria-label="Cargando TAVA Teatro"
+    aria-valuemin="0"
+    aria-valuemax="100"
+    [attr.aria-valuenow]="percent"
+  >
+    <div class="halo" #halo></div>
+    <div class="luz" #luzA></div>
+    <div class="luz" #luzB></div>
+    <div class="proscenio" #proscenio></div>
+    <div class="logo" #logo>
+      <img class="velado" src="tava-logo.png" alt="" />
+      <img class="pleno" #logoPleno src="tava-logo.png" alt="" />
     </div>
-    @if (resolvedVideoSrc()) {
-      <video
-        #loaderVideo
-        class="theatrical-loader__video"
-        autoplay
-        muted
-        loop
-        playsinline
-        preload="metadata"
-        [src]="resolvedVideoSrc()"
-        (loadeddata)="onVideoReady()"
-        (canplay)="onVideoReady()"
-        (playing)="onVideoPlaying()"
-        (error)="onVideoError()"
-      ></video>
-    }
+    <div class="mascara comedia" #comedia aria-hidden="true">
+      <svg viewBox="-40 0 280 260">
+        <defs>
+          <linearGradient [attr.id]="oroId" x1="0" y1="0" x2="0.35" y2="1">
+            <stop offset="0" stop-color="#e8d49b" />
+            <stop offset=".45" stop-color="#c9a227" />
+            <stop offset="1" stop-color="#b8860b" />
+          </linearGradient>
+          <linearGradient [attr.id]="burdeosId" x1="0" y1="0" x2="0.35" y2="1">
+            <stop offset="0" stop-color="#c9a0a8" />
+            <stop offset=".5" stop-color="#9e5a6b" />
+            <stop offset="1" stop-color="#9e5a6b" />
+          </linearGradient>
+        </defs>
+        <path d="M180 96 C206 108 196 146 224 170" fill="none" stroke="#9e5a6b" stroke-width="6" stroke-linecap="round" />
+        <path d="M180 104 C200 132 218 150 210 204" fill="none" stroke="#c9a0a8" stroke-width="5" stroke-linecap="round" />
+        <path [attr.fill]="'url(#' + oroId + ')'" fill-rule="evenodd" stroke="#b8860b" stroke-width="2"
+          d="M100 12 C150 12 182 40 184 92 C186 150 160 210 100 248 C40 210 14 150 16 92 C18 40 50 12 100 12 Z M50 108 Q70 80 90 108 Q70 99 50 108 Z M110 108 Q130 80 150 108 Q130 99 110 108 Z M58 156 Q100 216 142 156 Q100 180 58 156 Z" />
+        <ellipse cx="78" cy="44" rx="38" ry="13" fill="#ffffff" opacity=".28" transform="rotate(-14 78 44)" />
+        <path d="M46 76 Q70 54 92 70 M108 70 Q130 54 154 76" fill="none" stroke="#b8860b" stroke-width="4" stroke-linecap="round" />
+        <path d="M100 112 Q93 138 104 146" fill="none" stroke="#b8860b" stroke-width="3" stroke-linecap="round" />
+        <circle cx="54" cy="138" r="9" fill="#c9a0a8" opacity=".45" />
+        <circle cx="146" cy="138" r="9" fill="#c9a0a8" opacity=".45" />
+      </svg>
+    </div>
+    <div class="mascara tragedia" #tragedia aria-hidden="true">
+      <svg viewBox="-40 0 280 260">
+        <path d="M20 96 C-6 108 4 146 -24 170" fill="none" stroke="#b8860b" stroke-width="6" stroke-linecap="round" />
+        <path d="M20 104 C0 132 -18 150 -10 204" fill="none" stroke="#e8d49b" stroke-width="5" stroke-linecap="round" />
+        <path [attr.fill]="'url(#' + burdeosId + ')'" fill-rule="evenodd" stroke="#3a2f2a" stroke-opacity=".35" stroke-width="2"
+          d="M100 12 C150 12 182 40 184 92 C186 150 160 210 100 248 C40 210 14 150 16 92 C18 40 50 12 100 12 Z M48 110 Q72 114 92 92 Q66 98 48 110 Z M152 110 Q128 114 108 92 Q134 98 152 110 Z M62 204 Q100 150 138 204 Q100 178 62 204 Z" />
+        <ellipse cx="122" cy="44" rx="38" ry="13" fill="#ffffff" opacity=".22" transform="rotate(14 122 44)" />
+        <path d="M48 84 Q72 82 90 66 M110 66 Q128 82 152 84" fill="none" stroke="#3a2f2a" stroke-opacity=".45" stroke-width="4" stroke-linecap="round" />
+        <path d="M100 112 Q107 138 96 148" fill="none" stroke="#3a2f2a" stroke-opacity=".4" stroke-width="3" stroke-linecap="round" />
+        <path d="M66 124 Q58 140 66 146 Q74 140 66 124 Z" fill="#e8d49b" />
+      </svg>
+    </div>
   </div>
   <h2 class="theatrical-loader__title">{{ title }}</h2>
-  <p class="theatrical-loader__message">{{ currentMessage() }}</p>
+  <p class="theatrical-loader__message">{{ stageLine }}</p>
 </div>
