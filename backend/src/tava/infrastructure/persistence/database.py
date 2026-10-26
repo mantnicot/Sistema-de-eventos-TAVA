@@ -1,3 +1,4 @@
+import ssl
 from collections.abc import AsyncGenerator
 from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
@@ -43,8 +44,16 @@ def _prepare_asyncpg_url(database_url: str) -> tuple[str, dict]:
     local_hosts = {"localhost", "127.0.0.1", "postgres"}
     use_ssl = ssl_required or (bool(host) and host not in local_hosts)
 
-    connect_args: dict = {"ssl": True} if use_ssl else {}
+    connect_args: dict = {"ssl": _remote_ssl_context()} if use_ssl else {}
     return clean_url, connect_args
+
+
+def _remote_ssl_context() -> ssl.SSLContext:
+    """Cifra la conexión. El pooler de Supabase usa una cadena que Python rechaza si se verifica."""
+    ctx = ssl.create_default_context()
+    ctx.check_hostname = False
+    ctx.verify_mode = ssl.CERT_NONE
+    return ctx
 
 
 settings = get_settings()
