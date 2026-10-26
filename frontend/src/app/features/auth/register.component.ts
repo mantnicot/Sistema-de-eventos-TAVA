@@ -4,6 +4,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { TAVA_PRIVACY_CLAUSES, TAVA_PRIVACY_SUMMARY } from '../../core/constants/privacy-policy.const';
 import { AuthService } from '../../core/services/auth.service';
 import { NotificationService } from '../../core/services/notification.service';
+import { SiteSettingsService } from '../../core/services/site-settings.service';
 import { parseHttpError } from '../../core/utils/http-error.util';
 import { randomTheatricalMessage } from '../../core/utils/theatrical-messages.util';
 import { TavaCaptchaComponent } from '../../shared/components/tava-captcha/tava-captcha.component';
@@ -19,6 +20,10 @@ export class RegisterComponent implements OnInit {
   @ViewChild(TavaCaptchaComponent) captcha?: TavaCaptchaComponent;
   private readonly auth = inject(AuthService);
   private readonly notify = inject(NotificationService);
+  private readonly site = inject(SiteSettingsService);
+  get captchaRequired(): boolean {
+    return this.site.captchaRequired();
+  }
   private readonly route = inject(ActivatedRoute);
 
   readonly returnUrl = this.route.snapshot.queryParamMap.get('returnUrl') ?? '/eventos';
@@ -46,7 +51,7 @@ export class RegisterComponent implements OnInit {
   }
 
   onCaptchaToken(token: string): void {
-    this.captchaToken = token;
+    this.captchaToken = this.site.captchaRequired() && token !== 'captcha-disabled' ? token : '';
   }
 
   submit(): void {
@@ -54,7 +59,7 @@ export class RegisterComponent implements OnInit {
       this.notify.warning('Datos personales', 'Debes aceptar el tratamiento de datos personales para registrarte.');
       return;
     }
-    if (!this.captchaToken) {
+    if (this.site.captchaRequired() && !this.captchaToken) {
       this.notify.warning('Verificación', 'Completa el puzzle de verificación antes de registrarte');
       return;
     }
@@ -67,13 +72,15 @@ export class RegisterComponent implements OnInit {
         phone: this.phone,
         accept_privacy_policy: this.acceptPrivacy,
         accept_marketing: this.acceptMarketing,
-        captcha_token: this.captchaToken,
+        captcha_token: this.site.captchaRequired() ? this.captchaToken : '',
       })
       .subscribe({
         next: (res) => {
           this.notify.hide();
-          this.captcha?.reset();
-          this.captchaToken = '';
+          if (this.site.captchaRequired()) {
+            this.captcha?.reset();
+            this.captchaToken = '';
+          }
           this.pendingVerify = true;
           this.theatricalLine = randomTheatricalMessage('resend');
           if (res.email_sent) {
@@ -90,8 +97,10 @@ export class RegisterComponent implements OnInit {
         },
         error: (err) => {
           this.notify.hide();
-          this.captcha?.reset();
-          this.captchaToken = '';
+          if (this.site.captchaRequired()) {
+            this.captcha?.reset();
+            this.captchaToken = '';
+          }
           const parsed = parseHttpError(err, 'register');
           this.notify.showHttpError(parsed);
         },

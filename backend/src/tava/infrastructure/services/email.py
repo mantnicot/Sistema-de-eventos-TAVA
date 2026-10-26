@@ -227,7 +227,11 @@ def _send_smtp_sync(to_email: str, subject: str, html: str, text: str) -> None:
 
 
 async def _send_brevo(
-    to_email: str, subject: str, html: str, text: str, attachment: tuple[str, bytes] | None = None
+    to_email: str,
+    subject: str,
+    html: str,
+    text: str,
+    attachments: list[tuple[str, bytes]] | None = None,
 ) -> bool:
     api_key = settings.brevo_api_key.strip()
     if not api_key:
@@ -244,9 +248,9 @@ async def _send_brevo(
     reply_to = _reply_to_email()
     if reply_to and reply_to != sender_email:
         payload["replyTo"] = {"email": reply_to, "name": name}
-    if attachment:
+    if attachments:
         payload["attachment"] = [
-            {"content": base64.b64encode(attachment[1]).decode(), "name": attachment[0]}
+            {"content": base64.b64encode(data).decode(), "name": name} for name, data in attachments
         ]
     try:
         async with httpx.AsyncClient(timeout=30) as client:
@@ -282,7 +286,11 @@ async def _send_brevo(
 
 
 async def _send_resend(
-    to_email: str, subject: str, html: str, text: str, attachment: tuple[str, bytes] | None = None
+    to_email: str,
+    subject: str,
+    html: str,
+    text: str,
+    attachments: list[tuple[str, bytes]] | None = None,
 ) -> bool:
     api_key = settings.resend_api_key.strip()
     if not api_key:
@@ -303,12 +311,13 @@ async def _send_resend(
                         {
                             "attachments": [
                                 {
-                                    "filename": attachment[0],
-                                    "content": base64.b64encode(attachment[1]).decode(),
+                                    "filename": name,
+                                    "content": base64.b64encode(data).decode(),
                                 }
+                                for name, data in attachments
                             ]
                         }
-                        if attachment
+                        if attachments
                         else {}
                     ),
                 },
@@ -333,7 +342,7 @@ async def _send_resend(
 
 
 def _send_smtp_with_attachment_sync(
-    to_email: str, subject: str, html: str, text: str, attachment: tuple[str, bytes] | None
+    to_email: str, subject: str, html: str, text: str, attachments: list[tuple[str, bytes]] | None
 ) -> None:
     password = _clean_secret(settings.smtp_password)
     login = _smtp_login_email()
@@ -345,9 +354,9 @@ def _send_smtp_with_attachment_sync(
     alt.attach(MIMEText(text, "plain", "utf-8"))
     alt.attach(MIMEText(html, "html", "utf-8"))
     msg.attach(alt)
-    if attachment:
-        part = MIMEApplication(attachment[1], _subtype="pdf")
-        part.add_header("Content-Disposition", "attachment", filename=attachment[0])
+    for name, data in attachments or []:
+        part = MIMEApplication(data, _subtype="pdf")
+        part.add_header("Content-Disposition", "attachment", filename=name)
         msg.attach(part)
     host = settings.smtp_host.strip()
     port = settings.smtp_port
@@ -372,6 +381,7 @@ async def _deliver_email(
     html: str,
     text: str,
     attachment: tuple[str, bytes] | None = None,
+    attachments: list[tuple[str, bytes]] | None = None,
 ) -> bool:
     global _last_failure
     _last_failure = ""
@@ -384,23 +394,27 @@ async def _deliver_email(
         _set_failure(hint)
         return False
 
+    files = list(attachments or [])
+    if attachment:
+        files = [attachment, *files]
+
     if brevo_configured():
-        if await _send_brevo(to_email, subject, html, text, attachment):
+        if await _send_brevo(to_email, subject, html, text, files or None):
             logger.info("Correo enviado vía Brevo a %s", to_email)
             return True
         logger.warning("Brevo falló; probando otros transportes")
 
     if resend_configured():
-        if await _send_resend(to_email, subject, html, text, attachment):
+        if await _send_resend(to_email, subject, html, text, files or None):
             logger.info("Correo enviado vía Resend a %s", to_email)
             return True
         logger.warning("Resend falló; probando SMTP si está permitido")
 
     if smtp_allowed():
         try:
-            if attachment:
+            if files:
                 await asyncio.to_thread(
-                    _send_smtp_with_attachment_sync, to_email, subject, html, text, attachment
+                    _send_smtp_with_attachment_sync, to_email, subject, html, text, files
                 )
             else:
                 await asyncio.to_thread(_send_smtp_sync, to_email, subject, html, text)
@@ -503,7 +517,7 @@ def _tickets_email_html(
               <p style="margin:0;font-size:14px;color:#6b5344;">📅 {when}</p>
             </div>
             {claim_html}
-            <p style="margin:0 0 12px;font-size:14px;">El PDF adjunto incluye el <strong>código QR</strong> para validar tu ingreso.</p>
+            <p style="margin:0 0 12px;font-size:14px;">Un PDF trae el <strong>código QR</strong> para ingresar. El otro es el <strong>comprobante de pago</strong>, para revisar el cobro. No es una factura electrónica.</p>
             <p style="margin:0;font-size:13px;color:#6b5344;font-style:italic;">Llega con 30 minutos de anticipación. ¡Nos vemos en el teatro!</p>
           </td>
         </tr>
@@ -532,6 +546,7 @@ async def send_tickets_confirmation_email(
     event_date: str = "",
     event_time: str = "",
     claim_code: str | None = None,
+    receipt_pdf: bytes | None = None,
 ) -> bool:
     role = "confirmación de venta" if is_seller_copy else "confirmación de compra"
     subject = f"🎭 Boletas {event_name} — TAVA Teatro"
@@ -552,9 +567,15 @@ async def send_tickets_confirmation_email(
         if claim_code
         else ""
     )
-    text = f"Hola {full_name},\n\nAdjuntamos tu {role} de {quantity} boleta(s) para {event_name}.{claim_line}\n"
-    filename = f"boletas-{event_name.replace(' ', '-')[:40]}.pdf"
-    return await _deliver_email(to_email, subject, html, text, (filename, pdf_bytes))
+    text = (
+        f"Hola {full_name},\n\nAdjuntamos tu {role} de {quantity} boleta(s) para {event_name} "
+        f"y el comprobante de pago.{claim_line}\n"
+    )
+    slug = event_name.replace(" ", "-")[:40]
+    files = [(f"boletas-{slug}.pdf", pdf_bytes)]
+    if receipt_pdf:
+        files.append((f"comprobante-{slug}.pdf", receipt_pdf))
+    return await _deliver_email(to_email, subject, html, text, attachments=files)
 
 
 def _event_change_email_html(

@@ -91,8 +91,13 @@ async def _settlement_worker_loop() -> None:
     while True:
         try:
             async with AsyncSessionLocal() as session:
+                from tava.application.use_cases.tickets import TicketUseCase
+
+                expired = await TicketUseCase(session).expire_abandoned_checkouts()
                 result = await SettlementUseCase(session).process_due_notifications()
                 await session.commit()
+                if expired:
+                    logger.info("Apartados Wompi vencidos: %s", expired)
                 if result.get("pre_sent") or result.get("post_sent"):
                     logger.info("Settlement worker: %s", result)
         except Exception:

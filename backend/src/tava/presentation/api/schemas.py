@@ -209,6 +209,8 @@ class EventResponse(BaseModel):
     trailer_url: str | None = None
     theatrical_details: TheatricalDetailsSchema | None = None
     tickets_available: int = 0
+    issued_tickets: int | None = None
+    pending_orders: int | None = None
     review_status: EventReviewStatus | None = None
     cartelera_visible: bool | None = None
     organizer_id: UUID | None = None

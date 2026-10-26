@@ -47,11 +47,11 @@
   z-index: 1;
 }
 
-.proscenio {
+.escena .proscenio {
   height: 1px;
   width: var(--proscenio-w);
   margin-left: calc(var(--proscenio-w) / -2);
-  top: calc(50% + var(--logo-h) / 2 + var(--logo-h) * 0.07);
+  top: calc(50% + var(--masc-h) / 2 + 6px);
   background: linear-gradient(90deg, rgba(201, 162, 39, 0), #c9a227 30%, #b8860b 50%, #c9a227 70%, rgba(201, 162, 39, 0));
   transform-origin: 50% 50%;
   z-index: 1;
@@ -74,12 +74,9 @@
   user-select: none;
 }
 
-.logo .velado {
-  opacity: 0.3;
-}
-
 .logo .pleno {
-  clip-path: inset(0 50% 0 50%);
+  opacity: 1;
+  background: transparent;
 }
 
 .mascara {
@@ -106,18 +103,26 @@
 }
 
 .theatrical-loader__title {
-  margin: 0;
-  font-family: var(--tava-font-display);
-  font-size: clamp(1.25rem, 4vw, 1.65rem);
-  color: var(--tava-gold-glow);
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  margin: 0.35rem 0 0;
+  font-family: 'Cinzel', 'Playfair Display', serif;
+  font-weight: 700;
+  font-size: clamp(1.15rem, 3.4vw, 1.55rem);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  padding-left: 0.18em;
+  background: linear-gradient(180deg, #e8d49b 0%, #b8860b 42%, #8a6410 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }
 
 .theatrical-loader__message {
   margin: 0;
   max-width: 28rem;
-  font-size: 0.95rem;
-  color: var(--tava-cream-muted);
+  font-family: 'Playfair Display', Georgia, serif;
+  font-style: italic;
+  font-size: 1.02rem;
+  color: #9e5a6b;
   line-height: 1.45;
   min-height: 1.4em;
 }

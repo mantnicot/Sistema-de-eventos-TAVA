@@ -1414,7 +1414,10 @@ export class AdminDashboardComponent implements OnInit {
   }
 
   deleteEvent(ev: TavaEvent): void {
-    this.notify.confirm('Eliminar evento', `¿Eliminar "${ev.name}"? Esta acción no se puede deshacer.`, () => {
+    this.notify.confirm(
+      'Eliminar evento',
+      `¿Eliminar "${ev.name}"? Si solo hay pagos sin terminar, se sueltan. Si ya hay boletas emitidas, no se puede borrar.`,
+      () => {
       this.notify.loadingTheatrical('Retirando del cartel', 'delete');
       this.api.delete(`/events/${ev.id}`).subscribe({
         next: () => {
@@ -1423,9 +1426,13 @@ export class AdminDashboardComponent implements OnInit {
           if (this.editingId() === ev.id) this.resetEventForm();
           this.loadAdminEvents();
         },
-        error: () => {
+        error: (err) => {
           this.notify.hide();
-          this.notify.error('Eventos', 'No se pudo eliminar (puede tener boletas)');
+          const detail = err?.error?.detail;
+          this.notify.error(
+            'Eventos',
+            typeof detail === 'string' ? detail : 'No se pudo eliminar el evento'
+          );
         },
       });
     });

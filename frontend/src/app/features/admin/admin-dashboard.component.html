@@ -603,6 +603,17 @@
                 @if (isPlatformAdmin() && ev.organizer_name) {
                   <p class="event-card__org">{{ ev.organizer_name }}</p>
                 }
+                @if (ev.issued_tickets) {
+                  <p class="event-card__hold">
+                    {{ ev.issued_tickets }} {{ ev.issued_tickets === 1 ? 'boleta emitida' : 'boletas emitidas' }}
+                  </p>
+                }
+                @if (ev.pending_orders) {
+                  <p class="event-card__hold">
+                    {{ ev.pending_orders }} {{ ev.pending_orders === 1 ? 'pago pendiente' : 'pagos pendientes' }}
+                    · el cupo se suelta a los 45 min
+                  </p>
+                }
                 <div class="event-card__actions" (click)="$event.stopPropagation()">
                   <button type="button" class="event-card__btn" (click)="editEvent(ev)">Editar</button>
                   <button type="button" class="event-card__btn" (click)="duplicateEvent(ev)">Duplicar</button>

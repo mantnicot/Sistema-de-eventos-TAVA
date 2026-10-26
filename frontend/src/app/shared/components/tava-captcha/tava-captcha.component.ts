@@ -52,18 +52,22 @@ export class TavaCaptchaComponent implements AfterViewInit, OnDestroy {
   constructor() {
     this.site.loadAppearance();
     effect(() => {
-      const app = this.site.appearance();
-      if (!app) return;
-      this.enabled = !!app.captcha_enabled;
-      if (!this.enabled) this.tokenChange.emit('captcha-disabled');
+      const required = this.site.captchaRequired();
+      this.enabled = required;
+      if (!required) {
+        this.tokenChange.emit('captcha-disabled');
+        return;
+      }
+      this.scheduleInit();
     });
   }
 
   ngAfterViewInit(): void {
-    if (!this.enabled) this.tokenChange.emit('captcha-disabled');
-    if (this.useHcaptcha) {
-      void this.initHcaptcha();
+    if (!this.enabled) {
+      this.tokenChange.emit('captcha-disabled');
+      return;
     }
+    this.scheduleInit();
   }
 
   ngOnDestroy(): void {
@@ -82,6 +86,10 @@ export class TavaCaptchaComponent implements AfterViewInit, OnDestroy {
   }
 
   reset(): void {
+    if (!this.enabled) {
+      this.tokenChange.emit('captcha-disabled');
+      return;
+    }
     if (this.useHcaptcha && this.widgetId != null && window.hcaptcha) {
       window.hcaptcha.reset(this.widgetId);
       this.tokenChange.emit('');
@@ -91,10 +99,16 @@ export class TavaCaptchaComponent implements AfterViewInit, OnDestroy {
     this.tokenChange.emit('');
   }
 
+  private scheduleInit(): void {
+    if (!this.enabled || !this.useHcaptcha || this.widgetId != null) return;
+    setTimeout(() => void this.initHcaptcha(), 0);
+  }
+
   private async initHcaptcha(): Promise<void> {
+    if (!this.enabled || this.widgetId != null) return;
     await this.loadScript();
     const host = this.hcaptchaHost?.nativeElement;
-    if (!host || !window.hcaptcha || !environment.hcaptchaSiteKey) return;
+    if (!this.enabled || !host || !window.hcaptcha || !environment.hcaptchaSiteKey) return;
     this.widgetId = window.hcaptcha.render(host, {
       sitekey: environment.hcaptchaSiteKey,
       size: 'normal',

@@ -207,6 +207,39 @@ class SeatingUseCase:
             seat.status = SeatStatus.SOLD
             ticket.event_seat_id = seat.id
 
+    async def hold_seats(self, event_id: UUID, seat_ids: list[UUID]) -> None:
+        """Aparta sillas mientras el pago no se confirma. Dura hasta que se pague o venza el cobro."""
+        if not seat_ids:
+            return
+        result = await self._session.execute(
+            select(EventSeatModel).where(
+                EventSeatModel.event_id == event_id,
+                EventSeatModel.id.in_(seat_ids),
+            )
+        )
+        seats = {s.id: s for s in result.scalars().all()}
+        for seat_id in seat_ids:
+            seat = seats.get(seat_id)
+            if not seat or seat.status != SeatStatus.AVAILABLE:
+                label = seat.label if seat else "seleccionada"
+                raise ValueError(f"La silla {label} ya no está disponible")
+            seat.status = SeatStatus.RESERVED
+        await self._session.flush()
+
+    async def release_held_seats(self, event_id: UUID, seat_ids: list[UUID]) -> None:
+        if not seat_ids:
+            return
+        result = await self._session.execute(
+            select(EventSeatModel).where(
+                EventSeatModel.event_id == event_id,
+                EventSeatModel.id.in_(seat_ids),
+            )
+        )
+        for seat in result.scalars().all():
+            if seat.status == SeatStatus.RESERVED:
+                seat.status = SeatStatus.AVAILABLE
+        await self._session.flush()
+
     async def _load_event(self, event_id: UUID) -> EventModel:
         result = await self._session.execute(select(EventModel).where(EventModel.id == event_id))
         event = result.scalar_one_or_none()

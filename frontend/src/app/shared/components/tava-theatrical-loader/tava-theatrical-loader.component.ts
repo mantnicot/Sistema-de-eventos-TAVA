@@ -1,8 +1,10 @@
 import {
   AfterViewInit,
+  ChangeDetectorRef,
   Component,
   ElementRef,
   Input,
+  NgZone,
   OnDestroy,
   ViewChild,
 } from '@angular/core';
@@ -55,7 +57,11 @@ export class TavaTheatricalLoaderComponent implements AfterViewInit, OnDestroy {
   private resizeObserver?: ResizeObserver;
   private measures = { H: 220, logoW: 128, finalX: 180, inicioX: 420 };
 
-  constructor(host: ElementRef<HTMLElement>) {
+  constructor(
+    host: ElementRef<HTMLElement>,
+    private readonly zone: NgZone,
+    private readonly changes: ChangeDetectorRef,
+  ) {
     this.host = host.nativeElement;
   }
 
@@ -68,7 +74,7 @@ export class TavaTheatricalLoaderComponent implements AfterViewInit, OnDestroy {
       this.paint(this.progress);
     });
     this.resizeObserver.observe(this.host);
-    if (this.shouldMove) this.start();
+    if (this.shouldMove) this.zone.runOutsideAngular(() => this.start());
   }
 
   ngOnDestroy(): void {
@@ -90,7 +96,7 @@ export class TavaTheatricalLoaderComponent implements AfterViewInit, OnDestroy {
         return;
       }
       const total = this.elapsed + (now - this.runningSince);
-      const target = Math.min(92, (total / 14000) * 92);
+      const target = Math.min(96, (total / 5200) * 96);
       if (target - this.progress > 0.04) {
         this.progress = target;
         this.paint(this.progress);
@@ -111,11 +117,12 @@ export class TavaTheatricalLoaderComponent implements AfterViewInit, OnDestroy {
 
   private measure(): void {
     const width = this.host.clientWidth || this.host.parentElement?.clientWidth || 360;
-    const heightCap = Math.min(window.innerHeight * 0.46, 420);
-    const span = this.logoRatio + 2 * this.face * this.maskRatio * 0.86 + 0.16;
-    const H = Math.max(150, Math.min(heightCap, (width * 0.92) / span));
+    const heightCap = Math.min(window.innerHeight * 0.36, 300);
+    const maskScale = 0.92;
+    const span = this.logoRatio + 2 * this.face * this.maskRatio * maskScale + 0.22;
+    const H = Math.max(156, Math.min(heightCap, (width * 0.9) / span));
     const logoW = H * this.logoRatio;
-    const maskH = H * 0.86;
+    const maskH = H * maskScale;
     const maskW = maskH * this.maskRatio;
     const faceW = maskW * this.face;
     let finalX = logoW / 2 + faceW / 2 + H * 0.08;
@@ -130,22 +137,25 @@ export class TavaTheatricalLoaderComponent implements AfterViewInit, OnDestroy {
     style.setProperty('--luz-w', `${faceW * 1.7}px`);
     style.setProperty('--halo-w', `${H * 1.5}px`);
     style.setProperty('--proscenio-w', `${finalX * 2 + faceW}px`);
-    this.measures = { H, logoW, finalX, inicioX: width / 2 + maskW * 0.6 };
+    const ribbon = maskW * 0.16;
+    const side = Math.max(finalX, width / 2 - maskW / 2 - ribbon);
+    const inicioX = Math.min(side, Math.max(finalX, width * 0.3));
+    this.measures = { H, logoW, finalX, inicioX };
   }
 
   private paint(value: number): void {
     const p = Math.min(100, Math.max(0, value));
-    const { H, logoW, finalX, inicioX } = this.measures;
+    const { H, finalX, inicioX } = this.measures;
     const t = p / 100;
     const e = 1 - (1 - t) ** 3;
-    const breath = Math.sin(t * Math.PI * 4) * 0.022;
-    const turn = -3 * (1 - e) + 1.4 * Math.sin(t * Math.PI * 3);
-    const rise = H * 0.035 * (1 - e);
+    const breath = Math.sin(t * Math.PI * 2) * 0.018;
+    const turn = -6 * (1 - e) + 2.4 * Math.sin(t * Math.PI);
+    const rise = H * 0.08 * (1 - e);
     if (this.logo) {
-      this.logo.nativeElement.style.transform = `translateY(${rise.toFixed(2)}px) rotate(${turn.toFixed(3)}deg) scale(${(0.9 + 0.1 * e + breath).toFixed(4)})`;
+      this.logo.nativeElement.style.transform = `translateY(${rise.toFixed(2)}px) rotate(${turn.toFixed(3)}deg) scale(${(0.94 + 0.06 * e + breath).toFixed(4)})`;
     }
 
-    const m = this.inOut(Math.min(1, t / 0.82));
+    const m = this.inOut(Math.min(1, t / 0.62));
     const arc = Math.sin(Math.PI * m);
     const xC = -inicioX + (inicioX + finalX) * m;
     const bow = Math.sin(Math.PI * this.clamp((t - 0.8) / 0.2));
@@ -162,14 +172,9 @@ export class TavaTheatricalLoaderComponent implements AfterViewInit, OnDestroy {
       this.tragedia.nativeElement.style.transform = `translate(${(-xC).toFixed(2)}px, ${yT.toFixed(2)}px) rotate(${rotT.toFixed(3)}deg) scale(${depth.toFixed(4)})`;
     }
 
-    let left = 50;
-    let right = 50;
-    if (xC > -xC) {
-      left = this.clamp((-xC + logoW / 2) / logoW) * 100;
-      right = this.clamp((logoW / 2 - xC) / logoW) * 100;
-    }
     if (this.logoPleno) {
-      this.logoPleno.nativeElement.style.clipPath = `inset(-4% ${right.toFixed(2)}% -4% ${left.toFixed(2)}%)`;
+      this.logoPleno.nativeElement.style.opacity = '1';
+      this.logoPleno.nativeElement.style.filter = 'drop-shadow(0 10px 18px rgba(58, 47, 42, 0.18))';
     }
 
     const glow = (0.15 + 0.85 * arc) * (1 - open * 0.85) * this.clamp(t * 6);
@@ -191,18 +196,23 @@ export class TavaTheatricalLoaderComponent implements AfterViewInit, OnDestroy {
     }
 
     const rounded = Math.round(p);
-    this.percent = rounded;
     const lines: [number, string][] = [
       [0, 'Sala en penumbra'],
-      [1, 'Se apagan las luces de la sala'],
-      [25, 'Entran las máscaras'],
-      [55, 'Se abre el telón'],
-      [85, 'Reverencia'],
-      [100, 'Comienza la función'],
+      [6, 'Se apagan las luces de la sala'],
+      [16, 'Entran las máscaras'],
+      [38, 'Se abre el telón'],
+      [68, 'Reverencia'],
+      [90, 'Comienza la función'],
     ];
     let line = lines[0][1];
     for (const [from, text] of lines) if (rounded >= from) line = text;
-    this.stageLine = line;
+    if (line !== this.stageLine) {
+      this.stageLine = line;
+      this.percent = rounded;
+      this.zone.run(() => this.changes.markForCheck());
+    } else {
+      this.percent = rounded;
+    }
     this.escena?.nativeElement.setAttribute('aria-valuenow', String(rounded));
   }
 

@@ -58,7 +58,7 @@
 
       <tava-captcha (tokenChange)="onCaptchaToken($event)" />
 
-      <button type="submit" class="tava-btn-primary" [disabled]="!acceptPrivacy || !captchaToken">Registrarse</button>
+      <button type="submit" class="tava-btn-primary" [disabled]="!acceptPrivacy || (captchaRequired && !captchaToken)">Registrarse</button>
       <p class="hint">¿Ya tienes cuenta? <a routerLink="/ingresar" [queryParams]="loginQuery">Ingresar</a></p>
     </form>
   } @else {

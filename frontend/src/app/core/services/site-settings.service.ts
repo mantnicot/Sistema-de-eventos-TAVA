@@ -1,4 +1,4 @@
-import { Injectable, inject, signal } from '@angular/core';
+import { Injectable, computed, inject, signal } from '@angular/core';
 import { finalize } from 'rxjs';
 import { readAppearanceCache, writeAppearanceCache } from '../utils/appearance-cache.util';
 import { ApiService } from './api.service';
@@ -15,7 +15,9 @@ export class SiteSettingsService {
   private readonly cacheTtlMs = 5 * 60 * 1000;
   private loadedAt = 0;
   private loading = false;
-  readonly appearance = signal<SiteAppearance | null>(readAppearanceCache());
+  /** El captcha no se exige hasta que el servidor lo confirme. Un caché viejo no puede bloquear el ingreso. */
+  readonly appearance = signal<SiteAppearance | null>(this.cachedWithoutCaptchaGate());
+  readonly captchaRequired = computed(() => this.appearance()?.captcha_enabled === true);
 
   loadAppearance(): void {
     if (this.loading) return;
@@ -35,15 +37,20 @@ export class SiteSettingsService {
         },
         error: () => {
           this.loadedAt = Date.now();
-          if (!this.appearance()) {
-            this.appearance.set({
-              loader_video_url: '',
-              loader_video_enabled: true,
-              captcha_enabled: false,
-            });
-          }
+          const current = this.appearance();
+          this.appearance.set({
+            loader_video_url: current?.loader_video_url ?? '',
+            loader_video_enabled: current?.loader_video_enabled ?? true,
+            captcha_enabled: false,
+          });
         },
       });
+  }
+
+  private cachedWithoutCaptchaGate(): SiteAppearance | null {
+    const cached = readAppearanceCache();
+    if (!cached) return null;
+    return { ...cached, captcha_enabled: false };
   }
 
   updateAppearance(data: SiteAppearance) {

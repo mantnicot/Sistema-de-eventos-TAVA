@@ -52,8 +52,7 @@
   &__logo {
     object-fit: contain;
     background: transparent;
-    mix-blend-mode: multiply;
-    filter: drop-shadow(0 2px 6px rgba(58, 47, 42, 0.12));
+    filter: drop-shadow(0 2px 4px rgba(58, 47, 42, 0.16));
     transition: transform var(--tava-transition);
 
     &:hover {
@@ -64,22 +63,33 @@
   &__text {
     display: flex;
     flex-direction: column;
+    align-items: flex-start;
   }
 
   &__mark {
-    font-family: var(--tava-font-display);
+    font-family: 'Cinzel', 'Playfair Display', serif;
     font-size: 1.35rem;
     font-weight: 700;
-    color: var(--tava-gold-glow);
-    letter-spacing: 0.18em;
-    line-height: 1.1;
+    letter-spacing: 0.34em;
+    line-height: 1;
+    padding-left: 0.34em;
+    padding-bottom: 0.18rem;
+    border-bottom: 1px solid rgba(184, 134, 11, 0.55);
+    background: linear-gradient(180deg, #f3e2a8 0%, #b8860b 46%, #7a5a12 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
   }
 
   &__sub {
+    margin-top: 0.28rem;
+    font-family: 'Cinzel', 'Playfair Display', serif;
     font-size: 0.62rem;
-    color: var(--tava-cream-muted);
-    letter-spacing: 0.14em;
+    font-weight: 500;
+    color: #9e5a6b;
+    letter-spacing: 0.28em;
     text-transform: uppercase;
+    padding-left: 0.28em;
   }
 }
 
@@ -216,7 +226,8 @@
   z-index: 1;
 
   &__logo {
-    opacity: 0.85;
+    background: transparent;
+    filter: drop-shadow(0 2px 4px rgba(58, 47, 42, 0.14));
   }
 }
 

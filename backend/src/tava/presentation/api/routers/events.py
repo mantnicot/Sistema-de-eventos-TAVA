@@ -3,7 +3,7 @@ from decimal import Decimal
 from uuid import UUID
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -19,13 +19,17 @@ from tava.domain.commission_contract import (
     is_paid_ticket_price,
     normalize_commission_rate,
 )
-from tava.domain.enums import EventReviewStatus, EventStatus, TicketKind, UserRole
+from tava.domain.enums import EventReviewStatus, EventStatus, PaymentStatus, TicketKind, UserRole
 from tava.infrastructure.persistence.database import get_db
 from tava.infrastructure.persistence.event_staff import get_event_staff, list_assigned_event_ids, set_event_staff
 from tava.infrastructure.persistence.models import (
+    CheckInModel,
+    CollectibleModel,
     EventMediaModel,
     EventModel,
     OrderModel,
+    ReviewModel,
+    SeatModel,
     TicketModel,
     TicketTypeModel,
     UserModel,
@@ -70,6 +74,8 @@ def _event_response(
     tickets_available: int = 0,
     organizer_name: str | None = None,
     include_admin_fields: bool = False,
+    issued_tickets: int | None = None,
+    pending_orders: int | None = None,
 ) -> EventResponse:
     payload = EventResponse(
         id=model.id,
@@ -92,6 +98,8 @@ def _event_response(
         entry_unlocked=model.entry_unlocked,
     )
     if include_admin_fields:
+        payload.issued_tickets = issued_tickets or 0
+        payload.pending_orders = pending_orders or 0
         payload.review_status = model.review_status
         payload.cartelera_visible = model.cartelera_visible
         payload.organizer_id = model.organizer_id
@@ -103,6 +111,31 @@ def _event_response(
         payload.post_settlement_fee = model.post_settlement_fee
         payload.post_settlement_notified_at = model.post_settlement_notified_at
     return payload
+
+
+async def _sale_counters(db: AsyncSession, event_ids: list[UUID]) -> dict[UUID, tuple[int, int]]:
+    if not event_ids:
+        return {}
+    issued = {event_id: 0 for event_id in event_ids}
+    pending = {event_id: 0 for event_id in event_ids}
+    ticket_rows = await db.execute(
+        select(TicketModel.event_id, func.count())
+        .where(TicketModel.event_id.in_(event_ids))
+        .group_by(TicketModel.event_id)
+    )
+    for event_id, count in ticket_rows.all():
+        issued[event_id] = int(count)
+    order_rows = await db.execute(
+        select(OrderModel.event_id, func.count())
+        .where(
+            OrderModel.event_id.in_(event_ids),
+            OrderModel.payment_status == PaymentStatus.PENDING,
+        )
+        .group_by(OrderModel.event_id)
+    )
+    for event_id, count in order_rows.all():
+        pending[event_id] = int(count)
+    return {event_id: (issued[event_id], pending[event_id]) for event_id in event_ids}
 
 
 def _apply_commission_fields(data: dict, body: EventCreateRequest, *, existing: EventModel | None = None) -> dict:
@@ -368,11 +401,14 @@ async def list_events_admin(
     result = await db.execute(q)
     models = list(result.scalars().all())
     organizer_map = await _organizer_names(db, [m.organizer_id for m in models])
+    counters = await _sale_counters(db, [m.id for m in models])
     return [
         _event_response(
             m,
             include_admin_fields=True,
             organizer_name=organizer_map.get(m.organizer_id),
+            issued_tickets=counters.get(m.id, (0, 0))[0],
+            pending_orders=counters.get(m.id, (0, 0))[1],
         )
         for m in models
     ]
@@ -390,11 +426,14 @@ async def list_review_queue(
     )
     models = list(result.scalars().all())
     organizer_map = await _organizer_names(db, [m.organizer_id for m in models])
+    counters = await _sale_counters(db, [m.id for m in models])
     return [
         _event_response(
             m,
             include_admin_fields=True,
             organizer_name=organizer_map.get(m.organizer_id),
+            issued_tickets=counters.get(m.id, (0, 0))[0],
+            pending_orders=counters.get(m.id, (0, 0))[1],
         )
         for m in models
     ]
@@ -868,15 +907,16 @@ async def delete_event(
     user=Depends(require_event_manager),
     db: AsyncSession = Depends(get_db),
 ):
-    from tava.infrastructure.persistence.models import TicketModel
-
     event = await _require_manage_event(db, event_id, user)
-    sold = await db.execute(select(TicketModel.id).where(TicketModel.event_id == event_id).limit(1))
-    if sold.scalar_one_or_none():
-        raise HTTPException(
-            status_code=400,
-            detail="No se puede eliminar: el evento tiene boletas asociadas",
-        )
+    try:
+        await TicketUseCase(db).release_unpaid_orders_for_event(event_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    await db.execute(delete(CheckInModel).where(CheckInModel.event_id == event_id))
+    await db.execute(delete(OrderModel).where(OrderModel.event_id == event_id))
+    await db.execute(delete(ReviewModel).where(ReviewModel.event_id == event_id))
+    await db.execute(delete(CollectibleModel).where(CollectibleModel.event_id == event_id))
+    await db.execute(update(SeatModel).where(SeatModel.event_id == event_id).values(event_id=None))
     await db.execute(delete(EventMediaModel).where(EventMediaModel.event_id == event_id))
     await db.execute(delete(TicketTypeModel).where(TicketTypeModel.event_id == event_id))
     await db.delete(event)

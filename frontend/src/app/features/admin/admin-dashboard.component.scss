@@ -650,6 +650,13 @@
     color: #6b5344;
   }
 
+  &__hold {
+    margin: 0;
+    font-size: 0.74rem;
+    color: #9e5a6b;
+    font-weight: 700;
+  }
+
   &__actions {
     display: flex;
     flex-wrap: wrap;

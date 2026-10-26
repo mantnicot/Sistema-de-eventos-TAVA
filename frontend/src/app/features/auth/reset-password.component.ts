@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
 import { NotificationService } from '../../core/services/notification.service';
+import { SiteSettingsService } from '../../core/services/site-settings.service';
 import { parseHttpError } from '../../core/utils/http-error.util';
 import { TavaCaptchaComponent } from '../../shared/components/tava-captcha/tava-captcha.component';
 
@@ -19,6 +20,10 @@ export class ResetPasswordComponent implements OnInit {
   private readonly router = inject(Router);
   private readonly auth = inject(AuthService);
   private readonly notify = inject(NotificationService);
+  private readonly site = inject(SiteSettingsService);
+  get captchaRequired(): boolean {
+    return this.site.captchaRequired();
+  }
 
   token = '';
   password = '';
@@ -27,7 +32,7 @@ export class ResetPasswordComponent implements OnInit {
   captchaToken = '';
 
   onCaptchaToken(token: string): void {
-    this.captchaToken = token;
+    this.captchaToken = this.site.captchaRequired() && token !== 'captcha-disabled' ? token : '';
   }
 
   ngOnInit(): void {
@@ -44,24 +49,29 @@ export class ResetPasswordComponent implements OnInit {
       return;
     }
     if (!this.token) return;
-    if (!this.captchaToken) {
+    if (this.site.captchaRequired() && !this.captchaToken) {
       this.notify.warning('Verificación', 'Completa la verificación antes de cambiar la contraseña.');
       return;
     }
     this.notify.loadingTheatrical('Actualizando', 'login');
-    this.auth.resetPassword(this.token, this.password, this.captchaToken).subscribe({
+    const token = this.site.captchaRequired() ? this.captchaToken : '';
+    this.auth.resetPassword(this.token, this.password, token).subscribe({
       next: () => {
         this.notify.hide();
-        this.captcha?.reset();
-        this.captchaToken = '';
+        if (this.site.captchaRequired()) {
+          this.captcha?.reset();
+          this.captchaToken = '';
+        }
         this.ok = true;
         this.notify.success('Listo', 'Contraseña actualizada');
         setTimeout(() => this.router.navigate(['/ingresar']), 2000);
       },
       error: (err) => {
         this.notify.hide();
-        this.captcha?.reset();
-        this.captchaToken = '';
+        if (this.site.captchaRequired()) {
+          this.captcha?.reset();
+          this.captchaToken = '';
+        }
         this.notify.showHttpError(parseHttpError(err, 'reset-password'));
       },
     });

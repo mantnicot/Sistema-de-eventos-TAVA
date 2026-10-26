@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
 import { NotificationService } from '../../core/services/notification.service';
+import { SiteSettingsService } from '../../core/services/site-settings.service';
 import { parseHttpError } from '../../core/utils/http-error.util';
 import { TavaCaptchaComponent } from '../../shared/components/tava-captcha/tava-captcha.component';
 
@@ -18,6 +19,7 @@ export class LoginComponent implements OnInit {
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   private readonly notify = inject(NotificationService);
+  private readonly site = inject(SiteSettingsService);
 
   @ViewChild(TavaCaptchaComponent) captcha?: TavaCaptchaComponent;
 
@@ -33,18 +35,19 @@ export class LoginComponent implements OnInit {
   }
 
   onCaptchaToken(token: string): void {
-    this.captchaToken = token;
+    this.captchaToken = this.site.captchaRequired() && token !== 'captcha-disabled' ? token : '';
   }
 
   submit(): void {
     if (this.submitting) return;
-    if (!this.captchaToken) {
+    if (this.site.captchaRequired() && !this.captchaToken) {
       this.notify.warning('Verificación', 'Completa el captcha antes de ingresar');
       return;
     }
     this.submitting = true;
     this.notify.loadingTheatrical('Ingresando', 'login');
-    this.auth.login(this.email, this.password, this.captchaToken).subscribe({
+    const token = this.site.captchaRequired() ? this.captchaToken : '';
+    this.auth.login(this.email, this.password, token).subscribe({
       next: () => {
         this.submitting = false;
         this.notify.hide();
@@ -55,8 +58,10 @@ export class LoginComponent implements OnInit {
       error: (err) => {
         this.submitting = false;
         this.notify.hide();
-        this.captcha?.reset();
-        this.captchaToken = '';
+        if (this.site.captchaRequired()) {
+          this.captcha?.reset();
+          this.captchaToken = '';
+        }
         const parsed = parseHttpError(err, 'login');
         this.needsVerification = parsed.code === 'EMAIL_NOT_VERIFIED';
         console[parsed.kind === 'user' ? 'warn' : 'error'](parsed.logLine);

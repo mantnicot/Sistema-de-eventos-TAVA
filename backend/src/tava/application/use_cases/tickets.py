@@ -1,5 +1,6 @@
 import asyncio
 import logging
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 import secrets
 import string
@@ -20,6 +21,7 @@ from tava.infrastructure.persistence.repositories.sqlalchemy_user_repository imp
 from tava.infrastructure.security.ticket_codes import assign_unique_ticket_code, backfill_missing_ticket_codes
 from tava.infrastructure.security.ticket_tokens import generate_qr_token, generate_security_hash
 from tava.infrastructure.services.email import last_email_failure, send_tickets_confirmation_email
+from tava.infrastructure.services.payment_receipt_pdf import build_payment_receipt_pdf
 from tava.infrastructure.services.ticket_pdf import build_tickets_pdf, unit_paid_price
 from tava.infrastructure.services.site_settings import get_checkout_fees
 from tava.infrastructure.services.wompi import (
@@ -30,6 +32,7 @@ from tava.infrastructure.services.wompi import (
 
 settings = get_settings()
 logger = logging.getLogger("tava.tickets")
+CHECKOUT_HOLD_MINUTES = 45
 CLAIM_CODE_ALPHABET = string.ascii_uppercase + string.digits
 DEFAULT_PLATFORM_FEE_RATE = Decimal("0.10")
 
@@ -240,6 +243,8 @@ class TicketUseCase:
         await self._session.flush()
 
         ticket_type.quantity_available -= quantity
+        if not issue_tickets and seat_ids:
+            await SeatingUseCase(self._session).hold_seats(event.id, seat_ids)
 
         created: list[TicketModel] = []
         if issue_tickets:
@@ -307,6 +312,78 @@ class TicketUseCase:
         tt = result.scalar_one_or_none()
         if tt:
             tt.quantity_available += int(quantity)
+        raw_seats = payload.get("seat_ids") or []
+        if raw_seats:
+            await SeatingUseCase(self._session).release_held_seats(
+                order.event_id, [UUID(str(seat_id)) for seat_id in raw_seats]
+            )
+
+    async def reject_pending_order(self, order: OrderModel) -> None:
+        if order.payment_status != PaymentStatus.PENDING:
+            return
+        payload = dict(order.pending_payload or {})
+        if not payload.get("hold_released"):
+            await self._restore_stock(order)
+            payload["hold_released"] = True
+            order.pending_payload = payload
+        order.payment_status = PaymentStatus.REJECTED
+        await self._session.flush()
+
+    async def expire_abandoned_checkouts(self) -> int:
+        """Suelta cupos de Wompi que nadie pagó. El aviso tardío aún puede emitir la boleta si queda cupo."""
+        cutoff = datetime.now(UTC) - timedelta(minutes=CHECKOUT_HOLD_MINUTES)
+        result = await self._session.execute(
+            select(OrderModel).where(
+                OrderModel.payment_status == PaymentStatus.PENDING,
+                OrderModel.payment_provider == PaymentProvider.WOMPI,
+                OrderModel.created_at < cutoff,
+            )
+        )
+        orders = list(result.scalars().all())
+        for order in orders:
+            await self.reject_pending_order(order)
+        return len(orders)
+
+    async def release_unpaid_orders_for_event(self, event_id: UUID) -> None:
+        """Deja el evento borrable cuando no hay boletas emitidas ni pagos confirmados."""
+        ticket_count = int(
+            (
+                await self._session.execute(
+                    select(func.count()).select_from(TicketModel).where(TicketModel.event_id == event_id)
+                )
+            ).scalar_one()
+            or 0
+        )
+        if ticket_count:
+            noun = "boleta emitida" if ticket_count == 1 else "boletas emitidas"
+            raise ValueError(
+                f"Hay {ticket_count} {noun}. Están en Editar, en asistentes, y en Mis boletas del comprador. "
+                "No se puede eliminar el evento."
+            )
+        paid_count = int(
+            (
+                await self._session.execute(
+                    select(func.count())
+                    .select_from(OrderModel)
+                    .where(
+                        OrderModel.event_id == event_id,
+                        OrderModel.payment_status == PaymentStatus.PAID,
+                    )
+                )
+            ).scalar_one()
+            or 0
+        )
+        if paid_count:
+            noun = "pago confirmado" if paid_count == 1 else "pagos confirmados"
+            raise ValueError(f"Hay {paid_count} {noun}. No se puede eliminar el evento.")
+        pending = await self._session.execute(
+            select(OrderModel).where(
+                OrderModel.event_id == event_id,
+                OrderModel.payment_status == PaymentStatus.PENDING,
+            )
+        )
+        for order in pending.scalars().all():
+            await self.reject_pending_order(order)
 
     async def fulfill_paid_order(
         self,
@@ -330,8 +407,8 @@ class TicketUseCase:
                 tt = await self._load_ticket_type(order.tickets[0].ticket_type_id, order.event_id)
                 return order.tickets, event, tt
 
-        payload = order.pending_payload
-        if not payload:
+        payload = dict(order.pending_payload or {})
+        if not payload.get("ticket_type_id"):
             raise ValueError("Orden sin datos pendientes para emitir boletas")
 
         ticket_type_id = UUID(str(payload["ticket_type_id"]))
@@ -341,6 +418,14 @@ class TicketUseCase:
         seat_ids = [UUID(str(s)) for s in seat_ids_raw] if seat_ids_raw else None
         event = await self._load_event(order.event_id)
         ticket_type = await self._load_ticket_type(ticket_type_id, order.event_id)
+        if payload.get("hold_released"):
+            if ticket_type.quantity_available < quantity:
+                raise ValueError("El cupo se agotó mientras el pago estaba en espera")
+            ticket_type.quantity_available -= quantity
+            if seat_ids:
+                await SeatingUseCase(self._session).hold_seats(event.id, seat_ids)
+            payload["hold_released"] = False
+            order.pending_payload = payload
 
         order.payment_status = PaymentStatus.PAID
         order.payment_provider = payment_provider or order.payment_provider or PaymentProvider.WOMPI
@@ -508,14 +593,6 @@ class TicketUseCase:
             )
         return items
 
-    async def reject_pending_order(self, order: OrderModel) -> None:
-        if order.payment_status != PaymentStatus.PENDING:
-            return
-        order.payment_status = PaymentStatus.REJECTED
-        await self._restore_stock(order)
-        order.pending_payload = None
-        await self._session.flush()
-
     async def create_wompi_checkout(
         self,
         *,
@@ -633,6 +710,38 @@ class TicketUseCase:
 
         return {"handled": True, "payment_status": order.payment_status.value, "order_id": str(order.id)}
 
+    async def _receipt_pdf(
+        self,
+        order: OrderModel,
+        event: EventModel,
+        ticket_type: TicketTypeModel,
+        tickets: list[TicketModel],
+        buyer_name: str,
+        buyer_email: str,
+    ) -> bytes:
+        payload = order.pending_payload or {}
+        raw_base = payload.get("base_amount")
+        base_amount = (
+            Decimal(str(raw_base))
+            if raw_base not in (None, "")
+            else (ticket_type.price * len(tickets)).quantize(Decimal("0.01"))
+        )
+        return await asyncio.to_thread(
+            build_payment_receipt_pdf,
+            event_name=event.name,
+            event_date=event.event_date,
+            event_time=event.event_time,
+            city=event.city,
+            buyer_name=buyer_name,
+            buyer_email=buyer_email,
+            ticket_type_name=ticket_type.name,
+            quantity=len(tickets),
+            base_amount=base_amount,
+            total_amount=order.total_amount,
+            payment_reference=order.payment_reference,
+            wompi_transaction_id=order.wompi_transaction_id,
+        )
+
     async def _send_pdf_emails(
         self,
         order: OrderModel,
@@ -658,6 +767,7 @@ class TicketUseCase:
             price=unit_paid_price(order.total_amount, ticket_type.price, len(tickets)),
             tickets=[(t.qr_token, t.holder_name or buyer.full_name, t.ticket_code or "") for t in tickets],
         )
+        receipt = await self._receipt_pdf(order, event, ticket_type, tickets, buyer.full_name, buyer.email)
         buyer_send = send_tickets_confirmation_email(
             buyer.email,
             buyer.full_name,
@@ -668,6 +778,7 @@ class TicketUseCase:
             event_date=event.event_date.isoformat(),
             event_time=event.event_time.strftime("%H:%M"),
             claim_code=order.claim_code,
+            receipt_pdf=receipt,
         )
         seller_send = (
             send_tickets_confirmation_email(
@@ -680,6 +791,7 @@ class TicketUseCase:
                 event_date=event.event_date.isoformat(),
                 event_time=event.event_time.strftime("%H:%M"),
                 claim_code=order.claim_code,
+                receipt_pdf=receipt,
             )
             if seller and seller.email.lower() != buyer.email.lower()
             else None
@@ -717,6 +829,7 @@ class TicketUseCase:
             price=unit_paid_price(order.total_amount, ticket_type.price, len(tickets)),
             tickets=[(t.qr_token, t.holder_name or buyer_name, t.ticket_code or "") for t in tickets],
         )
+        receipt = await self._receipt_pdf(order, event, ticket_type, tickets, buyer_name, buyer_email)
         buyer_send = send_tickets_confirmation_email(
             buyer_email,
             buyer_name,
@@ -727,6 +840,7 @@ class TicketUseCase:
             event_date=event.event_date.isoformat(),
             event_time=event.event_time.strftime("%H:%M"),
             claim_code=order.claim_code,
+            receipt_pdf=receipt,
         )
         seller_send = (
             send_tickets_confirmation_email(
@@ -739,6 +853,7 @@ class TicketUseCase:
                 event_date=event.event_date.isoformat(),
                 event_time=event.event_time.strftime("%H:%M"),
                 claim_code=order.claim_code,
+                receipt_pdf=receipt,
             )
             if seller and seller.email.lower() != buyer_email.lower()
             else None
