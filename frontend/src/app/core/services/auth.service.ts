@@ -55,23 +55,12 @@ export class AuthService {
   }
 
   login(email: string, password: string, captchaToken?: string) {
-    return from(this.getPublicKeyPem()).pipe(
-      switchMap((public_key_pem) =>
-        from(encryptPasswordForTransport(public_key_pem, password)).pipe(
-          switchMap((password_encrypted) =>
-            this.api.post<AuthResponse>('/auth/login', {
-              email,
-              password_encrypted,
-              captcha_token: captchaToken,
-            })
-          )
-        )
-      ),
+    return from(this.postEncryptedLogin(email, password, captchaToken, true)).pipe(
       timeout(LOGIN_TIMEOUT_MS),
       tap((res) => this.persist(res)),
       catchError((err) => {
         if (err instanceof TimeoutError) {
-          this.publicKeyInflight = null;
+          this.invalidatePublicKey();
           return throwError(
             () =>
               new HttpErrorResponse({
@@ -90,6 +79,32 @@ export class AuthService {
     );
   }
 
+  private async postEncryptedLogin(
+    email: string,
+    password: string,
+    captchaToken: string | undefined,
+    allowRetry: boolean
+  ): Promise<AuthResponse> {
+    try {
+      const public_key_pem = await this.getPublicKeyPem(true);
+      const password_encrypted = await encryptPasswordForTransport(public_key_pem, password);
+      return await firstValueFrom(
+        this.api.post<AuthResponse>('/auth/login', {
+          email,
+          password_encrypted,
+          captcha_token: captchaToken,
+        })
+      );
+    } catch (err) {
+      const detail = String((err as HttpErrorResponse)?.error?.detail ?? '');
+      if (allowRetry && detail.toLowerCase().includes('descifrar')) {
+        this.invalidatePublicKey();
+        return this.postEncryptedLogin(email, password, captchaToken, false);
+      }
+      throw err;
+    }
+  }
+
   register(data: {
     email: string;
     password: string;
@@ -99,7 +114,7 @@ export class AuthService {
     accept_marketing?: boolean;
     captcha_token?: string;
   }) {
-    return from(this.getPublicKeyPem()).pipe(
+    return from(this.getPublicKeyPem(true)).pipe(
       switchMap((public_key_pem) =>
         from(encryptPasswordForTransport(public_key_pem, data.password)).pipe(
           switchMap((password_encrypted) =>
@@ -142,7 +157,7 @@ export class AuthService {
   }
 
   resetPassword(token: string, password: string, captchaToken: string) {
-    return from(this.getPublicKeyPem()).pipe(
+    return from(this.getPublicKeyPem(true)).pipe(
       switchMap((public_key_pem) =>
         from(encryptPasswordForTransport(public_key_pem, password)).pipe(
           switchMap((password_encrypted) =>
@@ -242,9 +257,15 @@ export class AuthService {
     }
   }
 
-  private getPublicKeyPem(): Promise<string> {
-    if (this.publicKeyPem) return Promise.resolve(this.publicKeyPem);
-    if (this.publicKeyInflight) return this.publicKeyInflight;
+  private invalidatePublicKey(): void {
+    this.publicKeyPem = null;
+    this.publicKeyInflight = null;
+  }
+
+  private getPublicKeyPem(forceRefresh = false): Promise<string> {
+    if (!forceRefresh && this.publicKeyPem) return Promise.resolve(this.publicKeyPem);
+    if (!forceRefresh && this.publicKeyInflight) return this.publicKeyInflight;
+    if (forceRefresh) this.invalidatePublicKey();
     this.publicKeyInflight = firstValueFrom(this.api.get<{ public_key_pem: string }>('/auth/public-key'))
       .then(({ public_key_pem }) => {
         this.publicKeyPem = public_key_pem;

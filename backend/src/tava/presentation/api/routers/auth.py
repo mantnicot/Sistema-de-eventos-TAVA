@@ -13,7 +13,11 @@ from tava.infrastructure.services.email import email_status_summary, email_trans
 from tava.presentation.api.dependencies import get_current_user, require_roles
 from tava.presentation.api.platform_auth import require_platform_admin
 from tava.presentation.api.http_errors import raise_system_error, raise_user_error
-from tava.infrastructure.security.login_crypto import decrypt_password, get_public_key_pem
+from tava.infrastructure.security.login_crypto import (
+    decrypt_password,
+    ensure_persisted_login_key,
+    get_public_key_pem,
+)
 from tava.presentation.api.schemas import (
     ForgotPasswordRequest,
     LoginRequest,
@@ -46,13 +50,25 @@ async def email_status(_user=Depends(require_platform_admin)):
 
 
 @router.get("/public-key")
-async def auth_public_key():
+async def auth_public_key(db: AsyncSession = Depends(get_db)):
     """Clave pública RSA para cifrar la contraseña en el navegador antes del login."""
+    try:
+        await ensure_persisted_login_key(db)
+        await db.commit()
+    except Exception:
+        logger.exception("No se pudo persistir/cargar la clave RSA de login")
     return {"public_key_pem": get_public_key_pem()}
 
 
-def _resolve_password(body: LoginRequest | RegisterRequest | ResetPasswordRequest) -> str:
+async def _resolve_password(
+    body: LoginRequest | RegisterRequest | ResetPasswordRequest,
+    db: AsyncSession,
+) -> str:
     if body.password_encrypted:
+        try:
+            await ensure_persisted_login_key(db)
+        except Exception:
+            logger.exception("No se pudo cargar la clave RSA antes de descifrar")
         return decrypt_password(body.password_encrypted)
     return body.password or ""
 
@@ -110,7 +126,7 @@ async def register(body: RegisterRequest, db: AsyncSession = Depends(get_db)):
     if not await ensure_captcha(db, body.captcha_token):
         raise_user_error(400, "CAPTCHA_INVALID", "Verificación captcha inválida")
     try:
-        plain_password = _resolve_password(body)
+        plain_password = await _resolve_password(body, db)
     except ValueError as e:
         raise_user_error(400, "PASSWORD_DECRYPT_FAILED", str(e))
     try:
@@ -175,7 +191,7 @@ async def reset_password(body: ResetPasswordRequest, db: AsyncSession = Depends(
     if not await ensure_captcha(db, body.captcha_token):
         raise_user_error(400, "CAPTCHA_INVALID", "Verificación captcha inválida")
     try:
-        plain_password = _resolve_password(body)
+        plain_password = await _resolve_password(body, db)
     except ValueError as e:
         raise_user_error(400, "PASSWORD_DECRYPT_FAILED", str(e))
     try:
@@ -200,7 +216,7 @@ async def login(body: LoginRequest, db: AsyncSession = Depends(get_db)):
     if not await ensure_captcha(db, body.captcha_token):
         raise_user_error(400, "CAPTCHA_INVALID", "Verificación captcha inválida")
     try:
-        plain_password = _resolve_password(body)
+        plain_password = await _resolve_password(body, db)
     except ValueError as e:
         raise_user_error(400, "PASSWORD_DECRYPT_FAILED", str(e))
     try:

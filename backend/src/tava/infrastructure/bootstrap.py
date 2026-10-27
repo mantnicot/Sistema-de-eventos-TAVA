@@ -64,6 +64,9 @@ async def bootstrap_application() -> None:
                 )
 
             await ensure_default_settings(session)
+            from tava.infrastructure.security.login_crypto import ensure_persisted_login_key
+
+            await ensure_persisted_login_key(session)
             filled = 0
             claim_codes = 0
             if app_settings.startup_backfills_enabled:

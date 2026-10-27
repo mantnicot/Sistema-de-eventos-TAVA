@@ -17,6 +17,8 @@ class Settings(BaseSettings):
     database_pool_timeout_seconds: int = 10
     jwt_secret_key: str = "dev-secret-change-in-production-min-32-chars"
     jwt_algorithm: str = "HS256"
+    """PEM PKCS8 de la clave RSA de login (opcional). Si falta, se guarda en site_settings."""
+    login_rsa_private_key_pem: str = ""
     access_token_expire_minutes: int = 30
     refresh_token_expire_days: int = 7
     cors_origins: str = "http://localhost:4200"
