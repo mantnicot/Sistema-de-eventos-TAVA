@@ -1,6 +1,8 @@
 :host {
   display: block;
   width: 100%;
+  max-width: 28rem;
+  margin-inline: auto;
 }
 
 .theatrical-loader {
@@ -10,81 +12,78 @@
   justify-content: center;
   text-align: center;
   width: 100%;
-  padding: 1.25rem 0 0.5rem;
-  gap: 0.85rem;
+  padding: 0.85rem 0 0.35rem;
+  gap: 0.65rem;
 }
 
 .escena {
   position: relative;
   width: 100%;
-  height: var(--alto-escena, 42vh);
+  height: var(--alto-escena, 11.5rem);
   overflow: hidden;
+  contain: layout paint;
 }
 
 .escena > * {
   position: absolute;
   left: 50%;
   top: 50%;
-  will-change: transform, opacity;
+}
+
+:host.is-moving .logo,
+:host.is-moving .mascara,
+:host.is-moving .proscenio {
+  will-change: transform;
 }
 
 .halo {
-  width: var(--halo-w);
-  height: var(--halo-w);
-  margin: calc(var(--halo-w) / -2) 0 0 calc(var(--halo-w) / -2);
+  width: var(--halo-size);
+  height: var(--halo-size);
+  margin: calc(var(--halo-size) / -2) 0 0 calc(var(--halo-size) / -2);
   border-radius: 50%;
-  background: radial-gradient(closest-side, rgba(201, 162, 39, 0.18) 0%, rgba(201, 162, 39, 0.1) 45%, rgba(201, 162, 39, 0) 100%);
-  opacity: 0;
+  background: radial-gradient(closest-side, rgba(201, 162, 39, 0.16) 0%, rgba(201, 162, 39, 0) 72%);
+  opacity: 0.2;
   z-index: 0;
+  pointer-events: none;
 }
 
-.luz {
-  width: var(--luz-w);
-  height: calc(var(--alto-escena) * 1.5);
-  margin: calc(var(--alto-escena) * -0.75) 0 0 calc(var(--luz-w) / -2);
-  background: radial-gradient(50% 50% at 50% 50%, rgba(232, 212, 155, 0.6) 0%, rgba(232, 212, 155, 0.38) 35%, rgba(201, 162, 39, 0.12) 65%, rgba(201, 162, 39, 0) 100%);
-  opacity: 0;
-  z-index: 1;
-}
-
-.escena .proscenio {
+.proscenio {
   height: 1px;
   width: var(--proscenio-w);
   margin-left: calc(var(--proscenio-w) / -2);
-  top: calc(50% + var(--masc-h) / 2 + 6px);
-  background: linear-gradient(90deg, rgba(201, 162, 39, 0), #c9a227 30%, #b8860b 50%, #c9a227 70%, rgba(201, 162, 39, 0));
+  top: calc(50% + var(--logo-size) / 2 + 10px);
+  background: linear-gradient(90deg, transparent, #c9a227 35%, #b8860b 50%, #c9a227 65%, transparent);
   transform-origin: 50% 50%;
   z-index: 1;
+  opacity: 0.4;
 }
 
 .logo {
-  width: var(--logo-w);
-  height: var(--logo-h);
-  margin: calc(var(--logo-h) / -2) 0 0 calc(var(--logo-w) / -2);
-  transform-origin: 50% 92%;
+  width: var(--logo-size);
+  height: var(--logo-size);
+  margin: calc(var(--logo-size) / -2) 0 0 calc(var(--logo-size) / -2);
+  transform-origin: 50% 50%;
   z-index: 2;
 }
 
 .logo img {
-  position: absolute;
-  inset: 0;
+  display: block;
   width: 100%;
   height: 100%;
-  display: block;
-  user-select: none;
-}
-
-.logo .pleno {
-  opacity: 1;
+  object-fit: contain;
+  object-position: center;
   background: transparent;
+  user-select: none;
+  pointer-events: none;
+  filter: drop-shadow(0 6px 12px rgba(58, 47, 42, 0.14));
 }
 
 .mascara {
-  width: var(--masc-w);
-  height: var(--masc-h);
-  margin: calc(var(--masc-h) / -2) 0 0 calc(var(--masc-w) / -2);
-  transform-origin: 50% 40%;
-  filter: drop-shadow(0 calc(var(--logo-h) * 0.03) calc(var(--logo-h) * 0.04) rgba(58, 47, 42, 0.16));
+  width: var(--masc-size);
+  height: var(--masc-size);
+  margin: calc(var(--masc-size) / -2) 0 0 calc(var(--masc-size) / -2);
+  transform-origin: 50% 45%;
+  z-index: 3;
 }
 
 .mascara svg {
@@ -98,37 +97,32 @@
   z-index: 4;
 }
 
-.tragedia {
-  z-index: 3;
-}
-
 .theatrical-loader__title {
-  margin: 0.35rem 0 0;
+  margin: 0.15rem 0 0;
   font-family: 'Cinzel', 'Playfair Display', serif;
   font-weight: 700;
-  font-size: clamp(1.15rem, 3.4vw, 1.55rem);
-  letter-spacing: 0.18em;
+  font-size: clamp(1rem, 2.8vw, 1.28rem);
+  letter-spacing: 0.14em;
   text-transform: uppercase;
-  padding-left: 0.18em;
-  background: linear-gradient(180deg, #e8d49b 0%, #b8860b 42%, #8a6410 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  padding-left: 0.14em;
+  color: #8a6410;
 }
 
 .theatrical-loader__message {
   margin: 0;
-  max-width: 28rem;
+  max-width: 24rem;
   font-family: 'Playfair Display', Georgia, serif;
   font-style: italic;
-  font-size: 1.02rem;
+  font-size: 0.95rem;
   color: #9e5a6b;
-  line-height: 1.45;
-  min-height: 1.4em;
+  line-height: 1.4;
+  min-height: 1.35em;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .escena > * {
-    transition: none;
+  :host.is-moving .logo,
+  :host.is-moving .mascara,
+  :host.is-moving .proscenio {
+    will-change: auto;
   }
 }

@@ -9,14 +9,12 @@
     [attr.aria-valuenow]="percent"
   >
     <div class="halo" #halo></div>
-    <div class="luz" #luzA></div>
-    <div class="luz" #luzB></div>
     <div class="proscenio" #proscenio></div>
     <div class="logo" #logo>
-      <img class="pleno" #logoPleno src="/logo-tava.png" alt="" />
+      <img class="pleno" src="/logo-tava.png" alt="" width="168" height="168" decoding="async" />
     </div>
     <div class="mascara comedia" #comedia aria-hidden="true">
-      <svg viewBox="-40 0 280 260">
+      <svg viewBox="-40 0 280 260" focusable="false">
         <defs>
           <linearGradient [attr.id]="oroId" x1="0" y1="0" x2="0.35" y2="1">
             <stop offset="0" stop-color="#e8d49b" />
@@ -41,7 +39,7 @@
       </svg>
     </div>
     <div class="mascara tragedia" #tragedia aria-hidden="true">
-      <svg viewBox="-40 0 280 260">
+      <svg viewBox="-40 0 280 260" focusable="false">
         <path d="M20 96 C-6 108 4 146 -24 170" fill="none" stroke="#b8860b" stroke-width="6" stroke-linecap="round" />
         <path d="M20 104 C0 132 -18 150 -10 204" fill="none" stroke="#e8d49b" stroke-width="5" stroke-linecap="round" />
         <path [attr.fill]="'url(#' + burdeosId + ')'" fill-rule="evenodd" stroke="#3a2f2a" stroke-opacity=".35" stroke-width="2"
