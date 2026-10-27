@@ -1117,3 +1117,97 @@ $tava-ease-out: cubic-bezier(0.22, 0.61, 0.36, 1);
     transform: none;
   }
 }
+
+.promo-workspace {
+  display: grid;
+  grid-template-columns: 1.05fr 0.95fr;
+  gap: 1rem;
+  align-items: start;
+
+  @media (max-width: 960px) {
+    grid-template-columns: 1fr;
+  }
+
+  h2 {
+    margin: 0 0 0.65rem;
+    font-family: var(--tava-font-display);
+    color: var(--tava-gold-glow);
+    font-size: 1.2rem;
+  }
+
+  label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    margin-bottom: 0.75rem;
+    font-size: 0.85rem;
+    color: var(--tava-cream-muted);
+  }
+
+  input,
+  select,
+  textarea {
+    padding: 0.55rem 0.65rem;
+    border-radius: 10px;
+    border: 1px solid rgba(201, 162, 39, 0.35);
+    background: var(--tava-stage-mid);
+    color: var(--tava-cream);
+    font: inherit;
+  }
+
+  &__history {
+    grid-column: 1 / -1;
+  }
+}
+
+.promo-events {
+  margin: 0 0 1rem;
+  padding: 0.75rem;
+  border: 1px dashed rgba(201, 162, 39, 0.35);
+  border-radius: 10px;
+  background: var(--tava-velvet);
+
+  legend {
+    padding: 0 0.35rem;
+    color: var(--tava-gold-glow);
+    font-size: 0.85rem;
+  }
+}
+
+.promo-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+
+.promo-mail-frame {
+  max-height: 70vh;
+  overflow: auto;
+  border-radius: 12px;
+  border: 1px solid rgba(58, 47, 42, 0.1);
+  background: #ece7df;
+  padding: 0.5rem;
+}
+
+.promo-history {
+  list-style: none;
+  margin: 0.75rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.55rem;
+
+  li {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    padding: 0.55rem 0.65rem;
+    border-radius: 8px;
+    background: var(--tava-velvet);
+    font-size: 0.85rem;
+
+    span {
+      color: var(--tava-cream-muted);
+      font-size: 0.78rem;
+    }
+  }
+}

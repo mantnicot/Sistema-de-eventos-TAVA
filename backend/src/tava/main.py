@@ -83,9 +83,10 @@ async def _startup_bootstrap() -> None:
 
 
 async def _settlement_worker_loop() -> None:
-    """Avisos T-1h y ajuste post-evento cada minuto."""
+    """Avisos T-1h, apartados Wompi y lotes de publicidad cada minuto."""
     from tava.infrastructure.persistence.database import AsyncSessionLocal
     from tava.application.use_cases.settlement import SettlementUseCase
+    from tava.application.use_cases.campaigns import CampaignUseCase
 
     await asyncio.sleep(20)
     while True:
@@ -95,11 +96,14 @@ async def _settlement_worker_loop() -> None:
 
                 expired = await TicketUseCase(session).expire_abandoned_checkouts()
                 result = await SettlementUseCase(session).process_due_notifications()
+                promo = await CampaignUseCase(session).process_batch()
                 await session.commit()
                 if expired:
                     logger.info("Apartados Wompi vencidos: %s", expired)
                 if result.get("pre_sent") or result.get("post_sent"):
                     logger.info("Settlement worker: %s", result)
+                if promo.get("sent") or promo.get("failed"):
+                    logger.info("Publicidad lotes: %s", promo)
         except Exception:
             logger.exception("Settlement worker falló")
         await asyncio.sleep(60)

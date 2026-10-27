@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 logger = logging.getLogger("tava.schema")
 
 SCHEMA_MARKER_KEY = "schema_upgrade_marker"
-SCHEMA_MARKER_VALUE = "2026-09-user-role-varchar-v5"
+SCHEMA_MARKER_VALUE = "2026-10-promo-campaigns-v1"
 
 
 async def _exec(conn: AsyncConnection, sql: str) -> None:
@@ -176,6 +176,37 @@ async def apply_schema_upgrades(conn: AsyncConnection) -> None:
         "UPDATE users SET role = 'admin' WHERE role IN ('ADMIN', 'Admin')",
         "UPDATE users SET role = 'validator' WHERE role IN ('VALIDATOR', 'Validator')",
         "UPDATE users SET role = 'seller' WHERE role IN ('SELLER', 'Seller')",
+        """
+        CREATE TABLE IF NOT EXISTS promo_campaigns (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            created_by UUID NOT NULL REFERENCES users(id),
+            subject VARCHAR(200) NOT NULL,
+            intro_text TEXT NOT NULL DEFAULT '',
+            format VARCHAR(20) NOT NULL,
+            audience VARCHAR(40) NOT NULL DEFAULT 'opt_in',
+            event_ids JSONB NOT NULL DEFAULT '[]',
+            status VARCHAR(20) NOT NULL DEFAULT 'queued',
+            total_recipients INTEGER NOT NULL DEFAULT 0,
+            sent_count INTEGER NOT NULL DEFAULT 0,
+            failed_count INTEGER NOT NULL DEFAULT 0,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            started_at TIMESTAMPTZ,
+            finished_at TIMESTAMPTZ
+        )
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS promo_campaign_recipients (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            campaign_id UUID NOT NULL REFERENCES promo_campaigns(id) ON DELETE CASCADE,
+            user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            email VARCHAR(255) NOT NULL,
+            status VARCHAR(20) NOT NULL DEFAULT 'pending',
+            error TEXT,
+            sent_at TIMESTAMPTZ,
+            CONSTRAINT uq_promo_campaign_user UNIQUE (campaign_id, user_id)
+        )
+        """,
+        "CREATE INDEX IF NOT EXISTS ix_promo_recipients_pending ON promo_campaign_recipients(status, campaign_id)",
     ]
     for sql in statements:
         await _exec(conn, sql)

@@ -15,6 +15,7 @@
       @if (isPlatformAdmin()) {
         <button type="button" [class.active]="tab() === 'users'" (click)="tab.set('users')">Personas</button>
         <button type="button" [class.active]="tab() === 'appearance'" (click)="tab.set('appearance')">Apariencia</button>
+        <button type="button" [class.active]="tab() === 'promo'" (click)="openPromoTab()">Publicidad</button>
       }
     </nav>
   </header>
@@ -649,6 +650,91 @@
 
   @if (tab() === 'users' && isPlatformAdmin()) {
     <tava-admin-users-panel />
+  }
+
+  @if (tab() === 'promo' && isPlatformAdmin()) {
+    <section class="promo-workspace">
+      <div class="promo-workspace__form tava-card">
+        <h2>Publicidad por correo</h2>
+        <p class="muted">
+          Solo el administrador global puede enviar. Llega únicamente a quienes aceptaron publicidad al registrarse.
+          El envío va por lotes (~25 por minuto) para respetar el cupo de Brevo.
+        </p>
+
+        <label>Asunto del correo
+          <input type="text" [(ngModel)]="promoForm.subject" name="promoSubject" maxlength="200" />
+        </label>
+        <label>Texto de introducción
+          <textarea [(ngModel)]="promoForm.intro" name="promoIntro" rows="3"></textarea>
+        </label>
+        <label>Formato
+          <select [(ngModel)]="promoForm.format" name="promoFormat">
+            <option value="magazine">Revista (varios eventos)</option>
+            <option value="spotlight">Un solo evento</option>
+          </select>
+        </label>
+        <label>Audiencia
+          <select [(ngModel)]="promoForm.audience" name="promoAudience" (ngModelChange)="refreshPromoAudience()">
+            <option value="opt_in">Quienes aceptaron publicidad</option>
+            <option value="opt_in_buyers">Opt-in + ya compraron alguna vez</option>
+            <option value="opt_in_favorites">Opt-in + favoritos de los eventos marcados</option>
+          </select>
+        </label>
+        <p class="muted">
+          Destinatarios:
+          <strong>{{ promoAudienceCount() == null ? '…' : promoAudienceCount() }}</strong>
+        </p>
+
+        <fieldset class="promo-events">
+          <legend>Eventos a incluir</legend>
+          @for (ev of promoEventOptions(); track ev.id) {
+            <label class="check-row">
+              <input type="checkbox" [(ngModel)]="promoSelectedIds[ev.id]" [name]="'promoEv' + ev.id" />
+              {{ ev.name }} · {{ formatEventDateTime(ev.event_date, ev.event_time) }}
+            </label>
+          } @empty {
+            <p class="muted">No hay eventos cargados. Abre la pestaña Eventos o reintenta.</p>
+          }
+        </fieldset>
+
+        <div class="promo-actions">
+          <button type="button" class="nav__btn-outline" (click)="previewPromoCampaign()" [disabled]="promoBusy()">
+            Vista previa
+          </button>
+          <button type="button" class="tava-btn-primary" (click)="sendPromoCampaign()" [disabled]="promoBusy()">
+            Enviar campaña
+          </button>
+        </div>
+      </div>
+
+      <div class="promo-workspace__preview tava-card">
+        <h2>Vista previa</h2>
+        @if (promoPreviewHtml()) {
+          <div class="promo-mail-frame" [innerHTML]="safePromoPreview()"></div>
+        } @else {
+          <p class="muted">Pulsa «Vista previa» para ver el correo revista o de un solo evento.</p>
+        }
+      </div>
+
+      <div class="promo-workspace__history tava-card">
+        <h2>Últimas campañas</h2>
+        <button type="button" class="nav__btn-outline btn-sm" (click)="loadPromoCampaigns()">Actualizar</button>
+        <ul class="promo-history">
+          @for (c of promoCampaigns(); track c.id) {
+            <li>
+              <strong>{{ c.subject }}</strong>
+              <span>{{ c.format }} · {{ c.status }} · enviados {{ c.sent_count }}/{{ c.total_recipients }}
+                @if (c.failed_count) {
+                  · fallidos {{ c.failed_count }}
+                }
+              </span>
+            </li>
+          } @empty {
+            <li class="muted">Aún no hay campañas.</li>
+          }
+        </ul>
+      </div>
+    </section>
   }
 
   @if (tab() === 'appearance' && isPlatformAdmin()) {

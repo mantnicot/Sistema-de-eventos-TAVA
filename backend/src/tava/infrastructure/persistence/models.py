@@ -421,3 +421,46 @@ class RefreshTokenModel(Base):
     token_hash: Mapped[str] = mapped_column(String(255), unique=True)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     revoked: Mapped[bool] = mapped_column(Boolean, default=False)
+
+
+class PromoCampaignModel(Base):
+    """Campaña de publicidad por correo (solo admin de plataforma)."""
+
+    __tablename__ = "promo_campaigns"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    created_by: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"))
+    subject: Mapped[str] = mapped_column(String(200))
+    intro_text: Mapped[str] = mapped_column(Text, default="")
+    format: Mapped[str] = mapped_column(String(20))  # magazine | spotlight
+    audience: Mapped[str] = mapped_column(String(40), default="opt_in")
+    event_ids: Mapped[list] = mapped_column(JSONB, default=list)
+    status: Mapped[str] = mapped_column(String(20), default="queued")  # queued|sending|done|failed
+    total_recipients: Mapped[int] = mapped_column(Integer, default=0)
+    sent_count: Mapped[int] = mapped_column(Integer, default=0)
+    failed_count: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    recipients: Mapped[list["PromoCampaignRecipientModel"]] = relationship(
+        back_populates="campaign",
+        cascade="all, delete-orphan",
+    )
+
+
+class PromoCampaignRecipientModel(Base):
+    __tablename__ = "promo_campaign_recipients"
+    __table_args__ = (UniqueConstraint("campaign_id", "user_id", name="uq_promo_campaign_user"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    campaign_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("promo_campaigns.id", ondelete="CASCADE"), index=True
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"))
+    email: Mapped[str] = mapped_column(String(255))
+    status: Mapped[str] = mapped_column(String(20), default="pending")  # pending|sent|failed
+    error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    campaign: Mapped["PromoCampaignModel"] = relationship(back_populates="recipients")

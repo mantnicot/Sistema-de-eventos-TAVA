@@ -1,5 +1,6 @@
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
+import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { FormsModule } from '@angular/forms';
 import { catchError, finalize, of, timeout } from 'rxjs';
 import { ApiService } from '../../core/services/api.service';
@@ -113,9 +114,10 @@ export class AdminDashboardComponent implements OnInit {
   private readonly warmup = inject(ApiWarmupService);
   private readonly notify = inject(NotificationService);
   private readonly site = inject(SiteSettingsService);
+  private readonly sanitizer = inject(DomSanitizer);
 
   readonly isPlatformAdmin = computed(() => this.auth.isPlatformAdmin());
-  readonly tab = signal<'kpis' | 'events' | 'review' | 'users' | 'appearance'>('kpis');
+  readonly tab = signal<'kpis' | 'events' | 'review' | 'users' | 'appearance' | 'promo'>('kpis');
   readonly imageEventSpec = IMAGE_EVENT_SPEC;
   readonly videoTrailerSpec = VIDEO_TRAILER_SPEC;
   readonly galleryImageSpec = GALLERY_IMAGE_SPEC;
@@ -239,6 +241,8 @@ export class AdminDashboardComponent implements OnInit {
       matchesSearch(this.eventsQuery(), ev.name, ev.city, ev.event_date, ev.category, ev.status)
     )
   );
+
+  readonly formatEventDateTime = formatEventDateTime;
 
   ngOnInit(): void {
     if (!this.isPlatformAdmin()) {
@@ -1066,6 +1070,158 @@ export class AdminDashboardComponent implements OnInit {
         this.notify.hide();
         this.notify.error('Correo', err.error?.message ?? err.error?.detail ?? 'No se pudo enviar');
       },
+    });
+  }
+
+  promoForm = {
+    subject: 'Cartelera TAVA · esta semana en escena',
+    intro: 'Hola. Armamos la cartelera para ti: elige tu función y reserva desde la boletería de TAVA.',
+    format: 'magazine' as 'magazine' | 'spotlight',
+    audience: 'opt_in',
+  };
+  promoSelectedIds: Record<string, boolean> = {};
+  readonly promoAudienceCount = signal<number | null>(null);
+  readonly promoPreviewHtml = signal<string>('');
+  readonly promoCampaigns = signal<
+    {
+      id: string;
+      subject: string;
+      format: string;
+      status: string;
+      total_recipients: number;
+      sent_count: number;
+      failed_count: number;
+      created_at: string | null;
+    }[]
+  >([]);
+  readonly promoBusy = signal(false);
+
+  openPromoTab(): void {
+    this.tab.set('promo');
+    if (!this.adminEvents().length) {
+      this.loadAdminEvents();
+    }
+    if (!Object.keys(this.promoSelectedIds).length) {
+      for (const ev of this.adminEvents()) {
+        if (ev.cartelera_visible || ev.status === 'publicado') {
+          this.promoSelectedIds[ev.id] = true;
+        }
+      }
+    }
+    this.refreshPromoAudience();
+    this.loadPromoCampaigns();
+  }
+
+  safePromoPreview(): SafeHtml {
+    return this.sanitizer.bypassSecurityTrustHtml(this.promoPreviewHtml());
+  }
+
+  promoEventOptions(): TavaEvent[] {
+    return this.adminEvents().filter((ev) => ev.status !== 'cancelado');
+  }
+
+  private selectedPromoEventIds(): string[] {
+    return Object.entries(this.promoSelectedIds)
+      .filter(([, on]) => on)
+      .map(([id]) => id);
+  }
+
+  refreshPromoAudience(): void {
+    if (!this.isPlatformAdmin()) return;
+    this.api
+      .get<{ count: number }>(`/marketing/campaigns/audience-count?audience=${encodeURIComponent(this.promoForm.audience)}`)
+      .subscribe({
+        next: (res) => this.promoAudienceCount.set(res.count ?? 0),
+        error: () => this.promoAudienceCount.set(null),
+      });
+  }
+
+  loadPromoCampaigns(): void {
+    if (!this.isPlatformAdmin()) return;
+    this.api
+      .get<
+        {
+          id: string;
+          subject: string;
+          format: string;
+          status: string;
+          total_recipients: number;
+          sent_count: number;
+          failed_count: number;
+          created_at: string | null;
+        }[]
+      >('/marketing/campaigns')
+      .subscribe({
+        next: (rows) => this.promoCampaigns.set(rows ?? []),
+        error: () => this.promoCampaigns.set([]),
+      });
+  }
+
+  previewPromoCampaign(): void {
+    const eventIds = this.selectedPromoEventIds();
+    if (!eventIds.length) {
+      this.notify.warning('Publicidad', 'Marca al menos un evento.');
+      return;
+    }
+    if (this.promoForm.format === 'spotlight' && eventIds.length > 1) {
+      // El backend usa solo el primero; avisamos en UI.
+    }
+    this.promoBusy.set(true);
+    this.api
+      .post<{ html: string }>('/marketing/campaigns/preview', {
+        subject: this.promoForm.subject,
+        intro: this.promoForm.intro,
+        format: this.promoForm.format,
+        audience: this.promoForm.audience,
+        event_ids: eventIds,
+      })
+      .subscribe({
+        next: (res) => {
+          this.promoBusy.set(false);
+          this.promoPreviewHtml.set(res.html || '');
+        },
+        error: (err) => {
+          this.promoBusy.set(false);
+          this.notify.error('Vista previa', err.error?.detail ?? 'No se pudo generar la vista previa');
+        },
+      });
+  }
+
+  sendPromoCampaign(): void {
+    const eventIds = this.selectedPromoEventIds();
+    if (!eventIds.length) {
+      this.notify.warning('Publicidad', 'Marca al menos un evento.');
+      return;
+    }
+    const n = this.promoAudienceCount();
+    const confirmMsg =
+      n == null
+        ? 'Se encolará el correo solo a quienes aceptaron publicidad. ¿Continuar?'
+        : `Se encolará el correo a ${n} persona(s) con publicidad aceptada. Se envía por lotes (~25/min). ¿Continuar?`;
+    this.notify.confirm('Enviar publicidad', confirmMsg, () => {
+      this.promoBusy.set(true);
+      this.notify.loadingTheatrical('Encolando campaña', 'admin');
+      this.api
+        .post<{ id: string; total_recipients: number; message: string }>('/marketing/campaigns', {
+          subject: this.promoForm.subject,
+          intro: this.promoForm.intro,
+          format: this.promoForm.format,
+          audience: this.promoForm.audience,
+          event_ids: eventIds,
+        })
+        .subscribe({
+          next: (res) => {
+            this.promoBusy.set(false);
+            this.notify.hide();
+            this.notify.success('Publicidad', res.message || `En cola: ${res.total_recipients} destinatarios`);
+            this.loadPromoCampaigns();
+          },
+          error: (err) => {
+            this.promoBusy.set(false);
+            this.notify.hide();
+            this.notify.error('Publicidad', err.error?.detail ?? 'No se pudo encolar la campaña');
+          },
+        });
     });
   }
 

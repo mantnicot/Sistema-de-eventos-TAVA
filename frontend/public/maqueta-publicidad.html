@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Maqueta — Publicidad TAVA (solo vista previa)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;1,500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --cream: #3a2f2a;
+      --muted: #6d6158;
+      --stage: #faf8f4;
+      --velvet: #f5efe6;
+      --gold: #c9a227;
+      --gold-rich: #b8860b;
+      --gold-light: #e8d49b;
+      --burgundy: #9e5a6b;
+      --card: #ffffff;
+      --radius: 14px;
+      --font-d: 'Playfair Display', Georgia, serif;
+      --font-b: 'DM Sans', system-ui, sans-serif;
+      --font-c: 'Cinzel', 'Playfair Display', serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: var(--font-b);
+      color: var(--cream);
+      background:
+        radial-gradient(ellipse at top, rgba(201, 162, 39, 0.12), transparent 55%),
+        var(--stage);
+      min-height: 100vh;
+    }
+    .banner {
+      background: #1a5f2a;
+      color: #fff;
+      text-align: center;
+      padding: 0.55rem 1rem;
+      font-size: 0.82rem;
+    }
+    .banner strong { letter-spacing: 0.06em; }
+    .wrap { max-width: 1100px; margin: 0 auto; padding: 1.25rem 1.25rem 3rem; }
+    h1 {
+      font-family: var(--font-d);
+      color: var(--gold-rich);
+      font-size: clamp(1.5rem, 3vw, 2rem);
+      margin: 1rem 0 0.35rem;
+    }
+    .lead { color: var(--muted); margin: 0 0 1.25rem; max-width: 42rem; line-height: 1.45; }
+
+    .tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.35rem;
+      margin-bottom: 1.25rem;
+      padding: 0.35rem;
+      background: rgba(255,255,255,0.7);
+      border: 1px solid rgba(201,162,39,0.25);
+      border-radius: 999px;
+      width: fit-content;
+    }
+    .tabs button {
+      border: 0;
+      background: transparent;
+      padding: 0.55rem 1rem;
+      border-radius: 999px;
+      font: inherit;
+      font-weight: 600;
+      color: var(--muted);
+      cursor: pointer;
+    }
+    .tabs button.active {
+      background: linear-gradient(135deg, #ffd86b, #e8b923);
+      color: #3d2a14;
+    }
+    .tabs button.new {
+      outline: 2px dashed var(--burgundy);
+      outline-offset: -2px;
+    }
+    .tabs button.new.active {
+      outline: none;
+      background: linear-gradient(135deg, #c9a0a8, #9e5a6b);
+      color: #fff;
+    }
+
+    .panel {
+      display: none;
+      background: var(--card);
+      border: 1px solid rgba(201,162,39,0.28);
+      border-radius: var(--radius);
+      box-shadow: 0 8px 28px rgba(58,47,42,0.06);
+      padding: 1.25rem;
+    }
+    .panel.active { display: block; }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1.05fr 0.95fr;
+      gap: 1.25rem;
+    }
+    @media (max-width: 900px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+
+    label.field {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+      margin-bottom: 0.85rem;
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+    label.field input,
+    label.field select,
+    label.field textarea {
+      padding: 0.65rem 0.75rem;
+      border-radius: 10px;
+      border: 1px solid rgba(201,162,39,0.35);
+      background: var(--stage);
+      color: var(--cream);
+      font: inherit;
+    }
+    label.field textarea { min-height: 88px; resize: vertical; }
+
+    .checks {
+      display: grid;
+      gap: 0.45rem;
+      margin: 0.35rem 0 1rem;
+      padding: 0.75rem;
+      border-radius: 10px;
+      background: var(--velvet);
+      border: 1px dashed rgba(201,162,39,0.35);
+    }
+    .checks label {
+      display: flex;
+      gap: 0.5rem;
+      align-items: flex-start;
+      font-size: 0.88rem;
+      color: var(--cream);
+    }
+    .meta {
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin: 0 0 1rem;
+    }
+    .meta strong { color: var(--gold-rich); }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.65rem;
+    }
+    .btn {
+      border: 0;
+      border-radius: 999px;
+      padding: 0.75rem 1.2rem;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #ffd86b, #e8b923);
+      color: #3d2a14;
+    }
+    .btn-ghost {
+      background: transparent;
+      border: 1px solid rgba(201,162,39,0.45);
+      color: var(--gold-rich);
+    }
+
+    .preview-switch {
+      display: flex;
+      gap: 0.4rem;
+      margin-bottom: 0.85rem;
+    }
+    .preview-switch button {
+      flex: 1;
+      border: 1px solid rgba(201,162,39,0.35);
+      background: var(--stage);
+      border-radius: 10px;
+      padding: 0.55rem;
+      font: inherit;
+      font-weight: 600;
+      color: var(--muted);
+      cursor: pointer;
+    }
+    .preview-switch button.on {
+      background: rgba(201,162,39,0.18);
+      color: var(--gold-rich);
+      border-color: var(--gold);
+    }
+
+    .mail-frame {
+      border: 1px solid rgba(58,47,42,0.12);
+      border-radius: 12px;
+      overflow: hidden;
+      background: #ece7df;
+      padding: 0.85rem;
+      max-height: 70vh;
+      overflow-y: auto;
+    }
+    .mail {
+      max-width: 560px;
+      margin: 0 auto;
+      background: #faf8f4;
+      color: #3a2f2a;
+      font-family: Georgia, 'Times New Roman', serif;
+    }
+    .mail__top {
+      background: #3a2f2a;
+      color: #e8d49b;
+      text-align: center;
+      padding: 1.1rem 1rem 0.9rem;
+    }
+    .mail__brand {
+      font-family: 'Cinzel', Georgia, serif;
+      letter-spacing: 0.28em;
+      font-size: 1.05rem;
+      font-weight: 700;
+    }
+    .mail__sub {
+      margin-top: 0.35rem;
+      font-size: 0.68rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: #c9a0a8;
+      font-family: 'DM Sans', sans-serif;
+    }
+    .mail__intro {
+      padding: 1.1rem 1.15rem 0.35rem;
+      font-size: 0.95rem;
+      line-height: 1.5;
+      color: #6d6158;
+      font-style: italic;
+    }
+    .mail__card {
+      margin: 0.85rem 1rem;
+      background: #fff;
+      border: 1px solid rgba(201,162,39,0.35);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .mail__card img {
+      display: block;
+      width: 100%;
+      height: 160px;
+      object-fit: cover;
+      background: #ddd;
+    }
+    .mail__card-body { padding: 0.85rem 0.95rem 1rem; }
+    .mail__card h3 {
+      margin: 0 0 0.35rem;
+      font-size: 1.15rem;
+      color: #8a6410;
+    }
+    .mail__card .when {
+      margin: 0 0 0.55rem;
+      font-size: 0.8rem;
+      color: #6d6158;
+      font-family: 'DM Sans', sans-serif;
+    }
+    .mail__card p {
+      margin: 0 0 0.85rem;
+      font-size: 0.88rem;
+      line-height: 1.45;
+      color: #3a2f2a;
+    }
+    .cta {
+      display: inline-block;
+      background: linear-gradient(135deg, #ffd86b, #b8860b);
+      color: #2a1f12 !important;
+      text-decoration: none;
+      font-family: 'DM Sans', sans-serif;
+      font-weight: 700;
+      font-size: 0.85rem;
+      padding: 0.65rem 1rem;
+      border-radius: 999px;
+    }
+    .mail__hero img {
+      width: 100%;
+      height: 240px;
+      object-fit: cover;
+      display: block;
+      background: #ccc;
+    }
+    .mail__spotlight { padding: 1.1rem 1.2rem 1.35rem; text-align: center; }
+    .mail__spotlight h2 {
+      margin: 0 0 0.4rem;
+      font-size: 1.55rem;
+      color: #8a6410;
+    }
+    .mail__spotlight .when {
+      margin: 0 0 0.75rem;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.88rem;
+      color: #9e5a6b;
+    }
+    .mail__spotlight p {
+      margin: 0 auto 1.1rem;
+      max-width: 28rem;
+      line-height: 1.5;
+      color: #6d6158;
+      font-size: 0.95rem;
+    }
+    .mail__foot {
+      padding: 1rem 1.15rem 1.35rem;
+      text-align: center;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.72rem;
+      color: #6d6158;
+      border-top: 1px solid rgba(201,162,39,0.25);
+      margin-top: 0.5rem;
+    }
+    .mail__foot a { color: #9e5a6b; }
+
+    .note {
+      margin-top: 1rem;
+      padding: 0.75rem 0.9rem;
+      border-radius: 10px;
+      background: rgba(158,90,107,0.1);
+      border: 1px solid rgba(158,90,107,0.25);
+      font-size: 0.82rem;
+      color: var(--burgundy);
+      line-height: 1.4;
+    }
+  </style>
+</head>
+<body>
+  <div class="banner">
+    <strong>MAQUETA LOCAL</strong>
+    — No envía correos · solo para ver cómo se vería el menú y las plantillas
+  </div>
+
+  <div class="wrap">
+    <h1>Admin · Publicidad</h1>
+    <p class="lead">
+      Así se vería la pestaña nueva en el panel de administración, y a la derecha la vista previa
+      del correo (revista con varios eventos, o foco en uno solo).
+    </p>
+
+    <nav class="tabs" aria-label="Pestañas admin (maqueta)">
+      <button type="button" disabled>Métricas</button>
+      <button type="button" disabled>Revisión</button>
+      <button type="button" disabled>Eventos</button>
+      <button type="button" disabled>Personas</button>
+      <button type="button" disabled>Apariencia</button>
+      <button type="button" class="new active" id="tabPublicidad">Publicidad</button>
+    </nav>
+
+    <section class="panel active" id="panelPublicidad">
+      <div class="grid">
+        <div>
+          <h2 style="margin:0 0 0.85rem;font-family:var(--font-d);color:var(--gold-rich);font-size:1.2rem;">
+            Nueva campaña
+          </h2>
+
+          <label class="field">
+            Asunto del correo
+            <input value="Cartelera TAVA · esta semana en escena" />
+          </label>
+
+          <label class="field">
+            Texto de introducción
+            <textarea>Hola. Armamos la cartelera para ti: elige tu función y reserva desde la boletería de TAVA.</textarea>
+          </label>
+
+          <label class="field">
+            Formato
+            <select id="formatSelect">
+              <option value="magazine">Revista (varios eventos)</option>
+              <option value="spotlight">Un solo evento</option>
+            </select>
+          </label>
+
+          <p class="meta" style="margin-bottom:0.35rem;">Eventos a incluir</p>
+          <div class="checks" id="eventChecks">
+            <label><input type="checkbox" checked data-ev="1" /> TAVA en el Acto · 29 oct · Bogotá</label>
+            <label><input type="checkbox" checked data-ev="2" /> Impro de medianoche · 5 nov · Bogotá</label>
+            <label><input type="checkbox" data-ev="3" /> Noche de monólogos · 12 nov · Medellín</label>
+          </div>
+
+          <label class="field">
+            Audiencia
+            <select>
+              <option>Quienes aceptaron publicidad (opt-in)</option>
+              <option>Opt-in + ya compraron alguna vez</option>
+              <option>Opt-in + favoritos de estos eventos</option>
+            </select>
+          </label>
+          <p class="meta">Se enviaría a <strong>47</strong> personas (dato de ejemplo). Cupo Brevo free ≈ 300/día.</p>
+
+          <div class="actions">
+            <button type="button" class="btn btn-ghost">Guardar borrador</button>
+            <button type="button" class="btn btn-primary">Enviar campaña</button>
+          </div>
+          <p class="note">
+            En la maqueta los botones no envían nada. Cuando construyamos el módulo de verdad,
+            solo saldrá a usuarios con <em>marketing_opt_in</em> y por lotes.
+          </p>
+        </div>
+
+        <div>
+          <div class="preview-switch">
+            <button type="button" class="on" id="btnMag">Vista revista</button>
+            <button type="button" id="btnSpot">Vista un evento</button>
+          </div>
+
+          <div class="mail-frame">
+            <!-- REVISTA -->
+            <div class="mail" id="previewMagazine">
+              <div class="mail__top">
+                <div class="mail__brand">TAVA</div>
+                <div class="mail__sub">Teatro · Boletería</div>
+              </div>
+              <p class="mail__intro">
+                Hola. Armamos la cartelera para ti: elige tu función y reserva desde la boletería de TAVA.
+              </p>
+
+              <article class="mail__card">
+                <img src="https://images.unsplash.com/photo-1503095396549-807759245b35?w=800&q=80" alt="" />
+                <div class="mail__card-body">
+                  <h3>TAVA en el Acto</h3>
+                  <p class="when">jue, 29 oct 2026 · 8:00 p. m. · Bogotá</p>
+                  <p>Comedia, improvisación y karaoke en El Andén Cantina. Cerveza de bienvenida incluida.</p>
+                  <a class="cta" href="https://sistema-de-eventos-tava.vercel.app/eventos/c59570e9-fb9a-4d55-bfed-714d72d2d061">Comprar boletas</a>
+                </div>
+              </article>
+
+              <article class="mail__card">
+                <img src="https://images.unsplash.com/photo-1514306191717-452fd27a4750?w=800&q=80" alt="" />
+                <div class="mail__card-body">
+                  <h3>Impro de medianoche</h3>
+                  <p class="when">mié, 5 nov 2026 · 10:00 p. m. · Bogotá</p>
+                  <p>Escenas al instante. Trae a tu grupo y súbete al juego (si te animas).</p>
+                  <a class="cta" href="https://sistema-de-eventos-tava.vercel.app/eventos">Ver en cartelera</a>
+                </div>
+              </article>
+
+              <div class="mail__foot">
+                Recibes este correo porque autorizaste publicidad de TAVA Teatro.<br />
+                <a href="#">Dejar de recibir publicidad</a> · <a href="https://sistema-de-eventos-tava.vercel.app">Ir al sitio</a>
+              </div>
+            </div>
+
+            <!-- UN EVENTO -->
+            <div class="mail" id="previewSpotlight" hidden>
+              <div class="mail__top">
+                <div class="mail__brand">TAVA</div>
+                <div class="mail__sub">Teatro · Boletería</div>
+              </div>
+              <div class="mail__hero">
+                <img src="https://images.unsplash.com/photo-1503095396549-807759245b35?w=1000&q=80" alt="" />
+              </div>
+              <div class="mail__spotlight">
+                <h2>TAVA en el Acto</h2>
+                <p class="when">jue, 29 oct 2026 · 8:00 p. m. · Cra. 14 #83-2, Bogotá</p>
+                <p>
+                  El plan de hoy no se improvisa… de eso nos encargamos nosotros. Una noche de comedia,
+                  improvisación y karaoke. Cupos limitados.
+                </p>
+                <a class="cta" href="https://sistema-de-eventos-tava.vercel.app/eventos/c59570e9-fb9a-4d55-bfed-714d72d2d061">Comprar boletas</a>
+              </div>
+              <div class="mail__foot">
+                Recibes este correo porque autorizaste publicidad de TAVA Teatro.<br />
+                <a href="#">Dejar de recibir publicidad</a> · <a href="https://sistema-de-eventos-tava.vercel.app">Ir al sitio</a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const mag = document.getElementById('previewMagazine');
+    const spot = document.getElementById('previewSpotlight');
+    const btnMag = document.getElementById('btnMag');
+    const btnSpot = document.getElementById('btnSpot');
+    const formatSelect = document.getElementById('formatSelect');
+
+    function show(mode) {
+      const isMag = mode === 'magazine';
+      mag.hidden = !isMag;
+      spot.hidden = isMag;
+      btnMag.classList.toggle('on', isMag);
+      btnSpot.classList.toggle('on', !isMag);
+      formatSelect.value = mode;
+    }
+
+    btnMag.addEventListener('click', () => show('magazine'));
+    btnSpot.addEventListener('click', () => show('spotlight'));
+    formatSelect.addEventListener('change', () => show(formatSelect.value));
+  </script>
+</body>
+</html>

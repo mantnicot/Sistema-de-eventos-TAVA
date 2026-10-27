@@ -12,10 +12,8 @@ import {
   canPurchaseTickets,
   formatEventDateTime,
   formatEventTime,
-  funnyCtaForEvent,
   getEventPhase,
   liveBannerMessage,
-  totalTicketsAvailable,
 } from '../../core/utils/event-timing.util';
 import { mediaBackgroundStyle, resolveMediaUrl } from '../../core/utils/media-url.util';
 import { trailerEmbedUrl, trailerVideoSrc } from '../../core/utils/trailer-embed.util';
@@ -61,14 +59,14 @@ export class EventDetailComponent implements OnInit, OnDestroy {
   readonly mediaBg = mediaBackgroundStyle;
   readonly trailerVideo = trailerVideoSrc;
   purchasing = false;
+  purchaseStep: 'form' | 'summary' = 'form';
+  showTerms = false;
 
   readonly formatEventDateTime = formatEventDateTime;
   readonly formatEventTime = formatEventTime;
-  readonly funnyCta = funnyCtaForEvent;
   readonly liveMessage = liveBannerMessage;
   readonly getPhase = getEventPhase;
   readonly canBuy = canPurchaseTickets;
-  readonly ticketsLeft = totalTicketsAvailable;
 
   readonly onImgError = onEventImageError;
   readonly fees = signal<CheckoutFees>(DEFAULT_CHECKOUT_FEES);
@@ -156,16 +154,40 @@ export class EventDetailComponent implements OnInit, OnDestroy {
     return ev.ticket_types.find((t) => t.id === id) ?? null;
   }
 
-  unitPublic(price: number): number {
-    return publicCharge(price, this.fees());
+  registeredTotal(): number {
+    const tt = this.selectedTicketType();
+    return (tt?.price ?? 0) * this.quantity;
   }
 
   totalPrice(): number {
-    const tt = this.selectedTicketType();
-    const base = (tt?.price ?? 0) * this.quantity;
+    const base = this.registeredTotal();
     const ev = this.event();
     if (!ev || this.isFreeSale(ev) || base <= 0) return base;
     return publicCharge(base, this.fees());
+  }
+
+  serviceFeeAmount(): number {
+    return Math.max(0, this.totalPrice() - this.registeredTotal());
+  }
+
+  ticketTermsBlocks(ev: TavaEventDetail): string[] {
+    const when = `${ev.event_date} a las ${this.formatEventTime(ev.event_time)}`;
+    const age = ev.theatrical_details?.age_rating?.trim() || 'público general';
+    const name = ev.name;
+    return [
+      `Precios y formas de pago: El precio de los boletos para la obra ${name} es el establecido por los medios oficiales y acuerdos de parte del vendedor. El pago puede realizarse en efectivo en el teatro o con tarjeta de crédito o débito o transferencias bien sea vía NEQUI (300-326-8095) o como se haya acordado con el comprador o en la página oficial de compra.`,
+      `Cambios y devoluciones: No se aceptan cambios ni devoluciones de boletos una vez realizada la compra a menos que se cancele o aplace la obra por situaciones de fuerza mayor.`,
+      `Ingreso: La compra de esta boleta no garantiza su ingreso a la función en caso de incumplir los tiempos establecidos por el grupo TAVA o el teatro y las políticas de los mismos.`,
+      `Horarios y fechas: La ${name} se presenta el ${when}. Los asistentes deben llegar con 30 minutos de anticipación para asegurar su ingreso.`,
+      `Asientos asignados: Los asientos son asignados directamente en el teatro por orden de llegada o como corresponda dependiendo del evento.`,
+      `Restricciones de edad y contenido: La ${name} está destinada a mayores de ${age}. Se recomienda solo asistir bajo este rango superior y bajo la responsabilidad del consumidor no permitir ver el espectáculo a menores.`,
+      `Política de cancelación de la obra: En caso de que el evento sea cancelado por alguna razón, se realizará el reembolso total del precio de los boletos y se hará una explicación y disculpa pública de parte del elenco.`,
+      `Política de uso de Imagen: Al adquirir esta boleta usted accede a ser fotografiado o grabado en audio y/o video para contenido de uso exclusivo por la agrupación TAVA en sus redes sociales, portafolio y material visual o audiovisual que requiera.`,
+      `Responsabilidad del Grupo TAVA: El Grupo NO se hace responsable por daños o lesiones sufridos por los asistentes antes, durante o después de la función.`,
+      `Prohibiciones: Se prohíbe fumar, consumir alimentos y bebidas dentro del teatro, así como tomar fotografías o grabar la obra sin autorización previa; en caso de autorización se prohíbe el uso de flash y/o otros medios que puedan incomodar o afectar el espectáculo.`,
+      `Derechos de autor: La ${name} está protegida por derechos de autor. Queda prohibida su reproducción total o parcial sin autorización previa del Grupo TAVA y director TOÑO.`,
+      `Al comprar el boleto para ${name} el cliente acepta y se compromete a cumplir con los términos y condiciones establecidos; en caso de no estar de acuerdo posee 2 días hábiles después de la compra de la boleta.`,
+    ];
   }
 
   isWhatsAppSale(ev: TavaEventDetail): boolean {
@@ -225,6 +247,8 @@ export class EventDetailComponent implements OnInit, OnDestroy {
     this.startStallTimer();
     this.loadError.set(null);
     this.event.set(null);
+    this.purchaseStep = 'form';
+    this.showTerms = false;
     this.refreshMaps(null);
     this.relatedEvents.set([]);
 
@@ -310,6 +334,10 @@ export class EventDetailComponent implements OnInit, OnDestroy {
     return names;
   }
 
+  backToForm(): void {
+    this.purchaseStep = 'form';
+  }
+
   comprar(): void {
     if (!this.auth.isLoggedIn()) {
       this.persistDraft();
@@ -345,84 +373,83 @@ export class EventDetailComponent implements OnInit, OnDestroy {
       return;
     }
 
+    this.persistDraft();
+    this.purchaseStep = 'summary';
+  }
+
+  confirmPurchase(): void {
     if (this.purchasing) return;
+    const ev = this.event();
+    const typeId = this.selectedTypeId();
+    const tt = this.selectedTicketType();
+    if (!ev || !typeId || !tt || !this.legalAccepted) return;
 
-    const total = this.totalPrice();
+    const names = this.resolveHolderNames();
+    if (!names) return;
+
     const free = this.isFreeSale(ev);
-    const confirmMsg = free
-      ? `Vas a reservar ${this.quantity} boleta(s) gratis para "${ev.name}". Se emitirán al instante.`
-      : `Vas a pagar ${this.quantity} boleta(s) de "${ev.name}" ` +
-        `por $${total.toLocaleString('es-CO')} COP (incluye el cobro del pago en línea). ` +
-        `Se abre el pago seguro. Si no puede abrirse, continúa por WhatsApp.`;
-
-    this.notify.confirm(
-      free ? 'Confirmar reserva' : 'Pagar boletas',
-      confirmMsg,
-      () => {
-      if (this.purchasing) return;
-      this.purchasing = true;
-      this.notify.loadingTheatrical(free ? 'Reservando cupo' : 'Preparando compra', 'purchase');
-      this.api
-        .post<{
-          message?: string;
-          payment_required?: boolean;
-          payment_channel?: string;
-          checkout_url?: string;
-          whatsapp_url?: string;
-          whatsapp_message?: string;
-          whatsapp_phone?: string;
-          reservation?: boolean;
-          order_id?: string;
-        }>('/tickets/purchase', {
-          event_id: ev.id,
-          ticket_type_id: typeId,
-          quantity: this.quantity,
-          holder_names: names,
-          legal_accepted: true,
-        })
-        .subscribe({
-          next: (res) => {
-            this.purchasing = false;
-            this.notify.hide();
-            clearPurchaseDraft();
-            if (res.payment_required && (res.whatsapp_url || res.whatsapp_message)) {
-              const phone = (res.whatsapp_phone || '').replace(/[^\d]/g, '');
-              const waUrl =
-                res.whatsapp_message && phone
-                  ? `https://api.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(res.whatsapp_message)}`
-                  : res.whatsapp_url;
-              if (waUrl) {
-                window.open(waUrl, '_blank', 'noopener,noreferrer');
-              }
-              this.notify.celebration(
-                'Solicitud creada',
-                res.message ??
-                  'Completa el pago por WhatsApp. Cuando el organizador valide el dinero, recibirás correo y código de boleta.'
-              );
-              return;
-            }
-            if (res.payment_required && res.checkout_url) {
-              window.location.href = res.checkout_url;
-              return;
+    this.purchasing = true;
+    this.notify.loadingTheatrical(free ? 'Reservando cupo' : 'Preparando compra', 'purchase');
+    this.api
+      .post<{
+        message?: string;
+        payment_required?: boolean;
+        payment_channel?: string;
+        checkout_url?: string;
+        whatsapp_url?: string;
+        whatsapp_message?: string;
+        whatsapp_phone?: string;
+        reservation?: boolean;
+        order_id?: string;
+      }>('/tickets/purchase', {
+        event_id: ev.id,
+        ticket_type_id: typeId,
+        quantity: this.quantity,
+        holder_names: names,
+        legal_accepted: true,
+      })
+      .subscribe({
+        next: (res) => {
+          this.purchasing = false;
+          this.notify.hide();
+          clearPurchaseDraft();
+          if (res.payment_required && (res.whatsapp_url || res.whatsapp_message)) {
+            const phone = (res.whatsapp_phone || '').replace(/[^\d]/g, '');
+            const waUrl =
+              res.whatsapp_message && phone
+                ? `https://api.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(res.whatsapp_message)}`
+                : res.whatsapp_url;
+            if (waUrl) {
+              window.open(waUrl, '_blank', 'noopener,noreferrer');
             }
             this.notify.celebration(
-              free || res.reservation ? '¡Reserva lista!' : '¡Compra lista!',
+              'Solicitud creada',
               res.message ??
-                (free
-                  ? 'Tu boleta gratis ya está disponible. El PDF también llegará a tu correo.'
-                  : 'Tus boletas ya están disponibles. El PDF también llegará a tu correo.')
+                'Completa el pago por WhatsApp. Cuando el organizador valide el dinero, recibirás correo y código de boleta.'
             );
-            setTimeout(() => {
-              this.notify.hide();
-              this.router.navigate(['/perfil']);
-            }, 4500);
-          },
-          error: (err) => {
-            this.purchasing = false;
+            return;
+          }
+          if (res.payment_required && res.checkout_url) {
+            window.location.href = res.checkout_url;
+            return;
+          }
+          this.notify.celebration(
+            free || res.reservation ? '¡Reserva lista!' : '¡Compra lista!',
+            res.message ??
+              (free
+                ? 'Tu boleta gratis ya está disponible. El PDF también llegará a tu correo.'
+                : 'Tus boletas ya están disponibles. El PDF también llegará a tu correo.')
+          );
+          setTimeout(() => {
             this.notify.hide();
-            this.notify.showHttpError(parseHttpError(err, free ? 'reserva' : 'compra'));
-          },
-        });
-    });
+            this.router.navigate(['/perfil']);
+          }, 4500);
+        },
+        error: (err) => {
+          this.purchasing = false;
+          this.notify.hide();
+          this.notify.showHttpError(parseHttpError(err, free ? 'reserva' : 'compra'));
+        },
+      });
   }
 }

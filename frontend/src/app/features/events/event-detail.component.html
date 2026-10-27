@@ -167,11 +167,6 @@
 
       <aside class="detail__buy tava-card tava-reveal" style="--i: 2">
         <h2 class="detail__buy-title">Boletas</h2>
-        @if (questionsLink(ev); as ask) {
-          <a class="detail__ask tava-btn-shine" [href]="ask" target="_blank" rel="noopener noreferrer">
-            Preguntas del evento
-          </a>
-        }
 
         @if (!canBuy(ev)) {
           <div class="detail__missed">
@@ -182,16 +177,9 @@
         } @else if (isWhatsAppSale(ev) && !ev.ticket_types.length) {
           <div class="detail__missed">
             <p class="detail__missed-title">Boletas por WhatsApp</p>
-            <p>
-              Este evento aún no tiene tipos de boleta. Escríbenos por WhatsApp.
-            </p>
+            <p>Este evento aún no tiene tipos de boleta. Escríbenos por WhatsApp.</p>
             @if (ev.theatrical_details?.whatsapp_number) {
-              <a
-                class="tava-btn-primary"
-                [href]="whatsappSaleLink(ev)"
-                target="_blank"
-                rel="noopener"
-              >
+              <a class="tava-btn-primary" [href]="whatsappSaleLink(ev)" target="_blank" rel="noopener">
                 Escribir por WhatsApp
               </a>
             } @else {
@@ -199,100 +187,191 @@
             }
           </div>
         } @else if (ev.ticket_types.length) {
-          <p class="detail__funny-cta">
-            {{
-              isFreeSale(ev)
-                ? 'Evento gratuito: reserva tu cupo y recibe la boleta al instante.'
-                : 'El pago es en línea. El precio ya incluye el cobro de la pasarela, redondeado. Si ese pago no abre, sigue por WhatsApp.'
-            }}
-          </p>
-
-          @if (!auth.isLoggedIn()) {
-            <section class="purchase-register-gate">
-              <strong>{{ isFreeSale(ev) ? 'Debes registrarte para reservar' : 'Debes registrarte sí o sí para comprar' }}</strong>
-              <p>
-                {{
-                  isFreeSale(ev)
-                    ? 'Crea tu cuenta, valida el correo y vuelve para reservar tu boleta gratis.'
-                    : 'Crea tu cuenta, valida el correo que recibirás y vuelve para terminar la compra. Guardaremos tu selección.'
-                }}
+          @if (purchaseStep === 'summary' && selectedTicketType(); as st) {
+            <section class="purchase-invoice" aria-label="Resumen de pago">
+              <h3 class="purchase-invoice__title">Resumen de tu compra</h3>
+              <dl class="purchase-invoice__rows">
+                <div>
+                  <dt>Evento</dt>
+                  <dd>{{ ev.name }}</dd>
+                </div>
+                <div>
+                  <dt>Boleta</dt>
+                  <dd>{{ st.name }}</dd>
+                </div>
+                <div>
+                  <dt>Cantidad</dt>
+                  <dd>{{ quantity }}</dd>
+                </div>
+                <div>
+                  <dt>Valor de las boletas</dt>
+                  <dd>${{ registeredTotal() | number:'1.0-0' }} COP</dd>
+                </div>
+                @if (!isFreeSale(ev) && st.price > 0) {
+                  <div>
+                    <dt>Cobro del pago en línea</dt>
+                    <dd>${{ serviceFeeAmount() | number:'1.0-0' }} COP</dd>
+                  </div>
+                }
+              </dl>
+              @if (!isFreeSale(ev) && st.price > 0) {
+                <p class="purchase-invoice__note">
+                  Es mayor al que registró el organizador porque suma el cobro del pago en línea y se redondea (por ejemplo 16.235 queda en 16.300).
+                </p>
+              }
+              <p class="purchase-invoice__total">
+                Total a pagar
+                <strong>${{ totalPrice() | number:'1.0-0' }} COP</strong>
               </p>
-              <div>
-                <a routerLink="/registro" [queryParams]="{ returnUrl: '/eventos/' + ev.id }" class="tava-btn-primary">Registrarme</a>
-                <a routerLink="/ingresar" [queryParams]="{ returnUrl: '/eventos/' + ev.id }" class="back">Ya tengo cuenta</a>
+              <div class="purchase-invoice__actions">
+                <button type="button" class="purchase-invoice__back" (click)="backToForm()" [disabled]="purchasing">
+                  Volver
+                </button>
+                <button
+                  type="button"
+                  class="tava-btn-primary detail__buy-btn"
+                  (click)="confirmPurchase()"
+                  [disabled]="purchasing"
+                >
+                  {{ purchasing ? 'Procesando…' : isFreeSale(ev) ? 'Confirmar reserva' : 'Confirmar y pagar' }}
+                </button>
               </div>
             </section>
-          }
-
-          @if (!isFreeSale(ev)) {
-            <p class="hint">
-              El valor que ves es el que pagas. Es mayor al que registró el organizador porque suma el cobro del pago en línea y se redondea (por ejemplo 16.235 queda en 16.300).
-            </p>
-          }
-
-          <div class="detail__tickets-meter" aria-label="Boletas disponibles">
-            <span class="detail__tickets-num">{{ ticketsLeft(ev) }}</span>
-            <span class="detail__tickets-label">boletas disponibles</span>
-          </div>
-
-          @for (tt of ev.ticket_types; track tt.id) {
-            <label class="ticket-opt">
-              <input
-                type="radio"
-                name="tt"
-                [value]="tt.id"
-                [checked]="selectedTypeId() === tt.id"
-                (change)="onTicketTypeChange(tt.id)"
-              />
-              {{ tt.name }} —
-              {{ tt.price > 0 ? ('$' + (unitPublic(tt.price) | number) + ' COP') : 'Gratis' }}
-              ({{ tt.quantity_available }} disp.)
-            </label>
-          }
-
-          <label class="field">
-            Cantidad
-            <input
-              type="number"
-              min="1"
-              max="20"
-              [(ngModel)]="quantity"
-              (ngModelChange)="onQuantityChange()"
-            />
-          </label>
-
-          <label class="check-row buy-hint">
-            <input type="checkbox" [(ngModel)]="singleHolderMode" (ngModelChange)="onHolderModeChange()" />
-            Un solo nombre para todas las boletas
-          </label>
-
-          @if (singleHolderMode) {
-            <label class="field">
-              Nombre en las {{ quantity }} boleta(s)
-              <input
-                type="text"
-                [(ngModel)]="holderName"
-                placeholder="Nombre del asistente o grupo"
-              />
-            </label>
-            <p class="hint">Puedes comprar varias boletas con el mismo nombre (familia, grupo, etc.).</p>
           } @else {
-            <fieldset class="holders">
-              <legend>Nombre en cada boleta</legend>
-              @for (name of holderNames; track $index) {
-                <label>
-                  Asistente {{ $index + 1 }}
-                  <input
-                    type="text"
-                    [(ngModel)]="holderNames[$index]"
-                    placeholder="Nombre completo"
+            @if (questionsLink(ev); as ask) {
+              <a class="detail__ask" [href]="ask" target="_blank" rel="noopener noreferrer">
+                <svg class="detail__ask-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                  <path
+                    fill="currentColor"
+                    d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.87 9.87 0 0 0 12.04 2zm.01 1.67c2.2 0 4.26.86 5.82 2.42a8.2 8.2 0 0 1 2.41 5.83c0 4.54-3.7 8.23-8.24 8.23-1.48 0-2.93-.39-4.19-1.15l-.3-.17-3.12.82.83-3.04-.2-.31a8.18 8.18 0 0 1-1.26-4.38c0-4.54 3.7-8.24 8.25-8.24zm4.52 10.6c-.25-.12-1.47-.72-1.7-.8-.23-.09-.39-.12-.56.12-.17.25-.64.8-.79.97-.15.17-.29.19-.54.06-.25-.12-1.05-.39-2-1.23-.74-.66-1.23-1.47-1.38-1.72-.14-.25-.02-.38.11-.51.11-.11.25-.29.37-.43.12-.15.17-.25.25-.41.09-.17.04-.31-.02-.43-.06-.12-.56-1.35-.76-1.84-.2-.48-.41-.42-.56-.42h-.48c-.17 0-.43.06-.66.31-.23.25-.87.85-.87 2.07 0 1.22.89 2.4 1.01 2.56.12.17 1.75 2.67 4.23 3.74 1.49.64 1.91.67 2.59.56.42-.07 1.47-.6 1.67-1.18.21-.58.21-1.07.14-1.18-.06-.1-.23-.17-.48-.29z"
                   />
+                </svg>
+                ¿Tienes preguntas? Escribe en WhatsApp
+              </a>
+            }
+
+            @if (!auth.isLoggedIn()) {
+              <section class="purchase-register-gate">
+                <strong>{{ isFreeSale(ev) ? 'Debes registrarte para reservar' : 'Debes registrarte sí o sí para comprar' }}</strong>
+                <p>
+                  {{
+                    isFreeSale(ev)
+                      ? 'Crea tu cuenta, valida el correo y vuelve para reservar tu boleta gratis.'
+                      : 'Crea tu cuenta, valida el correo que recibirás y vuelve para terminar la compra. Guardaremos tu selección.'
+                  }}
+                </p>
+                <div>
+                  <a routerLink="/registro" [queryParams]="{ returnUrl: '/eventos/' + ev.id }" class="tava-btn-primary">Registrarme</a>
+                  <a routerLink="/ingresar" [queryParams]="{ returnUrl: '/eventos/' + ev.id }" class="back">Ya tengo cuenta</a>
+                </div>
+              </section>
+            }
+
+            <div class="purchase-price">
+              @for (tt of ev.ticket_types; track tt.id) {
+                <label class="ticket-opt">
+                  <input
+                    type="radio"
+                    name="tt"
+                    [value]="tt.id"
+                    [checked]="selectedTypeId() === tt.id"
+                    (change)="onTicketTypeChange(tt.id)"
+                  />
+                  <span>
+                    <strong>{{ tt.name }}</strong>
+                    —
+                    {{ tt.price > 0 ? ('$' + (tt.price | number:'1.0-0') + ' COP') : 'Gratis' }}
+                  </span>
                 </label>
               }
-            </fieldset>
+              @if (!isFreeSale(ev) && (selectedTicketType()?.price ?? 0) > 0) {
+                <p class="purchase-price__note">Se sumará el valor del servicio al valor aquí presentado</p>
+              }
+            </div>
+
+            <label class="field">
+              Cantidad
+              <input
+                type="number"
+                min="1"
+                max="20"
+                [(ngModel)]="quantity"
+                (ngModelChange)="onQuantityChange()"
+              />
+            </label>
+
+            <label class="check-row buy-hint">
+              <input type="checkbox" [(ngModel)]="singleHolderMode" (ngModelChange)="onHolderModeChange()" />
+              Un solo nombre para todas las boletas
+            </label>
+
+            @if (singleHolderMode) {
+              <label class="field">
+                Nombre
+                <input
+                  type="text"
+                  [(ngModel)]="holderName"
+                  placeholder="Nombre del asistente o grupo"
+                />
+              </label>
+            } @else {
+              <fieldset class="holders">
+                <legend>Nombre en cada boleta</legend>
+                @for (name of holderNames; track $index) {
+                  <label>
+                    Asistente {{ $index + 1 }}
+                    <input
+                      type="text"
+                      [(ngModel)]="holderNames[$index]"
+                      placeholder="Nombre completo"
+                    />
+                  </label>
+                }
+              </fieldset>
+            }
+
+            <label class="legal">
+              <input type="checkbox" [(ngModel)]="legalAccepted" />
+              <span>
+                Acepto los
+                <button
+                  type="button"
+                  class="legal__link"
+                  (click)="$event.preventDefault(); $event.stopPropagation(); showTerms = !showTerms"
+                >
+                  términos y condiciones de la boleta
+                </button>
+              </span>
+            </label>
+
+            @if (showTerms) {
+              <div class="purchase-terms" role="region" aria-label="Términos y condiciones">
+                <strong>Términos y condiciones — TAVA Teatro</strong>
+                @for (block of ticketTermsBlocks(ev); track $index) {
+                  <p>{{ block }}</p>
+                }
+              </div>
+            }
+
+            <button
+              type="button"
+              class="tava-btn-primary detail__buy-btn"
+              (click)="comprar()"
+              [disabled]="!selectedTypeId() || purchasing"
+            >
+              {{
+                !auth.isLoggedIn()
+                  ? isFreeSale(ev)
+                    ? 'Registrarme para reservar'
+                    : 'Registrarme para comprar'
+                  : isFreeSale(ev)
+                    ? 'Reservar boletas gratis'
+                    : 'Pagar boletas'
+              }}
+            </button>
           }
 
-          @if (relatedEvents().length) {
+          @if (relatedEvents().length && purchaseStep === 'form') {
             <section class="detail__suggestions">
               <h3>Podría interesarte</h3>
               <ul class="detail__suggestions-list">
@@ -315,43 +394,6 @@
               </ul>
             </section>
           }
-
-          <label class="legal">
-            <input type="checkbox" [(ngModel)]="legalAccepted" />
-            Acepto los términos y condiciones de la boleta
-          </label>
-          @if (!legalAccepted) {
-            <p class="hint hint--warn">Debes aceptar los términos y condiciones para poder comprar.</p>
-          }
-
-          @if (selectedTicketType(); as st) {
-            <p class="hint hint--total">
-              Total a pagar: <strong>${{ totalPrice() | number:'1.0-0' }} COP</strong>
-              @if (!isFreeSale(ev) && st.price > 0) {
-                <span> · precio registrado ${{ (st.price * quantity) | number:'1.0-0' }}</span>
-              }
-            </p>
-          }
-
-          <button
-            type="button"
-            class="tava-btn-primary detail__buy-btn tava-btn-shine"
-            style="--shine-delay: 850ms"
-            (click)="comprar()"
-            [disabled]="!selectedTypeId() || (auth.isLoggedIn() && !legalAccepted) || purchasing"
-          >
-            {{
-              purchasing
-                ? 'Procesando…'
-                : !auth.isLoggedIn()
-                  ? isFreeSale(ev)
-                    ? 'Registrarme para reservar'
-                    : 'Registrarme para comprar'
-                  : isFreeSale(ev)
-                    ? 'Reservar boletas gratis'
-                    : 'Pagar boletas'
-            }}
-          </button>
         } @else {
           <p class="muted">Próximamente tipos de boleta para este evento.</p>
         }
