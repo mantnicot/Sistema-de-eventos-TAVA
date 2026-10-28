@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 logger = logging.getLogger("tava.schema")
 
 SCHEMA_MARKER_KEY = "schema_upgrade_marker"
-SCHEMA_MARKER_VALUE = "2026-10-promo-campaigns-v1"
+SCHEMA_MARKER_VALUE = "2026-10-promo-custom-emails-v1"
 
 
 async def _exec(conn: AsyncConnection, sql: str) -> None:
@@ -198,7 +198,7 @@ async def apply_schema_upgrades(conn: AsyncConnection) -> None:
         CREATE TABLE IF NOT EXISTS promo_campaign_recipients (
             id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
             campaign_id UUID NOT NULL REFERENCES promo_campaigns(id) ON DELETE CASCADE,
-            user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            user_id UUID REFERENCES users(id) ON DELETE CASCADE,
             email VARCHAR(255) NOT NULL,
             status VARCHAR(20) NOT NULL DEFAULT 'pending',
             error TEXT,
@@ -207,6 +207,7 @@ async def apply_schema_upgrades(conn: AsyncConnection) -> None:
         )
         """,
         "CREATE INDEX IF NOT EXISTS ix_promo_recipients_pending ON promo_campaign_recipients(status, campaign_id)",
+        "ALTER TABLE promo_campaign_recipients ALTER COLUMN user_id DROP NOT NULL",
     ]
     for sql in statements:
         await _exec(conn, sql)

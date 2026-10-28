@@ -457,7 +457,9 @@ class PromoCampaignRecipientModel(Base):
     campaign_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("promo_campaigns.id", ondelete="CASCADE"), index=True
     )
-    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"))
+    user_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=True
+    )
     email: Mapped[str] = mapped_column(String(255))
     status: Mapped[str] = mapped_column(String(20), default="pending")  # pending|sent|failed
     error: Mapped[str | None] = mapped_column(Text, nullable=True)

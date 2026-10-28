@@ -367,7 +367,7 @@ export function resolveTavoAction(
       }
       return {
         reply: msg(
-          'Para publicar: creas el evento, pones teléfono de contacto, boletas y, si es de pago, comisión 8%–15% y el contrato. El público paga en línea. TAVA recibe el dinero y te lo gira después de la función, menos la comisión. En el panel solo ves tus eventos. Luego envías a revisión.',
+          'Para publicar: creas el evento, pones teléfono de contacto, boletas y, si es de pago, comisión 0%–15% y el contrato. El público paga en línea. TAVA recibe el dinero y te lo gira después de la función, menos la comisión. En el panel solo ves tus eventos. Luego envías a revisión.',
           [
             { id: 'create_steps', label: 'Pasos para crear' },
             { id: 'create_commission', label: 'Comisión y contrato' },
@@ -390,7 +390,7 @@ export function resolveTavoAction(
             '3) Teléfono de contacto: sirve para el botón «Preguntas» y por si el pago en línea falla.\n' +
             '4) Modo: gratuito ($0) o pago en línea.\n' +
             '5) En pago: escribes el precio que quieres recibir. El sistema avisa el precio mayor que verá el público.\n' +
-            '6) Comisión 8%–15% y contrato (TAVA cobra, retiene la comisión y te gira el resto después de la función).\n' +
+            '6) Comisión 0%–15% y contrato (TAVA cobra, retiene la comisión y te gira el resto después de la función).\n' +
             '7) Video vertical de celular si subes trailer.\n' +
             '8) Guarda y «Enviar a revisión».',
           [
@@ -409,7 +409,8 @@ export function resolveTavoAction(
       return {
         reply: msg(
           'Comisión y pago (eventos de pago):\n' +
-            '• Eliges entre 8% y 15% sobre el precio que registraste, no sobre el recargo de Wompi.\n' +
+            '• Quien crea el evento elige entre 0% y 15% sobre el precio que registró, no sobre el recargo de Wompi.\n' +
+            '• Si el evento lo crea el administrador de TAVA, no hay comisión.\n' +
             '• El público paga en línea un valor mayor, redondeado a centenas.\n' +
             '• TAVA recibe ese dinero. Después de la función te gira el precio registrado menos la comisión.\n' +
             '• No tienes que validar cada pago en línea: la boleta sale cuando Wompi aprueba.\n' +
@@ -481,7 +482,7 @@ export function resolveTavoAction(
       }
       return {
         reply: msg(
-          'Después de la función TAVA te gira el precio registrado de las boletas pagadas, menos la comisión (8%–15%).\n' +
+          'Después de la función TAVA te gira el precio registrado de las boletas pagadas, menos la comisión (0%–15%).\n' +
             'El recargo de Wompi no entra en esa cuenta. En «Mis eventos» solo ves tus obras.\n' +
             'Los pagos en línea no los validas tú. WhatsApp solo si el pago en línea no abrió.',
           [
@@ -604,7 +605,7 @@ export function resolveTavoAction(
       }
       return {
         reply: msg(
-          'La comisión (8%–15%) se descuenta del precio que registró el organizador. Tú pagas el valor que ves en la ficha, que ya incluye el cobro del pago en línea. TAVA le gira al organizador después de la función.',
+          'La comisión (0%–15%) se descuenta del precio que registró el organizador. Tú pagas el valor que ves en la ficha, que ya incluye el cobro del pago en línea. TAVA le gira al organizador después de la función.',
           [
             { id: 'faq', label: '← FAQ' },
             { id: 'whatsapp', label: 'WhatsApp con mi duda' },

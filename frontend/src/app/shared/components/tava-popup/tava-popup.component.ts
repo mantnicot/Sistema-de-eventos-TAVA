@@ -13,8 +13,8 @@ import { TavaTheatricalLoaderComponent } from '../tava-theatrical-loader/tava-th
 export class TavaPopupComponent implements OnDestroy {
   readonly notify = inject(NotificationService);
   readonly rotatingPhrase = signal('');
-  readonly roseSlots = Array.from({ length: 28 }, (_, i) => i);
-  readonly petalSlots = Array.from({ length: 16 }, (_, i) => i);
+  readonly roseSlots = Array.from({ length: 10 }, (_, i) => i);
+  readonly petalSlots = Array.from({ length: 6 }, (_, i) => i);
 
   private phraseTimer: ReturnType<typeof setInterval> | null = null;
 
@@ -41,9 +41,9 @@ export class TavaPopupComponent implements OnDestroy {
   }
 
   confirm(): void {
-    const s = this.notify.state();
-    s?.onConfirm?.();
+    const fn = this.notify.state()?.onConfirm;
     this.notify.hide();
+    fn?.();
   }
 
   cancel(): void {

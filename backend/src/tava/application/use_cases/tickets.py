@@ -344,8 +344,14 @@ class TicketUseCase:
             await self.reject_pending_order(order)
         return len(orders)
 
-    async def release_unpaid_orders_for_event(self, event_id: UUID) -> None:
-        """Deja el evento borrable cuando no hay boletas emitidas ni pagos confirmados."""
+    async def release_unpaid_orders_for_event(self, event_id: UUID, *, force: bool = False) -> None:
+        """Deja el evento borrable cuando no hay boletas emitidas ni pagos confirmados.
+
+        Con force (solo lo usa el admin de plataforma) se permiten boletas y pagos:
+        el router las borra junto con el evento.
+        """
+        if force:
+            return
         ticket_count = int(
             (
                 await self._session.execute(

@@ -20,6 +20,7 @@ class CampaignBody(BaseModel):
     format: str = Field(description="magazine | spotlight")
     audience: str = "opt_in"
     event_ids: list[UUID] = Field(min_length=1)
+    custom_emails: list[str] = []
 
 
 @router.get("/banners")
@@ -77,6 +78,7 @@ async def preview_campaign(
             subject=body.subject,
             intro=body.intro,
             event_ids=body.event_ids,
+            direct=body.audience == "custom",
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -97,6 +99,7 @@ async def create_campaign(
             intro=body.intro,
             event_ids=body.event_ids,
             audience=body.audience,
+            custom_emails=body.custom_emails,
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc

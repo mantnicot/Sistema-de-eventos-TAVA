@@ -182,7 +182,9 @@ export class AdminDashboardComponent implements OnInit {
   contractText = '';
   contractVersion = '';
   minPaidTicket = 15000;
-  readonly commissionOptions = [8, 9, 10, 11, 12, 13, 14, 15];
+  /** Organizador del evento en edición. Null mientras se crea uno nuevo. */
+  editingOrganizerId: string | null = null;
+  readonly commissionOptions = Array.from({ length: 16 }, (_, i) => i);
   pendingWhatsappOrders = signal<
     {
       order_id: string;
@@ -263,7 +265,7 @@ export class AdminDashboardComponent implements OnInit {
         },
         error: () => {
           this.contractText =
-            'Contrato de comisión TAVA (8%–15%). Al aceptar te comprometes a pagar la comisión sobre boletería vendida por la plataforma.';
+            'Contrato de comisión TAVA (0%–15%). Quien crea el evento elige el porcentaje. Los eventos del administrador de TAVA no llevan comisión.';
         },
       });
   }
@@ -275,6 +277,13 @@ export class AdminDashboardComponent implements OnInit {
 
   isFreeSaleMode(): boolean {
     return this.theatrical.sale_mode === 'free';
+  }
+
+  /** La comisión la elige quien crea el evento. En los del admin de TAVA no aplica. */
+  commissionChoiceApplies(): boolean {
+    if (!this.isPlatformAdmin()) return true;
+    const me = this.auth.user()?.id;
+    return !!this.editingOrganizerId && this.editingOrganizerId !== me;
   }
 
   publicPreview(price: number): number {
@@ -918,6 +927,7 @@ export class AdminDashboardComponent implements OnInit {
     };
     this.commissionRatePercent = 10;
     this.contractAccepted = false;
+    this.editingOrganizerId = null;
     this.pendingWhatsappOrders.set([]);
     this.settlementInfo.set(null);
     this.eventForm = {
@@ -1059,8 +1069,9 @@ export class AdminDashboardComponent implements OnInit {
     subject: 'Cartelera TAVA · esta semana en escena',
     intro: 'Hola. Armamos la cartelera para ti: elige tu función y reserva desde la boletería de TAVA.',
     format: 'magazine' as 'magazine' | 'spotlight',
-    audience: 'opt_in',
+    audience: 'opt_in' as 'opt_in' | 'opt_in_buyers' | 'opt_in_favorites' | 'custom',
   };
+  promoCustomEmails = '';
   promoSelectedIds: Record<string, boolean> = {};
   readonly promoAudienceCount = signal<number | null>(null);
   readonly promoPreviewHtml = signal<string>('');
@@ -1110,12 +1121,38 @@ export class AdminDashboardComponent implements OnInit {
 
   refreshPromoAudience(): void {
     if (!this.isPlatformAdmin()) return;
+    if (this.promoForm.audience === 'custom') {
+      this.promoAudienceCount.set(this.parsedPromoEmails().length);
+      return;
+    }
     this.api
       .get<{ count: number }>(`/marketing/campaigns/audience-count?audience=${encodeURIComponent(this.promoForm.audience)}`)
       .subscribe({
         next: (res) => this.promoAudienceCount.set(res.count ?? 0),
         error: () => this.promoAudienceCount.set(null),
       });
+  }
+
+  parsedPromoEmails(): string[] {
+    const seen = new Set<string>();
+    const out: string[] = [];
+    for (const part of this.promoCustomEmails.split(/[,;\s]+/)) {
+      const email = part.trim().toLowerCase();
+      if (!email || seen.has(email)) continue;
+      seen.add(email);
+      out.push(email);
+    }
+    return out;
+  }
+
+  promoRecipientLabel(): string {
+    if (this.promoForm.audience === 'custom') return String(this.parsedPromoEmails().length);
+    const n = this.promoAudienceCount();
+    return n == null ? '…' : String(n);
+  }
+
+  private invalidPromoEmail(): string | null {
+    return this.parsedPromoEmails().find((email) => !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) ?? null;
   }
 
   loadPromoCampaigns(): void {
@@ -1155,6 +1192,7 @@ export class AdminDashboardComponent implements OnInit {
         intro: this.promoForm.intro,
         format: this.promoForm.format,
         audience: this.promoForm.audience,
+        custom_emails: this.promoForm.audience === 'custom' ? this.parsedPromoEmails() : [],
         event_ids: eventIds,
       })
       .subscribe({
@@ -1175,9 +1213,23 @@ export class AdminDashboardComponent implements OnInit {
       this.notify.warning('Publicidad', 'Marca al menos un evento.');
       return;
     }
-    const n = this.promoAudienceCount();
-    const confirmMsg =
-      n == null
+    const custom = this.promoForm.audience === 'custom';
+    const emails = this.parsedPromoEmails();
+    if (custom) {
+      if (!emails.length) {
+        this.notify.warning('Publicidad', 'Escribe al menos un correo.');
+        return;
+      }
+      const bad = this.invalidPromoEmail();
+      if (bad) {
+        this.notify.warning('Publicidad', `Este correo no es válido: ${bad}`);
+        return;
+      }
+    }
+    const n = custom ? emails.length : this.promoAudienceCount();
+    const confirmMsg = custom
+      ? `Se encolará el correo a ${emails.length} dirección(es) que escribiste. Se envía por lotes (~25/min). ¿Continuar?`
+      : n == null
         ? 'Se encolará el correo solo a quienes aceptaron publicidad. ¿Continuar?'
         : `Se encolará el correo a ${n} persona(s) con publicidad aceptada. Se envía por lotes (~25/min). ¿Continuar?`;
     this.notify.confirm('Enviar publicidad', confirmMsg, () => {
@@ -1189,6 +1241,7 @@ export class AdminDashboardComponent implements OnInit {
           intro: this.promoForm.intro,
           format: this.promoForm.format,
           audience: this.promoForm.audience,
+          custom_emails: custom ? emails : [],
           event_ids: eventIds,
         })
         .subscribe({
@@ -1254,6 +1307,7 @@ export class AdminDashboardComponent implements OnInit {
   editEvent(ev: TavaEvent): void {
     this.duplicateGalleryDraft = [];
     this.editingId.set(ev.id);
+    this.editingOrganizerId = ev.organizer_id ?? null;
     this.ticketTypesDraft = [];
     this.ticketTypesTouched = false;
     this.adminSeatPreviewSelected = [];
@@ -1322,6 +1376,7 @@ export class AdminDashboardComponent implements OnInit {
       next: (detail) => {
         this.notify.hide();
         this.editingId.set(null);
+        this.editingOrganizerId = null;
         this.eventForm = {
           name: detail.name,
           description: detail.description,
@@ -1391,7 +1446,7 @@ export class AdminDashboardComponent implements OnInit {
         );
         return;
       }
-      if (!this.contractAccepted) {
+      if (this.commissionChoiceApplies() && !this.contractAccepted) {
         this.notify.warning('Contrato', 'Debes aceptar el contrato de comisión para eventos de pago.');
         return;
       }
@@ -1417,8 +1472,12 @@ export class AdminDashboardComponent implements OnInit {
       .filter((m) => m.name);
     const body = {
       ...this.eventForm,
-      commission_rate: this.hasPaidTicketsDraft() ? this.commissionRatePercent / 100 : null,
-      contract_accepted: this.hasPaidTicketsDraft() ? this.contractAccepted : false,
+      commission_rate:
+        this.hasPaidTicketsDraft() && this.commissionChoiceApplies()
+          ? this.commissionRatePercent / 100
+          : null,
+      contract_accepted:
+        this.hasPaidTicketsDraft() && this.commissionChoiceApplies() ? this.contractAccepted : false,
       theatrical_details: {
         ...this.theatrical,
         sale_mode: this.theatrical.sale_mode === 'free' ? 'free' : 'system',
@@ -1552,12 +1611,21 @@ export class AdminDashboardComponent implements OnInit {
   }
 
   deleteEvent(ev: TavaEvent): void {
+    const issued = Number(ev.issued_tickets || 0);
+    const force = this.isPlatformAdmin();
+    const ticketNote =
+      issued > 0
+        ? ` Tiene ${issued} ${issued === 1 ? 'boleta emitida' : 'boletas emitidas'}${
+            force ? ', que se anulan y dejan de verse en Mis boletas' : '. Con boletas emitidas no se puede borrar'
+          }.`
+        : ' Si solo hay pagos sin terminar, se sueltan.';
     this.notify.confirm(
       'Eliminar evento',
-      `¿Eliminar "${ev.name}"? Si solo hay pagos sin terminar, se sueltan. Si ya hay boletas emitidas, no se puede borrar.`,
+      `¿Eliminar "${ev.name}"?${ticketNote}`,
       () => {
       this.notify.loadingTheatrical('Retirando del cartel', 'delete');
-      this.api.delete(`/events/${ev.id}`).subscribe({
+      const path = force ? `/events/${ev.id}?force=true` : `/events/${ev.id}`;
+      this.api.delete(path).subscribe({
         next: () => {
           this.notify.hide();
           this.notify.success('Eventos', 'Evento eliminado');

@@ -3,9 +3,9 @@ from __future__ import annotations
 
 from decimal import Decimal
 
-CONTRACT_VERSION = "v2.0-2026-pago-posterior"
+CONTRACT_VERSION = "v2.1-2026-comision-0-15"
 MIN_PAID_TICKET_COP = Decimal("15000")
-MIN_COMMISSION_RATE = Decimal("0.08")
+MIN_COMMISSION_RATE = Decimal("0")
 MAX_COMMISSION_RATE = Decimal("0.15")
 
 COMMISSION_CONTRACT_TEXT = """
@@ -24,9 +24,10 @@ la compra puede continuar por el WhatsApp de contacto que el Organizador registr
 el público es mayor: incluye el costo de la pasarela y se redondea hacia arriba a la centena
 siguiente. Ese recargo no forma parte de la comisión de TAVA.
 
-3. COMISIÓN. TAVA Teatro retiene el porcentaje que el Organizador elija al crear o actualizar el
-evento, entre el ocho por ciento (8%) y el quince por ciento (15%), calculado solo sobre el precio
-registrado de las boletas efectivamente pagadas, no sobre el recargo de la pasarela.
+3. COMISIÓN. Quien crea el evento elige el porcentaje, entre el cero por ciento (0%) y el quince
+por ciento (15%), calculado solo sobre el precio registrado de las boletas efectivamente pagadas,
+no sobre el recargo de la pasarela. En 0% TAVA no retiene comisión. Los eventos creados por el
+administrador de la plataforma no llevan comisión.
 
 4. EL DINERO LO RECIBE TAVA. Los pagos en línea entran a la cuenta de la Plataforma. El Organizador
 no cobra directo al público por ese canal y no valida esos pagos uno a uno. La boleta se emite
@@ -64,12 +65,12 @@ def contract_text(version: str = CONTRACT_VERSION) -> str:
 
 def normalize_commission_rate(raw: Decimal | float | str | None) -> Decimal:
     if raw is None:
-        raise ValueError("Debes indicar la comisión del sistema (entre 8% y 15%).")
+        raise ValueError("Debes indicar la comisión del sistema (entre 0% y 15%).")
     rate = Decimal(str(raw))
     if rate > 1:
         rate = (rate / Decimal("100")).quantize(Decimal("0.0001"))
     if rate < MIN_COMMISSION_RATE or rate > MAX_COMMISSION_RATE:
-        raise ValueError("La comisión debe estar entre 8% y 15%.")
+        raise ValueError("La comisión debe estar entre 0% y 15%.")
     return rate.quantize(Decimal("0.0001"))
 
 

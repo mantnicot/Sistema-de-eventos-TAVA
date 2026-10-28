@@ -1,6 +1,7 @@
 """Campañas de publicidad por correo — solo administrador de plataforma."""
 from __future__ import annotations
 
+import re
 from datetime import UTC, datetime
 from uuid import UUID
 
@@ -19,7 +20,25 @@ from tava.infrastructure.services.promo_email import build_promo_html, send_prom
 
 BATCH_SIZE = 25
 VALID_FORMATS = {"magazine", "spotlight"}
-VALID_AUDIENCES = {"opt_in", "opt_in_buyers", "opt_in_favorites"}
+VALID_AUDIENCES = {"opt_in", "opt_in_buyers", "opt_in_favorites", "custom"}
+_EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
+
+def parse_custom_emails(raw: list[str] | None) -> list[str]:
+    """Acepta una lista ya partida o correos pegados con coma, punto y coma o salto de línea."""
+    seen: set[str] = set()
+    out: list[str] = []
+    for chunk in raw or []:
+        for part in re.split(r"[,;\s]+", chunk or ""):
+            email = part.strip().lower()
+            if not email:
+                continue
+            if not _EMAIL_RE.match(email):
+                raise ValueError(f"Correo inválido: {part.strip()}")
+            if email not in seen:
+                seen.add(email)
+                out.append(email)
+    return out
 
 
 def _format_when(ev: EventModel) -> str:
@@ -101,6 +120,7 @@ class CampaignUseCase:
         subject: str,
         intro: str,
         event_ids: list[UUID],
+        direct: bool = False,
     ) -> dict:
         if format not in VALID_FORMATS:
             raise ValueError("Formato inválido. Usa magazine o spotlight.")
@@ -110,7 +130,9 @@ class CampaignUseCase:
         if format == "spotlight":
             events = events[:1]
         payload = self._event_payload(events)
-        html, text = build_promo_html(format=format, subject=subject, intro=intro, events=payload)
+        html, text = build_promo_html(
+            format=format, subject=subject, intro=intro, events=payload, direct=direct
+        )
         return {"html": html, "text": text, "event_count": len(events)}
 
     async def create_campaign(
@@ -122,6 +144,7 @@ class CampaignUseCase:
         intro: str,
         event_ids: list[UUID],
         audience: str,
+        custom_emails: list[str] | None = None,
     ) -> PromoCampaignModel:
         if format not in VALID_FORMATS:
             raise ValueError("Formato inválido. Usa magazine o spotlight.")
@@ -141,10 +164,22 @@ class CampaignUseCase:
             published = published[:1]
         ids = [e.id for e in published]
 
-        recipients = await self.audience_users(audience, ids)
-        if not recipients:
+        manual = audience == "custom"
+        typed = parse_custom_emails(custom_emails) if manual else []
+        recipients = [] if manual else await self.audience_users(audience, ids)
+        if manual and not typed:
+            raise ValueError("Escribe al menos un correo. Separa varios con coma o con una línea cada uno.")
+        if not manual and not recipients:
             raise ValueError("No hay destinatarios con publicidad aceptada para esa audiencia.")
 
+        known: dict[str, UserModel] = {}
+        if typed:
+            found = await self._session.execute(
+                select(UserModel).where(func.lower(UserModel.email).in_(typed))
+            )
+            known = {user.email.lower(): user for user in found.scalars().all()}
+
+        total = len(typed) if manual else len(recipients)
         campaign = PromoCampaignModel(
             created_by=admin_id,
             subject=subject[:200],
@@ -153,19 +188,31 @@ class CampaignUseCase:
             audience=audience,
             event_ids=[str(i) for i in ids],
             status="queued",
-            total_recipients=len(recipients),
+            total_recipients=total,
         )
         self._session.add(campaign)
         await self._session.flush()
-        for user in recipients:
-            self._session.add(
-                PromoCampaignRecipientModel(
-                    campaign_id=campaign.id,
-                    user_id=user.id,
-                    email=user.email,
-                    status="pending",
+        if manual:
+            for email in typed:
+                user = known.get(email)
+                self._session.add(
+                    PromoCampaignRecipientModel(
+                        campaign_id=campaign.id,
+                        user_id=user.id if user else None,
+                        email=email,
+                        status="pending",
+                    )
                 )
-            )
+        else:
+            for user in recipients:
+                self._session.add(
+                    PromoCampaignRecipientModel(
+                        campaign_id=campaign.id,
+                        user_id=user.id,
+                        email=user.email,
+                        status="pending",
+                    )
+                )
         await self._session.flush()
         return campaign
 
@@ -212,6 +259,7 @@ class CampaignUseCase:
                 subject=campaign.subject,
                 intro=campaign.intro_text,
                 events=payload,
+                direct=campaign.audience == "custom",
             )
             for row in recipients:
                 ok = await send_promo_email(row.email, campaign.subject, html, text)

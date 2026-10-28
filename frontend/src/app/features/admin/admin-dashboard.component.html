@@ -212,7 +212,7 @@
         <h2>{{ editingId() ? 'Editar evento' : 'Nuevo evento' }}</h2>
         @if (!isPlatformAdmin()) {
           <p class="muted">
-            Aquí solo ves tus eventos. El público paga en línea. TAVA recibe ese dinero y te lo gira después de la función, menos la comisión que elijas.
+            Aquí solo ves tus eventos. El público paga en línea. TAVA recibe ese dinero y te lo gira después de la función, menos la comisión que elijas (de 0% a 15%).
           </p>
         } @else {
           <p class="muted">El rol y las obras de cada vendedor o validador se asignan en la pestaña <button type="button" class="link-btn" (click)="tab.set('users')">Personas</button>.</p>
@@ -278,10 +278,10 @@
           }
         </section>
 
-        @if (theatrical.sale_mode !== 'free') {
+        @if (theatrical.sale_mode !== 'free' && commissionChoiceApplies()) {
           <section class="ticketing-block">
             <h3>Comisión TAVA (eventos de pago)</h3>
-            <p class="muted">Mínimo por boleta de pago: ${{ minPaidTicket | number }} COP. Elige entre 8% y 15%.</p>
+            <p class="muted">Mínimo por boleta de pago: ${{ minPaidTicket | number }} COP. Quien crea el evento elige de 0% a 15% sobre el total registrado.</p>
             <label>
               Comisión del sistema
               <select [(ngModel)]="commissionRatePercent" name="commissionRate" [disabled]="!hasPaidTicketsDraft()">
@@ -296,9 +296,11 @@
             </details>
             <label class="check-row">
               <input type="checkbox" [(ngModel)]="contractAccepted" name="contractAccepted" [disabled]="!hasPaidTicketsDraft()" />
-              Acepto el contrato: TAVA cobra al público, retiene la comisión y me gira el resto después de la función
+              Acepto el contrato: TAVA cobra al público, retiene la comisión elegida y me gira el resto después de la función
             </label>
           </section>
+        } @else if (theatrical.sale_mode !== 'free') {
+          <p class="muted">Como administrador de TAVA este evento no lleva comisión. El porcentaje lo elige el organizador, de 0% a 15%.</p>
         } @else {
           <p class="muted">Evento gratuito: no aplica contrato ni comisión de plataforma.</p>
         }
@@ -656,8 +658,8 @@
       <div class="promo-workspace__form tava-card">
         <h2>Publicidad por correo</h2>
         <p class="muted">
-          Solo el administrador global puede enviar. Llega únicamente a quienes aceptaron publicidad al registrarse.
-          El envío va por lotes (~25 por minuto) para respetar el cupo de Brevo.
+          Solo el administrador global puede enviar. Puedes usar la lista de quienes aceptaron publicidad
+          o escribir uno o varios correos. El envío va por lotes (~25 por minuto) para respetar el cupo de Brevo.
         </p>
 
         <label>Asunto del correo
@@ -677,11 +679,23 @@
             <option value="opt_in">Quienes aceptaron publicidad</option>
             <option value="opt_in_buyers">Opt-in + ya compraron alguna vez</option>
             <option value="opt_in_favorites">Opt-in + favoritos de los eventos marcados</option>
+            <option value="custom">Correos que yo escriba</option>
           </select>
         </label>
-        <p class="muted">
-          Destinatarios:
-          <strong>{{ promoAudienceCount() == null ? '…' : promoAudienceCount() }}</strong>
+        @if (promoForm.audience === 'custom') {
+          <label>Correos de destino
+            <textarea
+              [(ngModel)]="promoCustomEmails"
+              name="promoCustomEmails"
+              rows="4"
+              placeholder="ana@correo.com, luis@correo.com"
+            ></textarea>
+          </label>
+          <p class="muted">Un correo, o varios separados por coma, punto y coma o una línea cada uno.</p>
+        }
+        <p class="promo-count">
+          Destinatarios
+          <strong>{{ promoRecipientLabel() }}</strong>
         </p>
 
         <fieldset class="promo-events">
@@ -689,7 +703,7 @@
           @for (ev of promoEventOptions(); track ev.id) {
             <label class="check-row">
               <input type="checkbox" [(ngModel)]="promoSelectedIds[ev.id]" [name]="'promoEv' + ev.id" />
-              {{ ev.name }} · {{ formatEventDateTime(ev.event_date, ev.event_time) }}
+              <span>{{ ev.name }} · {{ formatEventDateTime(ev.event_date, ev.event_time) }}</span>
             </label>
           } @empty {
             <p class="muted">No hay eventos cargados. Abre la pestaña Eventos o reintenta.</p>
@@ -697,10 +711,10 @@
         </fieldset>
 
         <div class="promo-actions">
-          <button type="button" class="nav__btn-outline" (click)="previewPromoCampaign()" [disabled]="promoBusy()">
+          <button type="button" class="promo-btn" (click)="previewPromoCampaign()" [disabled]="promoBusy()">
             Vista previa
           </button>
-          <button type="button" class="tava-btn-primary" (click)="sendPromoCampaign()" [disabled]="promoBusy()">
+          <button type="button" class="promo-btn promo-btn--primary" (click)="sendPromoCampaign()" [disabled]="promoBusy()">
             Enviar campaña
           </button>
         </div>
@@ -716,8 +730,10 @@
       </div>
 
       <div class="promo-workspace__history tava-card">
-        <h2>Últimas campañas</h2>
-        <button type="button" class="nav__btn-outline btn-sm" (click)="loadPromoCampaigns()">Actualizar</button>
+        <div class="promo-history-head">
+          <h2>Últimas campañas</h2>
+          <button type="button" class="promo-btn promo-btn--ghost" (click)="loadPromoCampaigns()">Actualizar</button>
+        </div>
         <ul class="promo-history">
           @for (c of promoCampaigns(); track c.id) {
             <li>

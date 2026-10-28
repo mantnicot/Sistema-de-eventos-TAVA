@@ -27,7 +27,11 @@ from tava.infrastructure.persistence.models import (
     CollectibleModel,
     EventMediaModel,
     EventModel,
+    EventSeatModel,
+    EventStaffAssignmentModel,
+    FavoriteModel,
     OrderModel,
+    PromotionModel,
     ReviewModel,
     SeatModel,
     TicketModel,
@@ -175,6 +179,17 @@ def _apply_commission_fields(data: dict, body: EventCreateRequest, *, existing: 
         data["commission_rate"] = None
         data["entry_unlocked"] = True
 
+    return data
+
+
+def _waive_platform_admin_commission(data: dict, user, existing: EventModel | None) -> dict:
+    """El admin de plataforma no paga comisión en los eventos que él crea."""
+    owns = existing is None or existing.organizer_id == user.id
+    if is_platform_admin(user) and owns:
+        data["commission_rate"] = None
+        data["contract_version"] = None
+        data["contract_accepted_at"] = None
+        data["entry_unlocked"] = True
     return data
 
 
@@ -662,7 +677,10 @@ async def create_event(
         data.pop("theatrical_details", None)
     data["organizer_id"] = user.id
     try:
-        data = _apply_commission_fields(data, body, existing=None)
+        if is_platform_admin(user):
+            data = _waive_platform_admin_commission(data, user, None)
+        else:
+            data = _apply_commission_fields(data, body, existing=None)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     if is_platform_admin(user):
@@ -697,7 +715,10 @@ async def update_event(
     if body.theatrical_details is not None:
         data["theatrical_details"] = body.theatrical_details.model_dump()
     try:
-        data = _apply_commission_fields(data, body, existing=before_model)
+        if is_platform_admin(user) and before_model.organizer_id == user.id:
+            data = _waive_platform_admin_commission(data, user, before_model)
+        else:
+            data = _apply_commission_fields(data, body, existing=before_model)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     money_changed = (
@@ -751,6 +772,8 @@ async def sync_event_ticket_types(
     db: AsyncSession = Depends(get_db),
 ):
     event = await _require_manage_event(db, event_id, user)
+    organizer = await db.get(UserModel, event.organizer_id)
+    admin_event = bool(organizer and is_platform_admin(organizer))
 
     items = body.ticket_types
     details = event.theatrical_details if isinstance(event.theatrical_details, dict) else {}
@@ -774,10 +797,11 @@ async def sync_event_ticket_types(
             and item.kind != TicketKind.COURTESY
             and is_paid_ticket_price(price)
             and event.commission_rate is None
+            and not admin_event
         ):
             raise HTTPException(
                 status_code=400,
-                detail="Configura y acepta la comisión (8%–15%) y el contrato antes de publicar boletas de pago.",
+                detail="Configura y acepta la comisión (0%–15%) y el contrato antes de publicar boletas de pago.",
             )
 
     total_qty = sum(i.quantity_available for i in items)
@@ -904,22 +928,37 @@ async def sync_event_seating(
 @router.delete("/{event_id}")
 async def delete_event(
     event_id: UUID,
+    force: bool = Query(False),
     user=Depends(require_event_manager),
     db: AsyncSession = Depends(get_db),
 ):
     event = await _require_manage_event(db, event_id, user)
+    db.expunge(event)
+    # El admin borra aunque haya boletas. No hace falta ?force=true.
+    allow_force = is_platform_admin(user)
     try:
-        await TicketUseCase(db).release_unpaid_orders_for_event(event_id)
+        await TicketUseCase(db).release_unpaid_orders_for_event(event_id, force=allow_force)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    await db.execute(delete(CheckInModel).where(CheckInModel.event_id == event_id))
+    ticket_ids = select(TicketModel.id).where(TicketModel.event_id == event_id)
+    await db.execute(
+        delete(CheckInModel).where(
+            (CheckInModel.event_id == event_id) | (CheckInModel.ticket_id.in_(ticket_ids))
+        )
+    )
+    if allow_force:
+        await db.execute(delete(TicketModel).where(TicketModel.event_id == event_id))
     await db.execute(delete(OrderModel).where(OrderModel.event_id == event_id))
+    await db.execute(delete(EventSeatModel).where(EventSeatModel.event_id == event_id))
     await db.execute(delete(ReviewModel).where(ReviewModel.event_id == event_id))
     await db.execute(delete(CollectibleModel).where(CollectibleModel.event_id == event_id))
+    await db.execute(delete(FavoriteModel).where(FavoriteModel.event_id == event_id))
+    await db.execute(delete(PromotionModel).where(PromotionModel.event_id == event_id))
+    await db.execute(delete(EventStaffAssignmentModel).where(EventStaffAssignmentModel.event_id == event_id))
     await db.execute(update(SeatModel).where(SeatModel.event_id == event_id).values(event_id=None))
     await db.execute(delete(EventMediaModel).where(EventMediaModel.event_id == event_id))
     await db.execute(delete(TicketTypeModel).where(TicketTypeModel.event_id == event_id))
-    await db.delete(event)
+    await db.execute(delete(EventModel).where(EventModel.id == event_id))
     await db.flush()
     return {"message": "Evento eliminado", "success": True}
 

@@ -93,7 +93,7 @@ export class TavaTheatricalLoaderComponent implements AfterViewInit, OnDestroy {
         return;
       }
       const total = this.elapsed + (now - this.runningSince);
-      const target = Math.min(92, (total / 4500) * 92);
+      const target = Math.min(92, (total / 1800) * 92);
       if (target - this.progress >= 0.35 && now - this.lastPaintAt >= 40) {
         this.progress = target;
         this.lastPaintAt = now;
