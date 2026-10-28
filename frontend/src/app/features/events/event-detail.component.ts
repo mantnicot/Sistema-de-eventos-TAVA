@@ -59,7 +59,7 @@ export class EventDetailComponent implements OnInit, OnDestroy {
   readonly mediaBg = mediaBackgroundStyle;
   readonly trailerVideo = trailerVideoSrc;
   purchasing = false;
-  purchaseStep: 'form' | 'summary' = 'form';
+  readonly purchaseStep = signal<'form' | 'summary'>('form');
   showTerms = false;
 
   readonly formatEventDateTime = formatEventDateTime;
@@ -247,7 +247,7 @@ export class EventDetailComponent implements OnInit, OnDestroy {
     this.startStallTimer();
     this.loadError.set(null);
     this.event.set(null);
-    this.purchaseStep = 'form';
+    this.purchaseStep.set('form');
     this.showTerms = false;
     this.refreshMaps(null);
     this.relatedEvents.set([]);
@@ -335,7 +335,7 @@ export class EventDetailComponent implements OnInit, OnDestroy {
   }
 
   backToForm(): void {
-    this.purchaseStep = 'form';
+    this.purchaseStep.set('form');
   }
 
   comprar(): void {
@@ -374,7 +374,7 @@ export class EventDetailComponent implements OnInit, OnDestroy {
     }
 
     this.persistDraft();
-    this.purchaseStep = 'summary';
+    this.purchaseStep.set('summary');
   }
 
   confirmPurchase(): void {

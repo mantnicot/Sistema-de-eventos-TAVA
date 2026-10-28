@@ -127,7 +127,17 @@
             <h2>Galería</h2>
             <div class="gallery__grid">
               @for (m of ev.gallery; track m.id) {
-                <img [src]="mediaUrl(m.url)" [alt]="ev.name" loading="lazy" (error)="onImgError($event)" />
+                @if (m.media_type === 'video') {
+                  <video
+                    class="gallery__video"
+                    [src]="mediaUrl(m.url)"
+                    controls
+                    playsinline
+                    preload="metadata"
+                  ></video>
+                } @else {
+                  <img [src]="mediaUrl(m.url)" [alt]="ev.name" loading="lazy" (error)="onImgError($event)" />
+                }
               }
             </div>
           </section>
@@ -187,57 +197,7 @@
             }
           </div>
         } @else if (ev.ticket_types.length) {
-          @if (purchaseStep === 'summary' && selectedTicketType(); as st) {
-            <section class="purchase-invoice" aria-label="Resumen de pago">
-              <h3 class="purchase-invoice__title">Resumen de tu compra</h3>
-              <dl class="purchase-invoice__rows">
-                <div>
-                  <dt>Evento</dt>
-                  <dd>{{ ev.name }}</dd>
-                </div>
-                <div>
-                  <dt>Boleta</dt>
-                  <dd>{{ st.name }}</dd>
-                </div>
-                <div>
-                  <dt>Cantidad</dt>
-                  <dd>{{ quantity }}</dd>
-                </div>
-                <div>
-                  <dt>Valor de las boletas</dt>
-                  <dd>${{ registeredTotal() | number:'1.0-0' }} COP</dd>
-                </div>
-                @if (!isFreeSale(ev) && st.price > 0) {
-                  <div>
-                    <dt>Cobro del pago en línea</dt>
-                    <dd>${{ serviceFeeAmount() | number:'1.0-0' }} COP</dd>
-                  </div>
-                }
-              </dl>
-              @if (!isFreeSale(ev) && st.price > 0) {
-                <p class="purchase-invoice__note">
-                  Es mayor al que registró el organizador porque suma el cobro del pago en línea y se redondea (por ejemplo 16.235 queda en 16.300).
-                </p>
-              }
-              <p class="purchase-invoice__total">
-                Total a pagar
-                <strong>${{ totalPrice() | number:'1.0-0' }} COP</strong>
-              </p>
-              <div class="purchase-invoice__actions">
-                <button type="button" class="purchase-invoice__back" (click)="backToForm()" [disabled]="purchasing">
-                  Volver
-                </button>
-                <button
-                  type="button"
-                  class="tava-btn-primary detail__buy-btn"
-                  (click)="confirmPurchase()"
-                  [disabled]="purchasing"
-                >
-                  {{ purchasing ? 'Procesando…' : isFreeSale(ev) ? 'Confirmar reserva' : 'Confirmar y pagar' }}
-                </button>
-              </div>
-            </section>
-          } @else {
+          @if (purchaseStep() === 'form') {
             @if (questionsLink(ev); as ask) {
               <a class="detail__ask" [href]="ask" target="_blank" rel="noopener noreferrer">
                 <svg class="detail__ask-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
@@ -371,7 +331,7 @@
             </button>
           }
 
-          @if (relatedEvents().length && purchaseStep === 'form') {
+          @if (relatedEvents().length && purchaseStep() === 'form') {
             <section class="detail__suggestions">
               <h3>Podría interesarte</h3>
               <ul class="detail__suggestions-list">
@@ -399,6 +359,68 @@
         }
       </aside>
     </div>
+
+    @if (purchaseStep() === 'summary') {
+      @if (selectedTicketType(); as st) {
+        <div class="purchase-invoice-layer" role="presentation" (click)="backToForm()">
+          <section
+            class="purchase-invoice"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Resumen de pago"
+            (click)="$event.stopPropagation()"
+          >
+            <h3 class="purchase-invoice__title">Resumen de tu compra</h3>
+            <dl class="purchase-invoice__rows">
+              <div>
+                <dt>Evento</dt>
+                <dd>{{ ev.name }}</dd>
+              </div>
+              <div>
+                <dt>Boleta</dt>
+                <dd>{{ st.name }}</dd>
+              </div>
+              <div>
+                <dt>Cantidad</dt>
+                <dd>{{ quantity }}</dd>
+              </div>
+              <div>
+                <dt>Valor de las boletas</dt>
+                <dd>${{ registeredTotal() | number:'1.0-0' }} COP</dd>
+              </div>
+              @if (!isFreeSale(ev) && st.price > 0) {
+                <div>
+                  <dt>Cobro del pago en línea</dt>
+                  <dd>${{ serviceFeeAmount() | number:'1.0-0' }} COP</dd>
+                </div>
+              }
+            </dl>
+            @if (!isFreeSale(ev) && st.price > 0) {
+              <p class="purchase-invoice__note">
+                Es mayor al que registró el organizador porque suma el cobro del pago en línea y se redondea (por ejemplo 16.235 queda en 16.300).
+              </p>
+            }
+            <p class="purchase-invoice__total">
+              Total a pagar
+              <strong>${{ totalPrice() | number:'1.0-0' }} COP</strong>
+            </p>
+            <div class="purchase-invoice__actions">
+              <button type="button" class="purchase-invoice__back" (click)="backToForm()" [disabled]="purchasing">
+                Volver
+              </button>
+              <button
+                type="button"
+                class="tava-btn-primary detail__buy-btn"
+                (click)="confirmPurchase()"
+                [disabled]="purchasing"
+              >
+                {{ purchasing ? 'Procesando…' : isFreeSale(ev) ? 'Confirmar reserva' : 'Confirmar y pagar' }}
+              </button>
+            </div>
+          </section>
+        </div>
+      }
+    }
 
     <div class="detail__footer">
       <a routerLink="/eventos" class="back">← Volver a cartelera</a>

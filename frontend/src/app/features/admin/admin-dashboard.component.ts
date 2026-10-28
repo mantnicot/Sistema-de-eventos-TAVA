@@ -1055,24 +1055,6 @@ export class AdminDashboardComponent implements OnInit {
     }
   }
 
-  testAdminEmail(): void {
-    this.notify.loadingTheatrical('Enviando prueba', 'admin');
-    this.api.post<{ success: boolean; message: string }>('/dashboard/test-email', {}).subscribe({
-      next: (res) => {
-        this.notify.hide();
-        if (res.success) {
-          this.notify.success('Correo', res.message);
-        } else {
-          this.notify.error('Correo', res.message);
-        }
-      },
-      error: (err) => {
-        this.notify.hide();
-        this.notify.error('Correo', err.error?.message ?? err.error?.detail ?? 'No se pudo enviar');
-      },
-    });
-  }
-
   promoForm = {
     subject: 'Cartelera TAVA · esta semana en escena',
     intro: 'Hola. Armamos la cartelera para ti: elige tu función y reserva desde la boletería de TAVA.',

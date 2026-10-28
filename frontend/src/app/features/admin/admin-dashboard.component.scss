@@ -16,16 +16,19 @@
 
   button {
     border: 1px solid rgba(201, 162, 39, 0.35);
-    background: rgba(255, 255, 255, 0.7);
+    background: #fff;
+    color: #3a2f2a;
     border-radius: 999px;
-    padding: 0.4rem 1rem;
+    padding: 0.45rem 0.95rem;
     cursor: pointer;
     font-family: inherit;
+    font-weight: 600;
+    white-space: nowrap;
 
     &.active {
       background: var(--tava-gold-light);
       color: #3d2a14;
-      font-weight: 600;
+      font-weight: 700;
     }
   }
 }

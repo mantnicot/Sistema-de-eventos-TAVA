@@ -14,11 +14,15 @@
     </span>
   </a>
 
-  <button type="button" class="nav-toggle" (click)="menuOpen = !menuOpen" [attr.aria-expanded]="menuOpen">
+  <button type="button" class="nav-toggle" (click)="menuOpen = !menuOpen" [attr.aria-expanded]="menuOpen" aria-label="Abrir menú">
     <span class="nav-toggle__bar"></span>
     <span class="nav-toggle__bar"></span>
     <span class="nav-toggle__bar"></span>
   </button>
+
+  @if (menuOpen) {
+    <button type="button" class="nav-backdrop" (click)="closeMenu()" aria-label="Cerrar menú"></button>
+  }
 
   <nav class="nav" [class.nav--open]="menuOpen">
     <div class="nav__cluster">

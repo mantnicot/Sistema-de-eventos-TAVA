@@ -13,9 +13,9 @@
       }
       <button type="button" [class.active]="tab() === 'events'" (click)="tab.set('events')">Eventos</button>
       @if (isPlatformAdmin()) {
+        <button type="button" [class.active]="tab() === 'promo'" (click)="openPromoTab()">Publicidad</button>
         <button type="button" [class.active]="tab() === 'users'" (click)="tab.set('users')">Personas</button>
         <button type="button" [class.active]="tab() === 'appearance'" (click)="tab.set('appearance')">Apariencia</button>
-        <button type="button" [class.active]="tab() === 'promo'" (click)="openPromoTab()">Publicidad</button>
       }
     </nav>
   </header>
@@ -191,7 +191,6 @@
         </div>
         <button type="button" class="tava-btn-primary" (click)="downloadReport('pdf')" [disabled]="kpisLoading()">Descargar PDF</button>
         <button type="button" class="nav__btn-outline" (click)="downloadReport('xlsx')" [disabled]="kpisLoading()">Descargar Excel</button>
-        <button type="button" class="nav__btn-outline" (click)="testAdminEmail()">Probar correo</button>
       </div>
     } @else {
       @if (adminLoading()) {

@@ -2,6 +2,8 @@
   --gold: #c9a227;
   --velvet: #1a1410;
   --burgundy: #6b1a2a;
+  display: block;
+  max-width: 100%;
 
   &__frame {
     position: relative;
@@ -12,9 +14,14 @@
       0 0 0 2px rgba(201, 162, 39, 0.45),
       0 16px 48px rgba(0, 0, 0, 0.45);
     aspect-ratio: 9 / 16;
-    width: min(150%, 640px);
-    max-height: 82vh;
+    width: min(100%, 320px);
+    max-height: 52vh;
     margin-inline: auto;
+
+    @media (max-width: 720px) {
+      width: min(68vw, 240px);
+      max-height: 42vh;
+    }
   }
 
   &__curtains {
