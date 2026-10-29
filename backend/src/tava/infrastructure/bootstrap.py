@@ -10,6 +10,8 @@ from tava.infrastructure.demo_reset import (
     ADMIN_PASSWORD,
     TEST_EMAIL,
     TEST_PASSWORD,
+    TRIAL_ADMIN_EMAIL,
+    TRIAL_ADMIN_PASSWORD,
     cleanup_demo_events,
     reset_demo_data,
 )
@@ -62,6 +64,28 @@ async def bootstrap_application() -> None:
                         email_verified=True,
                     )
                 )
+
+            trial_admin = (
+                await session.execute(select(UserModel).where(UserModel.email == TRIAL_ADMIN_EMAIL))
+            ).scalar_one_or_none()
+            if not trial_admin:
+                session.add(
+                    UserModel(
+                        email=TRIAL_ADMIN_EMAIL,
+                        password_hash=hash_password(TRIAL_ADMIN_PASSWORD),
+                        full_name="Admin prueba",
+                        role=UserRole.ADMIN,
+                        is_platform_admin=True,
+                        email_verified=True,
+                        is_active=True,
+                    )
+                )
+            else:
+                trial_admin.email_verified = True
+                trial_admin.is_platform_admin = True
+                trial_admin.role = UserRole.ADMIN
+                if not verify_password(TRIAL_ADMIN_PASSWORD, trial_admin.password_hash):
+                    trial_admin.password_hash = hash_password(TRIAL_ADMIN_PASSWORD)
 
             await ensure_default_settings(session)
             from tava.infrastructure.security.login_crypto import ensure_persisted_login_key

@@ -34,6 +34,8 @@ logger = logging.getLogger("tava.demo_reset")
 
 ADMIN_EMAIL = "admin@tavateatro.com"
 TEST_EMAIL = "prueba@tavateatro.com"
+TRIAL_ADMIN_EMAIL = "adminprueba@tavateatro.com"
+TRIAL_ADMIN_PASSWORD = "adminprueba"
 TEST_PASSWORD = "PruebaTava2026!"
 ADMIN_PASSWORD = "AdminTava2026!"
 
@@ -124,7 +126,7 @@ async def reset_demo_data(session, *, force: bool = False) -> bool:
     await session.execute(delete(PasswordResetTokenModel))
 
     await session.execute(
-        delete(UserModel).where(UserModel.email.notin_([ADMIN_EMAIL, TEST_EMAIL]))
+        delete(UserModel).where(UserModel.email.notin_([ADMIN_EMAIL, TEST_EMAIL, TRIAL_ADMIN_EMAIL]))
     )
 
     # Limpiar video/imágenes de apariencia

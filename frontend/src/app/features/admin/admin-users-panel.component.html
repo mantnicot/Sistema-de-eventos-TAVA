@@ -94,6 +94,9 @@
 
           <section>
             <h4>Rol</h4>
+            @if (user.is_platform_admin) {
+              <p class="hint hint--box">Administrador de la plataforma. Desde aquí solo puedes activar o desactivar la cuenta.</p>
+            } @else {
             <div class="role-grid">
               @for (role of roles; track role.value) {
                 <button
@@ -109,6 +112,7 @@
                 </button>
               }
             </div>
+            }
           </section>
 
           <label class="toggle">
@@ -160,7 +164,7 @@
             <button type="button" class="tava-btn-primary" [disabled]="!dirty() || saving()" (click)="save()">
               Guardar permisos
             </button>
-            @if (!isCurrentUser(user)) {
+            @if (!isCurrentUser(user) && !user.is_platform_admin) {
               <button type="button" class="btn-danger" [disabled]="saving()" (click)="deleteSelected()">Eliminar</button>
             }
           </footer>

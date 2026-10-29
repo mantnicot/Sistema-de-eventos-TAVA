@@ -119,27 +119,30 @@ async def set_user_permissions(
 ):
     from fastapi import HTTPException
 
-    if body.role == UserRole.ADMIN:
-        raise_user_error(400, "ADMIN_ROLE_LOCKED", "Solo puede existir un administrador global de la plataforma")
-
-    target_role = _normalize_assignable_role(body.role)
-
-    # El admin global se identifica por is_platform_admin, no por role==admin
-    if admin.id == user_id and bool(getattr(admin, "is_platform_admin", False)):
-        raise_user_error(
-            400,
-            "CANNOT_DEMOTE_SELF",
-            "No puedes cambiar tus propios permisos de administrador global",
-        )
-
     repo = SQLAlchemyUserRepository(db)
     current = await repo.get_by_id(user_id)
     if not current:
         raise_user_error(404, "USER_NOT_FOUND", "Usuario no encontrado")
 
     if getattr(current, "is_platform_admin", False):
-        if await _count_platform_admins(db) <= 1:
+        if admin.id == user_id:
+            raise_user_error(
+                400,
+                "CANNOT_DEMOTE_SELF",
+                "No puedes cambiar tus propios permisos de administrador global",
+            )
+        if body.is_active is False and await _count_platform_admins(db) <= 1:
             raise_user_error(400, "LAST_ADMIN", "Debe quedar al menos un administrador global")
+        updated = await repo.update_user(user_id, is_active=body.is_active)
+        if not updated:
+            raise_user_error(404, "USER_NOT_FOUND", "Usuario no encontrado")
+        access = await get_user_event_access(db, user_id)
+        return _to_admin_response(updated, access)
+
+    if body.role == UserRole.ADMIN:
+        raise_user_error(400, "ADMIN_ROLE_LOCKED", "Solo puede existir un administrador global de la plataforma")
+
+    target_role = _normalize_assignable_role(body.role)
 
     try:
         updated = await repo.update_user(

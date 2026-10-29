@@ -2,7 +2,7 @@ from datetime import date, datetime, time
 from decimal import Decimal
 from uuid import UUID
 
-from pydantic import BaseModel, EmailStr, Field, model_validator
+from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
 
 from tava.domain.enums import EventReviewStatus, EventStatus, TicketKind, UserRole, VenueType
 
@@ -48,10 +48,20 @@ class ResetPasswordRequest(BaseModel):
 
 
 class LoginRequest(BaseModel):
-    email: EmailStr
+    email: str = Field(min_length=3, max_length=255)
     password: str | None = None
     password_encrypted: str | None = None
     captcha_token: str | None = None
+
+    @field_validator("email")
+    @classmethod
+    def normalize_login(cls, value: str) -> str:
+        raw = value.strip().lower()
+        if raw in {"adminprueba", "adminprueba@tavateatro.com"}:
+            return "adminprueba@tavateatro.com"
+        if "@" not in raw or "." not in raw.split("@")[-1]:
+            raise ValueError("Correo inválido")
+        return raw
 
     @model_validator(mode="after")
     def require_password(self):
