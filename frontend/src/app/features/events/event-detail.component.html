@@ -241,6 +241,7 @@
                     <strong>{{ tt.name }}</strong>
                     —
                     {{ tt.price > 0 ? ('$' + (tt.price | number:'1.0-0') + ' COP') : 'Gratis' }}
+                    <small class="ticket-opt__left">{{ ticketsLeft(tt.id) === 1 ? 'Queda 1' : 'Quedan ' + ticketsLeft(tt.id) }}</small>
                   </span>
                 </label>
               }
@@ -249,12 +250,19 @@
               }
             </div>
 
+            @if (ticketsUrgency(); as urge) {
+              <p class="stock-call" [attr.data-tone]="urge.tone">
+                <strong>{{ ticketsLeftLabel() }}</strong>
+                <span>{{ urge.text }}</span>
+              </p>
+            }
+
             <label class="field">
               Cantidad
               <input
                 type="number"
                 min="1"
-                max="20"
+                [max]="ticketsLeft() || 1"
                 [(ngModel)]="quantity"
                 (ngModelChange)="onQuantityChange()"
               />
@@ -317,16 +325,18 @@
               type="button"
               class="tava-btn-primary detail__buy-btn"
               (click)="comprar()"
-              [disabled]="!selectedTypeId() || purchasing"
+              [disabled]="!selectedTypeId() || purchasing || ticketsLeft() <= 0"
             >
               {{
                 !auth.isLoggedIn()
                   ? isFreeSale(ev)
                     ? 'Registrarme para reservar'
                     : 'Registrarme para comprar'
-                  : isFreeSale(ev)
-                    ? 'Reservar boletas gratis'
-                    : 'Pagar boletas'
+                  : ticketsLeft() <= 0
+                    ? 'Boletas agotadas'
+                    : isFreeSale(ev)
+                      ? 'Reservar boletas gratis'
+                      : 'Pagar boletas'
               }}
             </button>
           }

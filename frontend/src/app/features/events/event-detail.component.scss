@@ -576,10 +576,61 @@
 
 .ticket-opt {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 0.5rem;
   margin-bottom: 0.5rem;
   font-size: 0.95rem;
+
+  &__left {
+    display: block;
+    margin-top: 0.15rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #9e5a6b;
+  }
+}
+
+.stock-call {
+  margin: 0.15rem 0 0.85rem;
+  padding: 0.75rem 0.9rem;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  line-height: 1.35;
+
+  strong {
+    font-size: 0.95rem;
+  }
+
+  span {
+    font-size: 0.86rem;
+  }
+
+  &[data-tone='gone'] {
+    background: rgba(158, 58, 58, 0.1);
+    color: #8d2f2f;
+  }
+
+  &[data-tone='hot'] {
+    background: rgba(180, 70, 40, 0.12);
+    color: #8a3418;
+  }
+
+  &[data-tone='warm'] {
+    background: rgba(201, 162, 39, 0.18);
+    color: #6b4e00;
+  }
+
+  &[data-tone='open'] {
+    background: rgba(158, 90, 107, 0.1);
+    color: #6b3a48;
+  }
+
+  &[data-tone='calm'] {
+    background: rgba(46, 125, 50, 0.1);
+    color: #1f6b32;
+  }
 }
 
 .field,

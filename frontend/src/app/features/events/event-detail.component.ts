@@ -154,6 +154,52 @@ export class EventDetailComponent implements OnInit, OnDestroy {
     return ev.ticket_types.find((t) => t.id === id) ?? null;
   }
 
+  ticketsLeft(typeId?: string): number {
+    const ev = this.event();
+    if (!ev) return 0;
+    const type = typeId
+      ? ev.ticket_types.find((t) => t.id === typeId)
+      : this.selectedTicketType();
+    return Math.max(0, Number(type?.quantity_available ?? 0));
+  }
+
+  /** Porcentaje que aún se puede comprar, sobre el aforo del evento. */
+  ticketsLeftPercent(): number {
+    const left = this.ticketsLeft();
+    const capacity = Math.max(0, Number(this.event()?.capacity ?? 0));
+    if (left <= 0) return 0;
+    if (capacity <= 0) return 100;
+    return Math.min(100, Math.round((left / capacity) * 100));
+  }
+
+  ticketsLeftLabel(): string {
+    const left = this.ticketsLeft();
+    if (left === 1) return 'Queda 1 boleta';
+    return `Quedan ${left} boletas`;
+  }
+
+  ticketsUrgency(): { tone: 'gone' | 'hot' | 'warm' | 'open' | 'calm'; text: string } {
+    const left = this.ticketsLeft();
+    const capacity = Math.max(0, Number(this.event()?.capacity ?? 0));
+    const pct = capacity > 0 ? this.ticketsLeftPercent() : left <= 0 ? 0 : 100;
+    const scarce = capacity > 0 ? pct < 20 : left > 0 && left <= 5;
+    const moving = capacity > 0 ? pct < 45 : left <= 15;
+    const mid = capacity > 0 ? pct < 75 : left <= 40;
+    if (left <= 0) {
+      return { tone: 'gone', text: 'Telón cerrado: ya no hay boletas.' };
+    }
+    if (scarce) {
+      return { tone: 'hot', text: 'La sala se está llenando. Quedan pocas, aparta la tuya.' };
+    }
+    if (moving) {
+      return { tone: 'warm', text: 'El cupo baja rápido. Reserva antes de que se cierre.' };
+    }
+    if (mid) {
+      return { tone: 'open', text: 'Aún alcanzas buen lugar. Reserva esta función.' };
+    }
+    return { tone: 'calm', text: 'La función tiene cupo. Elige tu boleta.' };
+  }
+
   registeredTotal(): number {
     const tt = this.selectedTicketType();
     return (tt?.price ?? 0) * this.quantity;
