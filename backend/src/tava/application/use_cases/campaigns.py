@@ -84,8 +84,8 @@ def _blurb(ev: EventModel) -> str:
     td = ev.theatrical_details if isinstance(ev.theatrical_details, dict) else {}
     syn = (td.get("synopsis") or "").strip()
     if syn:
-        return syn[:280]
-    return (ev.description or "")[:280]
+        return syn
+    return (ev.description or "").strip()
 
 
 class CampaignUseCase:

@@ -131,9 +131,9 @@ def _shell(inner: str, *, recipient_email: str, frontend: str) -> str:
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 </head>
-<body style="margin:0;padding:0;background:{WINE};">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:{WINE};">
-  <tr><td align="center" style="padding:32px 18px 40px;">
+<body style="margin:0;padding:0;background:{WINE};" bgcolor="{WINE}">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="{WINE}" style="background:{WINE};">
+  <tr><td align="center" bgcolor="{WINE}" style="padding:36px 48px 44px;background:{WINE};">
     <table role="presentation" width="640" cellpadding="0" cellspacing="0" style="width:100%;max-width:640px;background:transparent;">
       <tr><td align="center" style="padding:4px 12px 22px;font-family:{FONT};color:#ffffff;">
         <div style="font-size:26px;font-weight:800;letter-spacing:0.24em;">TAVA</div>
@@ -170,8 +170,8 @@ def build_promo_html(
     del intro, direct
     settings = get_settings()
     frontend = settings.frontend_url.rstrip("/")
-    name = escape((recipient_name or "").strip())
-    hello = f"Hola {name}" if name else "Hola"
+    del recipient_name
+    hello = "Hola"
     whatsapp_publish = (
         f"https://wa.me/{WHATSAPP}?text=" + quote("Hola TAVA Teatro, quiero publicar un evento.")
     )
@@ -180,17 +180,17 @@ def build_promo_html(
         ev = events[0]
         title = escape(str(ev.get("name") or "Evento").upper())
         meta = escape(_meta(ev))
-        blurb = escape(str(ev.get("blurb") or "")[:360])
+        blurb = escape(str(ev.get("blurb") or ""))
         link = f"{frontend}/eventos/{ev.get('id')}"
-        greeting = f"{hello}, este es el último evento que no te puedes perder"
+        greeting = f"{hello}, este es el último evento que no te puedes perder 👀🎭"
         body = f"""
-        <p style="margin:0 18px 20px;text-align:center;font-family:{FONT};font-size:20px;line-height:1.45;font-weight:600;letter-spacing:-0.01em;color:#ffffff;">{greeting}</p>
+        <p style="margin:0 28px 22px;text-align:center;font-family:{FONT};font-size:20px;line-height:1.45;font-weight:600;letter-spacing:-0.01em;color:#ffffff;">{greeting}</p>
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:transparent;border-collapse:separate;border-spacing:0;">
-          <tr><td style="padding:0;border-radius:18px 18px 0 0;overflow:hidden;background:transparent;">{_photo(ev, 268)}</td></tr>
-          <tr><td style="background:{CREAM};padding:24px 28px 26px;border-radius:0 0 18px 18px;font-family:{FONT};color:{INK};">
+          <tr><td style="padding:0;border-radius:18px 18px 0 0;overflow:hidden;background:transparent;">{_photo(ev, 360)}</td></tr>
+          <tr><td style="background:{CREAM};padding:26px 36px 28px;border-radius:0 0 18px 18px;font-family:{FONT};color:{INK};">
             <div style="font-size:26px;font-weight:800;letter-spacing:0.02em;line-height:1.15;">{title}</div>
             <div style="margin-top:8px;font-size:13px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:#3e4652;">{meta}</div>
-            <p style="margin:16px 0 22px;font-size:15px;font-weight:400;line-height:1.6;color:#3a4250;">{blurb}</p>
+            <p style="margin:16px 0 22px;font-size:15px;font-weight:400;line-height:1.65;color:#3a4250;">{blurb}</p>
             {_button(link, "Compra tu boleta aquí")}
           </td></tr>
         </table>
@@ -205,7 +205,7 @@ def build_promo_html(
         </p>
         """
     else:
-        greeting = f"{hello}, estos son los eventos que no te puedes perder"
+        greeting = f"{hello}, estos son los eventos que no te puedes perder 👀🎭"
         grid = _rows_of_three(events, frontend)
         body = f"""
         <p style="margin:0 12px 18px;text-align:center;font-family:{FONT};font-size:20px;line-height:1.45;font-weight:600;letter-spacing:-0.01em;color:#ffffff;">{greeting}</p>
