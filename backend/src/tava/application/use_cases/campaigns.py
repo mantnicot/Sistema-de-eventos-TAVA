@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import re
 from datetime import UTC, datetime
+from decimal import Decimal
 from uuid import UUID
 
 from sqlalchemy import func, select
@@ -41,6 +42,37 @@ def parse_custom_emails(raw: list[str] | None) -> list[str]:
     return out
 
 
+_WEEK = ("LUN", "MAR", "MIÉ", "JUE", "VIE", "SÁB", "DOM")
+_MONTH = ("ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic")
+
+
+def _clock(ev: EventModel) -> str:
+    try:
+        hour24 = ev.event_time.hour
+        hour = hour24 % 12 or 12
+        suffix = "a. m." if hour24 < 12 else "p. m."
+        return f"{hour}:{ev.event_time.minute:02d} {suffix}"
+    except Exception:
+        return ""
+
+
+def _money(ev: EventModel) -> str:
+    types = list(getattr(ev, "ticket_types", None) or [])
+    paid: list[int] = []
+    for ticket in types:
+        try:
+            value = int(Decimal(str(ticket.price or 0)))
+        except Exception:
+            continue
+        if value > 0:
+            paid.append(value)
+    if types and not paid:
+        return "Gratis"
+    if not paid:
+        return ""
+    return "$" + f"{min(paid):,}".replace(",", ".")
+
+
 def _format_when(ev: EventModel) -> str:
     try:
         return f"{ev.event_date.isoformat()} · {ev.event_time.strftime('%H:%M')}"
@@ -63,7 +95,11 @@ class CampaignUseCase:
     async def _load_events(self, event_ids: list[UUID]) -> list[EventModel]:
         if not event_ids:
             return []
-        result = await self._session.execute(select(EventModel).where(EventModel.id.in_(event_ids)))
+        result = await self._session.execute(
+            select(EventModel)
+            .where(EventModel.id.in_(event_ids))
+            .options(selectinload(EventModel.ticket_types))
+        )
         by_id = {e.id: e for e in result.scalars().all()}
         return [by_id[i] for i in event_ids if i in by_id]
 
@@ -72,10 +108,16 @@ class CampaignUseCase:
             {
                 "id": str(e.id),
                 "name": e.name,
-                "when": _format_when(e),
-                "city": e.city,
-                "address": e.address,
-                "image_url": e.main_image_url,
+            "when": _format_when(e),
+            "weekday": _WEEK[e.event_date.weekday()] if e.event_date else "",
+            "day": f"{e.event_date.day}" if e.event_date else "",
+            "month": _MONTH[e.event_date.month - 1] if e.event_date else "",
+            "time_label": _clock(e),
+            "city": e.city,
+            "address": e.address,
+            "place": (e.city or e.address or "").strip(),
+            "cost": _money(e),
+            "image_url": e.main_image_url,
                 "blurb": _blurb(e),
             }
             for e in events
@@ -131,7 +173,13 @@ class CampaignUseCase:
             events = events[:1]
         payload = self._event_payload(events)
         html, text = build_promo_html(
-            format=format, subject=subject, intro=intro, events=payload, direct=direct
+            format=format,
+            subject=subject,
+            intro=intro,
+            events=payload,
+            direct=direct,
+            recipient_name="Nombre",
+            recipient_email="correo@gmail.com",
         )
         return {"html": html, "text": text, "event_count": len(events)}
 
@@ -254,14 +302,25 @@ class CampaignUseCase:
             if campaign.format == "spotlight" and events:
                 events = events[:1]
             payload = self._event_payload(events)
-            html, text = build_promo_html(
-                format=campaign.format,
-                subject=campaign.subject,
-                intro=campaign.intro_text,
-                events=payload,
-                direct=campaign.audience == "custom",
-            )
+            name_by_id: dict[UUID, str] = {}
+            user_ids = [row.user_id for row in recipients if row.user_id]
+            if user_ids:
+                found = await self._session.execute(
+                    select(UserModel.id, UserModel.full_name).where(UserModel.id.in_(user_ids))
+                )
+                name_by_id = {user_id: full_name or "" for user_id, full_name in found.all()}
             for row in recipients:
+                full_name = name_by_id.get(row.user_id, "") if row.user_id else ""
+                first = full_name.strip().split()[0] if full_name.strip() else ""
+                html, text = build_promo_html(
+                    format=campaign.format,
+                    subject=campaign.subject,
+                    intro=campaign.intro_text,
+                    events=payload,
+                    direct=campaign.audience == "custom",
+                    recipient_name=first,
+                    recipient_email=row.email,
+                )
                 ok = await send_promo_email(row.email, campaign.subject, html, text)
                 if ok:
                     row.status = "sent"
