@@ -8,7 +8,12 @@ export function readAppearanceCache(): SiteAppearance | null {
     if (!raw) return null;
     const parsed = JSON.parse(raw) as SiteAppearance;
     if (typeof parsed.loader_video_enabled !== 'boolean') return null;
-    return { ...parsed, captcha_enabled: !!parsed.captcha_enabled };
+    return {
+      ...parsed,
+      captcha_enabled: !!parsed.captcha_enabled,
+      login_notice: parsed.login_notice ?? '',
+      login_notice_enabled: !!parsed.login_notice_enabled,
+    };
   } catch {
     return null;
   }

@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, ViewChild } from '@angular/core';
+import { Component, computed, inject, OnInit, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
@@ -22,6 +22,12 @@ export class LoginComponent implements OnInit {
   private readonly site = inject(SiteSettingsService);
 
   @ViewChild(TavaCaptchaComponent) captcha?: TavaCaptchaComponent;
+
+  readonly loginNotice = computed(() => {
+    const app = this.site.appearance();
+    if (!app?.login_notice_enabled) return '';
+    return (app.login_notice || '').trim();
+  });
 
   email = '';
   password = '';

@@ -209,7 +209,27 @@ export class AdminDashboardComponent implements OnInit {
     requires_commission: boolean;
   } | null>(null);
 
-  appearanceForm = { loader_video_url: '', loader_video_enabled: true, captcha_enabled: false };
+  readonly loginNoticeSamples = [
+    {
+      title: 'Renovación',
+      text: 'Con la llegada del pago en línea, TAVA Teatro ha renovado las cuentas de usuario. Si usted ya contaba con una, puede crearla de nuevo: quedará vigente de manera permanente y desde ella podrá realizar sus pagos en línea.',
+    },
+    {
+      title: 'Invitación',
+      text: 'Le informamos que, al incorporar los pagos en línea, las cuentas anteriores fueron reiniciadas. Si ya tenía un usuario, le invitamos a registrarlo otra vez. Su acceso permanecerá activo y le permitirá adquirir sus boletas en línea.',
+    },
+    {
+      title: 'Estreno',
+      text: 'TAVA Teatro estrena el pago en línea y, con este paso, ha renovado el registro de su público. Si ya formaba parte de la casa, cree nuevamente su cuenta: permanecerá disponible para ingresar y pagar sus boletas en línea.',
+    },
+  ];
+  appearanceForm: SiteAppearance = {
+    loader_video_url: '',
+    loader_video_enabled: true,
+    captcha_enabled: false,
+    login_notice: this.loginNoticeSamples[2].text,
+    login_notice_enabled: true,
+  };
   checkoutFees: CheckoutFees = { ...DEFAULT_CHECKOUT_FEES };
 
   ticketTypesDraft: TicketTypeDraft[] = [];
@@ -665,13 +685,13 @@ export class AdminDashboardComponent implements OnInit {
   private loadAppearanceForm(): void {
     const app = this.site.appearance();
     if (app) {
-      this.appearanceForm = { ...app, captcha_enabled: !!app.captcha_enabled };
+      this.appearanceForm = this.withLoginNotice(app);
       return;
     }
     this.site.loadAppearance();
     setTimeout(() => {
       const a = this.site.appearance();
-      if (a) this.appearanceForm = { ...a, captcha_enabled: !!a.captcha_enabled };
+      if (a) this.appearanceForm = this.withLoginNotice(a);
     }, 400);
   }
 
@@ -1642,6 +1662,20 @@ export class AdminDashboardComponent implements OnInit {
         },
       });
     });
+  }
+
+  useLoginNotice(text: string): void {
+    this.appearanceForm.login_notice = text;
+    this.appearanceForm.login_notice_enabled = true;
+  }
+
+  private withLoginNotice(app: SiteAppearance): SiteAppearance {
+    return {
+      ...app,
+      captcha_enabled: !!app.captcha_enabled,
+      login_notice: app.login_notice ?? '',
+      login_notice_enabled: !!app.login_notice_enabled,
+    };
   }
 
   saveAppearance(): void {

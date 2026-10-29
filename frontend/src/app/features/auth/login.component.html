@@ -2,6 +2,12 @@
   <form class="auth-form tava-form tava-card" (ngSubmit)="submit()">
     <h1 class="tava-glow-text">Ingresar</h1>
     <p>Accede a tus boletas y colección TAVA</p>
+    @if (loginNotice()) {
+      <aside class="login-notice" role="note">
+        <p class="login-notice__kicker">Aviso de la casa</p>
+        <p class="login-notice__text">{{ loginNotice() }}</p>
+      </aside>
+    }
     <label>
       Correo
       <input type="email" [(ngModel)]="email" name="email" required autocomplete="email" />

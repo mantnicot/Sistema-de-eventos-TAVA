@@ -956,6 +956,36 @@
   gap: 0.5rem;
 }
 
+.notice-samples {
+  display: grid;
+  gap: 0.65rem;
+  margin: 0 0 1rem;
+}
+
+.notice-sample {
+  display: grid;
+  gap: 0.3rem;
+  padding: 0.85rem 1rem;
+  text-align: left;
+  border-radius: 12px;
+  border: 1px solid rgba(201, 162, 39, 0.35);
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--tava-cream);
+  cursor: pointer;
+
+  strong {
+    font-size: 0.78rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--tava-gold-glow);
+  }
+
+  span {
+    font-size: 0.86rem;
+    line-height: 1.45;
+  }
+}
+
 .gallery-upload {
   margin-top: 1rem;
   padding-top: 1rem;

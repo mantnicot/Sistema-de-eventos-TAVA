@@ -65,6 +65,33 @@
     margin-bottom: 1.5rem;
   }
 
+  .login-notice {
+    margin: -0.4rem 0 1.35rem;
+    padding: 1rem 1.05rem 1.05rem;
+    text-align: left;
+    border-radius: 14px;
+    border: 1px solid rgba(201, 162, 39, 0.45);
+    background:
+      linear-gradient(180deg, rgba(255, 248, 230, 0.96), rgba(255, 255, 255, 0.9));
+    box-shadow: 0 10px 24px rgba(92, 20, 28, 0.06);
+  }
+
+  .login-notice__kicker {
+    margin: 0 0 0.35rem;
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--tava-gold-glow);
+  }
+
+  .login-notice__text {
+    margin: 0;
+    font-size: 0.92rem;
+    line-height: 1.55;
+    color: #3a2a22;
+  }
+
   label {
     display: block;
     margin-bottom: 1rem;

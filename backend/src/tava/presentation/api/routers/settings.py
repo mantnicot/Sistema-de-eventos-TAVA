@@ -14,12 +14,16 @@ class AppearancePublicResponse(BaseModel):
     loader_video_url: str
     loader_video_enabled: bool
     captcha_enabled: bool = False
+    login_notice: str = ""
+    login_notice_enabled: bool = False
 
 
 class AppearanceUpdateRequest(BaseModel):
     loader_video_url: str = Field(max_length=500)
     loader_video_enabled: bool = True
     captcha_enabled: bool = False
+    login_notice: str = Field(default="", max_length=800)
+    login_notice_enabled: bool = False
 
 
 class CheckoutFeesResponse(BaseModel):
@@ -53,6 +57,10 @@ async def update_appearance(
     )
     await site_svc.set_setting(
         db, site_svc.KEY_CAPTCHA_ENABLED, "true" if body.captcha_enabled else "false"
+    )
+    await site_svc.set_setting(db, site_svc.KEY_LOGIN_NOTICE, body.login_notice.strip())
+    await site_svc.set_setting(
+        db, site_svc.KEY_LOGIN_NOTICE_ENABLED, "true" if body.login_notice_enabled else "false"
     )
     data = await site_svc.get_public_appearance(db)
     return AppearancePublicResponse(**data)

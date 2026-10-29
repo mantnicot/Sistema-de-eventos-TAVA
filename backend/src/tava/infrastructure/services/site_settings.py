@@ -9,6 +9,8 @@ from tava.infrastructure.persistence.models import SiteSettingModel
 KEY_LOADER_VIDEO_URL = "loader_video_url"
 KEY_LOADER_VIDEO_ENABLED = "loader_video_enabled"
 KEY_CAPTCHA_ENABLED = "captcha_enabled"
+KEY_LOGIN_NOTICE = "login_notice"
+KEY_LOGIN_NOTICE_ENABLED = "login_notice_enabled"
 KEY_WOMPI_FEE_PERCENT = "wompi_fee_percent"
 KEY_WOMPI_FEE_FIXED = "wompi_fee_fixed"
 KEY_WOMPI_FEE_IVA = "wompi_fee_iva"
@@ -18,6 +20,11 @@ KEY_HERO_VIDEO_URL = "hero_video_url"
 KEY_HERO_VIDEO_ENABLED = "hero_video_enabled"
 
 DEFAULT_LOADER_VIDEO = ""
+DEFAULT_LOGIN_NOTICE = (
+    "TAVA Teatro estrena el pago en línea y, con este paso, ha renovado el registro de su público. "
+    "Si ya formaba parte de la casa, cree nuevamente su cuenta: permanecerá disponible para ingresar "
+    "y pagar sus boletas en línea."
+)
 
 _APPEARANCE_CACHE_TTL_SECONDS = 60
 _appearance_cache: dict | None = None
@@ -46,6 +53,8 @@ async def get_public_appearance(session: AsyncSession) -> dict:
                     KEY_HERO_VIDEO_URL,
                     KEY_HERO_VIDEO_ENABLED,
                     KEY_CAPTCHA_ENABLED,
+                    KEY_LOGIN_NOTICE,
+                    KEY_LOGIN_NOTICE_ENABLED,
                 ]
             )
         )
@@ -68,6 +77,15 @@ async def get_public_appearance(session: AsyncSession) -> dict:
         "loader_video_url": loader_url,
         "loader_video_enabled": enabled,
         "captcha_enabled": _parse_enabled(rows.get(KEY_CAPTCHA_ENABLED), default=False),
+        "login_notice": (
+            DEFAULT_LOGIN_NOTICE
+            if KEY_LOGIN_NOTICE not in rows
+            else (rows.get(KEY_LOGIN_NOTICE) or "").strip()
+        ),
+        "login_notice_enabled": _parse_enabled(
+            rows.get(KEY_LOGIN_NOTICE_ENABLED),
+            default=KEY_LOGIN_NOTICE not in rows,
+        ),
     }
     _appearance_cache = data
     _appearance_cache_at = now

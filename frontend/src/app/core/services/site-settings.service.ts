@@ -7,6 +7,8 @@ export interface SiteAppearance {
   loader_video_url: string;
   loader_video_enabled: boolean;
   captcha_enabled: boolean;
+  login_notice: string;
+  login_notice_enabled: boolean;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -31,7 +33,12 @@ export class SiteSettingsService {
       .subscribe({
         next: (a) => {
           this.loadedAt = Date.now();
-          const normalized = { ...a, captcha_enabled: !!a.captcha_enabled };
+          const normalized = {
+            ...a,
+            captcha_enabled: !!a.captcha_enabled,
+            login_notice: a.login_notice ?? '',
+            login_notice_enabled: !!a.login_notice_enabled,
+          };
           this.appearance.set(normalized);
           writeAppearanceCache(normalized);
         },
@@ -42,6 +49,8 @@ export class SiteSettingsService {
             loader_video_url: current?.loader_video_url ?? '',
             loader_video_enabled: current?.loader_video_enabled ?? true,
             captcha_enabled: false,
+            login_notice: current?.login_notice ?? '',
+            login_notice_enabled: !!current?.login_notice_enabled,
           });
         },
       });

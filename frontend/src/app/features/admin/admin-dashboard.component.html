@@ -760,6 +760,30 @@
         Pedir captcha al ingresar y registrarse
       </label>
       <p class="muted">Déjalo apagado mientras no quieras incomodar a la gente. Puedes encenderlo cuando haga falta.</p>
+      <label class="check-row">
+        <input type="checkbox" [(ngModel)]="appearanceForm.login_notice_enabled" name="loginNoticeEnabled" />
+        Aviso activo en el inicio de sesión
+      </label>
+      <p class="muted">
+        @if (appearanceForm.login_notice_enabled) {
+          Está encendido: se ve en Ingresar. Puede cambiar el texto o apagarlo y guardar.
+        } @else {
+          Está apagado: no se muestra en Ingresar. Actívelo cuando quiera volver a usarlo.
+        }
+      </p>
+      <label>
+        Mensaje del aviso
+        <textarea [(ngModel)]="appearanceForm.login_notice" name="loginNotice" rows="5" maxlength="800"></textarea>
+      </label>
+      <p class="muted">El mensaje activo es Estreno. Puede editarlo o elegir otro texto. El cambio queda al guardar.</p>
+      <div class="notice-samples">
+        @for (sample of loginNoticeSamples; track sample.title) {
+          <button type="button" class="notice-sample" (click)="useLoginNotice(sample.text)">
+            <strong>{{ sample.title }}</strong>
+            <span>{{ sample.text }}</span>
+          </button>
+        }
+      </div>
       <button type="submit" class="tava-btn-primary">Guardar apariencia</button>
     </form>
 
