@@ -1,14 +1,14 @@
 """Liquidación de comisión pre/post evento y bloqueo de ingreso."""
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import datetime, time, timedelta
 from decimal import Decimal
 from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from tava.domain.event_timing import BOGOTA_TZ, event_end_datetime, event_start_datetime
+from tava.domain.event_timing import BOGOTA_TZ, event_end_datetime
 from tava.domain.enums import EventStatus, PaymentStatus
 from tava.infrastructure.persistence.models import EventModel, OrderModel, UserModel
 from tava.infrastructure.services.email import (
@@ -95,7 +95,7 @@ class SettlementUseCase:
         return await self.settlement_snapshot(event)
 
     async def process_due_notifications(self) -> dict:
-        """T-1h: avisar liquidación y bloquear ingreso. Post-evento: ajuste."""
+        """Día del evento: avisar la comisión desde las 00:00. Post-evento: ajuste."""
         now = datetime.now(BOGOTA_TZ)
         result = await self._session.execute(
             select(EventModel).where(
@@ -109,14 +109,15 @@ class SettlementUseCase:
 
         for event in events:
             details = event.theatrical_details if isinstance(event.theatrical_details, dict) else None
-            start = event_start_datetime(event.event_date, event.event_time)
             end = event_end_datetime(event.event_date, event.event_time, details)
-            window_start = start - timedelta(hours=1)
+            day_start = datetime.combine(event.event_date, time.min, tzinfo=BOGOTA_TZ)
+            day_end = day_start + timedelta(days=1)
+            window_end = end if end > day_end else day_end
 
             if (
                 event.pre_settlement_notified_at is None
-                and now >= window_start
-                and now < start
+                and now >= day_start
+                and now < window_end
             ):
                 await self._notify_pre_settlement(event)
                 pre_sent += 1

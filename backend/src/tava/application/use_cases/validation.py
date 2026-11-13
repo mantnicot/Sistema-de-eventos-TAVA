@@ -5,7 +5,8 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from tava.config import get_settings
-from tava.domain.enums import EventStatus, UserRole, ValidationResult
+from tava.domain.enums import EventReviewStatus, UserRole, ValidationResult
+from tava.domain.event_timing import door_validation_state
 from tava.infrastructure.persistence.event_staff import can_access_event
 from tava.infrastructure.persistence.models import (
     CheckInModel,
@@ -59,7 +60,19 @@ class ValidationUseCase:
             select(EventModel).where(EventModel.id == ticket.event_id)
         )
         event = event_result.scalar_one_or_none()
-        if not event or event.status not in (EventStatus.PUBLISHED, EventStatus.IN_PROGRESS):
+        if not event or event.review_status != EventReviewStatus.APPROVED:
+            return ValidationResult.EVENT_DISABLED, ticket
+        if (
+            door_validation_state(
+                event_date=event.event_date,
+                event_time=event.event_time,
+                theatrical_details=event.theatrical_details
+                if isinstance(event.theatrical_details, dict)
+                else None,
+                status=event.status,
+            )
+            != "open"
+        ):
             return ValidationResult.EVENT_DISABLED, ticket
 
         if ticket.is_cancelled:

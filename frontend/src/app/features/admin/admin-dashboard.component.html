@@ -12,6 +12,9 @@
         </button>
       }
       <button type="button" [class.active]="tab() === 'events'" (click)="tab.set('events')">Eventos</button>
+      @if (!isPlatformAdmin()) {
+        <button type="button" [class.active]="tab() === 'report'" (click)="openOrganizerReport()">Reporte</button>
+      }
       @if (isPlatformAdmin()) {
         <button type="button" [class.active]="tab() === 'promo'" (click)="openPromoTab()">Publicidad</button>
         <button type="button" [class.active]="tab() === 'users'" (click)="tab.set('users')">Personas</button>
@@ -71,7 +74,7 @@
     <section class="review-workspace tava-card settlement-queue">
       <h2>Liquidación · Habilitar ingreso</h2>
       <p class="muted">
-        Aquí confirmas que el organizador pagó la comisión. Sin esto el validador no puede leer boletas en la puerta.
+        Recordatorio de la comisión el día de la función. El ingreso se puede validar ese día desde cualquier hora.
       </p>
       @if (settlementQueueLoading()) {
         <p class="muted">Buscando eventos por liquidar…</p>
@@ -81,7 +84,7 @@
             <article class="admin-list__item admin-list__item--settlement">
               <div>
                 <strong>{{ item.event_name }}</strong>
-                <span class="badge badge--warn">Ingreso bloqueado</span>
+                <span class="badge badge--warn">Comisión del día</span>
                 <p class="muted">
                   {{ item.event_date }} · Comisión: ${{ item.fee_due | number }}
                   @if (item.commission_rate != null) {
@@ -92,7 +95,7 @@
               </div>
               <div class="admin-list__actions">
                 <button type="button" class="tava-btn-primary" (click)="confirmSettlementPayment(item.event_id, item.event_name)">
-                  Evento liquidado · Habilitar ingreso
+                  Registrar comisión del día
                 </button>
               </div>
             </article>
@@ -205,6 +208,149 @@
     </section>
   }
 
+  @if (tab() === 'report' && !isPlatformAdmin()) {
+    <section class="report-workspace">
+      <header class="report-toolbar tava-card">
+        <div>
+          <span class="report-toolbar__eyebrow">Tu reporte</span>
+          <h2>{{ organizerReport()?.event_name || 'Todos mis eventos' }}</h2>
+          <p>
+            Boletas, asistentes y el reparto de la comisión que elegiste (de 0% a 15%).
+            @if (organizerReport(); as report) {
+              Comisión aplicada: {{ commissionPercent(report.commission_rate) }}.
+            }
+          </p>
+        </div>
+        <label class="report-event-picker">
+          <span>Evento</span>
+          <select
+            [(ngModel)]="selectedOrganizerEventId"
+            name="organizerReportEvent"
+            (ngModelChange)="onOrganizerReportScopeChange()"
+          >
+            <option value="">Todos mis eventos</option>
+            @for (event of adminEvents(); track event.id) {
+              <option [value]="event.id">{{ event.name }} · {{ event.event_date }}</option>
+            }
+          </select>
+        </label>
+      </header>
+
+      @if (organizerReportLoading()) {
+        <p class="muted">Cargando reporte…</p>
+      } @else if (organizerReport()) {
+        @if (organizerReport(); as report) {
+        <div class="kpi-grid">
+          <article class="kpi tava-card">
+            <span>Boletas</span>
+            <strong>{{ report.boletas_vendidas }}</strong>
+            <small>Pagadas y vigentes</small>
+          </article>
+          <article class="kpi tava-card">
+            <span>Asistentes</span>
+            <strong>{{ report.ingresados }}</strong>
+            <small>Ya ingresaron</small>
+          </article>
+          <article class="kpi tava-card">
+            <span>Pendientes</span>
+            <strong>{{ report.pendientes_ingreso }}</strong>
+            <small>Boletas sin validar</small>
+          </article>
+          <article class="kpi tava-card">
+            <span>Boletería registrada</span>
+            <strong>${{ report.bruto | number:'1.0-0' }}</strong>
+            <small>Precio que registraste</small>
+          </article>
+          <article class="kpi tava-card">
+            <span>Queda para TAVA</span>
+            <strong>${{ report.comision_sistema | number:'1.0-0' }}</strong>
+            <small>Comisión del sistema</small>
+          </article>
+          <article class="kpi kpi--revenue tava-card">
+            <span>Queda para ustedes</span>
+            <strong>${{ report.neto_organizador | number:'1.0-0' }}</strong>
+            <small>Neto del organizador</small>
+          </article>
+        </div>
+
+        @if (!selectedOrganizerEventId && report.events.length) {
+          <div class="staff-table-wrap tava-card">
+            <table class="staff-table">
+              <thead>
+                <tr>
+                  <th>Evento</th>
+                  <th>Comisión</th>
+                  <th>Boletas</th>
+                  <th>Asistentes</th>
+                  <th>TAVA</th>
+                  <th>Organizador</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (ev of report.events; track ev.event_id) {
+                  <tr>
+                    <td>{{ ev.event_name }}</td>
+                    <td>{{ commissionPercent(ev.commission_rate) }}</td>
+                    <td>{{ ev.boletas_vendidas }}</td>
+                    <td>{{ ev.ingresados }}</td>
+                    <td>${{ ev.comision_sistema | number:'1.0-0' }}</td>
+                    <td>${{ ev.neto_organizador | number:'1.0-0' }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+
+        <section class="attendees-block tava-card">
+          <h3>Asistentes y boletas</h3>
+          <tava-list-search
+            [query]="organizerReportQuery()"
+            (queryChange)="organizerReportQuery.set($event)"
+            placeholder="Buscar por titular, código o evento…"
+            [shown]="filteredReportAttendees().length"
+            [total]="report.attendees.length"
+          />
+          <div class="staff-table-wrap">
+            <table class="staff-table attendees-table">
+              <thead>
+                <tr>
+                  <th>Evento</th>
+                  <th>Titular</th>
+                  <th>Código</th>
+                  <th>Estado</th>
+                  <th>Boleta</th>
+                  <th>TAVA</th>
+                  <th>Organizador</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (row of filteredReportAttendees(); track row.ticket_id) {
+                  <tr [class.attendees-row--cancelled]="row.is_cancelled">
+                    <td>{{ row.event_name }}</td>
+                    <td>{{ row.holder_name || '—' }}</td>
+                    <td>{{ row.ticket_code || '—' }}</td>
+                    <td>{{ row.is_cancelled ? 'Cancelada' : row.is_used ? 'Ingresó' : 'Pendiente' }}</td>
+                    <td>${{ row.price | number:'1.0-0' }}</td>
+                    <td>${{ row.comision_sistema | number:'1.0-0' }}</td>
+                    <td>${{ row.neto_organizador | number:'1.0-0' }}</td>
+                  </tr>
+                } @empty {
+                  <tr>
+                    <td colspan="7" class="muted">
+                      {{ report.attendees.length ? 'Nadie coincide con esa búsqueda.' : 'Aún no hay boletas pagadas.' }}
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </section>
+        }
+      }
+    </section>
+  }
+
   @if (tab() === 'events') {
     <div class="admin-events-layout">
       <div class="admin-events-main">
@@ -212,7 +358,7 @@
         <h2>{{ editingId() ? 'Editar evento' : 'Nuevo evento' }}</h2>
         @if (!isPlatformAdmin()) {
           <p class="muted">
-            Aquí solo ves tus eventos. El público paga en línea. TAVA recibe ese dinero y te lo gira después de la función, menos la comisión que elijas (de 0% a 15%).
+            Aquí solo ves tus eventos. El público paga en línea. TAVA recibe ese dinero y te lo gira después de la función, menos la comisión que elijas (de 0% a 15%). Cuando el evento esté aprobado podrás asignar quién valida en la puerta. Ese día se puede validar desde cualquier hora. El reparto está en la pestaña Reporte.
           </p>
         } @else {
           <p class="muted">El rol y las obras de cada vendedor o validador se asignan en la pestaña <button type="button" class="link-btn" (click)="tab.set('users')">Personas</button>.</p>
@@ -328,10 +474,11 @@
 
           @if (settlementInfo()?.requires_commission) {
             <section class="ticketing-block">
-              <h3>Estado del ingreso</h3>
+              <h3>Comisión de este evento</h3>
               <p class="muted">
-                Ingreso validador:
-                {{ settlementInfo()!.entry_unlocked ? 'HABILITADO' : 'BLOQUEADO — el admin global lo habilita en la pestaña Revisión' }}
+                Comisión elegida: {{ commissionPercent(settlementInfo()!.commission_rate) }}.
+                El día de la función se puede validar desde cualquier hora.
+                Cuánto queda para ustedes y para TAVA está en la pestaña Reporte.
               </p>
             </section>
           }
@@ -412,6 +559,61 @@
         </div>
 
         @if (editingId()) {
+          <section class="ticketing-block">
+            <h3>Validadores de la puerta</h3>
+            @if (editingReviewStatus() !== 'aprobado' && !isPlatformAdmin()) {
+              <p class="muted">
+                Cuando TAVA apruebe el evento podrás asignar a alguien para que valide el ingreso.
+                El día de la función esa persona puede validar desde cualquier hora.
+              </p>
+            } @else {
+              <p class="muted">
+                Escribe el correo de quien ya tiene cuenta. Si es público, pasa a validador de este evento.
+                El día de la función puede leer boletas desde cualquier hora. Si ya estaba dentro del sistema, debe salir y volver a entrar para ver el módulo.
+              </p>
+              <div class="row">
+                <label>Correo
+                  <input
+                    [(ngModel)]="validatorEmail"
+                    name="validatorEmail"
+                    type="email"
+                    placeholder="persona@correo.com"
+                    (keydown.enter)="$event.preventDefault(); assignEventValidator()"
+                  />
+                </label>
+                <button type="button" class="tava-btn-primary" (click)="assignEventValidator()">Asignar validador</button>
+              </div>
+              @if (eventValidators().length) {
+                <div class="staff-table-wrap">
+                  <table class="staff-table">
+                    <thead>
+                      <tr>
+                        <th>Nombre</th>
+                        <th>Correo</th>
+                        <th></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (person of eventValidators(); track person.user_id) {
+                        <tr>
+                          <td>{{ person.full_name }}</td>
+                          <td>{{ person.email }}</td>
+                          <td>
+                            <button type="button" class="btn-danger btn-sm" (click)="removeEventValidator(person.user_id)">
+                              Quitar
+                            </button>
+                          </td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              } @else {
+                <p class="muted">Todavía no hay validadores en este evento.</p>
+              }
+            }
+          </section>
+
           <section class="attendees-block">
             <h3>Asistentes y boletas</h3>
             <p class="muted">

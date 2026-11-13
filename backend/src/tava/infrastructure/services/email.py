@@ -778,13 +778,15 @@ async def send_commission_settlement_email(
 ) -> bool:
     subject = f"Liquidacion TAVA — comision {rate_percent:.0f}% · «{event_name}»"
     action = (
-        "Debes pagar al Administrador General de TAVA la comision indicada para habilitar el ingreso de asistentes."
+        "Hoy es el dia de la funcion. El ingreso se puede validar desde cualquier hora. "
+        "De lo vendido, la comision indicada queda para TAVA y el resto para el organizador."
         if role_hint == "organizador"
-        else "El organizador debe pagar esta comision. Confirma el ingreso del dinero en el panel para habilitar el validador."
+        else "Hoy es el dia de la funcion. El ingreso se puede validar desde cualquier hora, "
+        "no solo una hora antes. La comision indicada queda para TAVA."
     )
     text = (
         f"Hola {full_name},\n\n"
-        f"Falta aproximadamente 1 hora para «{event_name}» ({event_date} {event_time}).\n\n"
+        f"Hoy es el dia de «{event_name}» ({event_date} {event_time}).\n\n"
         f"Boleteria confirmada en plataforma (bruto): {_money_cop(bruto)} COP\n"
         f"Comision acordada ({rate_percent:.0f}%): {_money_cop(fee)} COP\n\n"
         f"{action}\n\n"

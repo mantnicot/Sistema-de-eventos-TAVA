@@ -50,6 +50,39 @@ def event_phase(
     return "upcoming"
 
 
+def door_validation_state(
+    *,
+    event_date: date,
+    event_time: time,
+    theatrical_details: dict | None,
+    status: EventStatus,
+) -> str:
+    """open | before_day | after_day | closed.
+
+    La puerta abre el día de la función, desde las 00:00 (Bogotá), y sigue
+    abierta hasta que termina el día o la función si se pasa de medianoche.
+    """
+    if status in (EventStatus.CANCELLED, EventStatus.DRAFT, EventStatus.FINISHED):
+        return "closed"
+    if status not in (
+        EventStatus.PUBLISHED,
+        EventStatus.IN_PROGRESS,
+        EventStatus.SOLD_OUT,
+        EventStatus.SCHEDULED,
+    ):
+        return "closed"
+    now = datetime.now(BOGOTA_TZ)
+    day_start = datetime.combine(event_date, time.min, tzinfo=BOGOTA_TZ)
+    show_end = event_end_datetime(event_date, event_time, theatrical_details)
+    day_end = day_start + timedelta(days=1)
+    window_end = show_end if show_end > day_end else day_end
+    if now < day_start:
+        return "before_day"
+    if now >= window_end:
+        return "after_day"
+    return "open"
+
+
 def tickets_purchase_allowed(
     *,
     event_date: date,

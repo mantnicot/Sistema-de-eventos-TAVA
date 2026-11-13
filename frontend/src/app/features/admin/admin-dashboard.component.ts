@@ -2,6 +2,7 @@ import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
 import { catchError, finalize, of, timeout } from 'rxjs';
 import { ApiService } from '../../core/services/api.service';
 import { ApiWarmupService } from '../../core/services/api-warmup.service';
@@ -35,6 +36,52 @@ import {
   SeatingConfig,
   SeatTicketTypeOption,
 } from '../../core/models/seating.model';
+
+interface EventValidator {
+  user_id: string;
+  full_name: string;
+  email: string;
+}
+
+interface OrganizerReportAttendee {
+  ticket_id: string;
+  event_id: string;
+  event_name: string;
+  holder_name: string | null;
+  ticket_code: string | null;
+  is_used: boolean;
+  is_cancelled: boolean;
+  price: number;
+  comision_sistema: number;
+  neto_organizador: number;
+}
+
+interface OrganizerReportEvent {
+  event_id: string;
+  event_name: string;
+  event_date: string;
+  commission_rate: number | null;
+  boletas_vendidas: number;
+  ingresados: number;
+  pendientes_ingreso: number;
+  bruto: number;
+  comision_sistema: number;
+  neto_organizador: number;
+}
+
+interface OrganizerReport {
+  event_id: string | null;
+  event_name: string | null;
+  commission_rate: number | null;
+  boletas_vendidas: number;
+  ingresados: number;
+  pendientes_ingreso: number;
+  bruto: number;
+  comision_sistema: number;
+  neto_organizador: number;
+  events: OrganizerReportEvent[];
+  attendees: OrganizerReportAttendee[];
+}
 
 interface Kpis {
   scope?: 'general' | 'event';
@@ -110,6 +157,7 @@ const ADMIN_EVENTS_TIMEOUT_MS = 55000;
 })
 export class AdminDashboardComponent implements OnInit {
   private readonly api = inject(ApiService);
+  private readonly route = inject(ActivatedRoute);
   private readonly auth = inject(AuthService);
   private readonly warmup = inject(ApiWarmupService);
   private readonly notify = inject(NotificationService);
@@ -117,7 +165,7 @@ export class AdminDashboardComponent implements OnInit {
   private readonly sanitizer = inject(DomSanitizer);
 
   readonly isPlatformAdmin = computed(() => this.auth.isPlatformAdmin());
-  readonly tab = signal<'kpis' | 'events' | 'review' | 'users' | 'appearance' | 'promo'>('kpis');
+  readonly tab = signal<'kpis' | 'events' | 'review' | 'users' | 'appearance' | 'promo' | 'report'>('kpis');
   readonly imageEventSpec = IMAGE_EVENT_SPEC;
   readonly videoTrailerSpec = VIDEO_TRAILER_SPEC;
   readonly galleryImageSpec = GALLERY_IMAGE_SPEC;
@@ -147,6 +195,13 @@ export class AdminDashboardComponent implements OnInit {
   readonly rejectingId = signal<string | null>(null);
 
   selectedReportEventId = '';
+  selectedOrganizerEventId = '';
+  validatorEmail = '';
+  readonly editingReviewStatus = signal<string | null>(null);
+  readonly eventValidators = signal<EventValidator[]>([]);
+  readonly organizerReport = signal<OrganizerReport | null>(null);
+  readonly organizerReportLoading = signal(false);
+  readonly organizerReportQuery = signal('');
   castMembers: CastMember[] = [{ name: '', photo_url: '', role: '' }];
   readonly attendeesData = signal<AttendeesResponse | null>(null);
   readonly attendeesLoading = signal(false);
@@ -258,6 +313,19 @@ export class AdminDashboardComponent implements OnInit {
     );
   });
 
+  readonly filteredReportAttendees = computed(() => {
+    const rows = this.organizerReport()?.attendees ?? [];
+    return rows.filter((row) =>
+      matchesSearch(
+        this.organizerReportQuery(),
+        row.holder_name,
+        row.ticket_code,
+        row.event_name,
+        row.is_cancelled ? 'cancelada' : row.is_used ? 'ingresó' : 'pendiente'
+      )
+    );
+  });
+
   readonly filteredSidebarEvents = computed(() =>
     this.adminEvents().filter((ev) =>
       matchesSearch(this.eventsQuery(), ev.name, ev.city, ev.event_date, ev.category, ev.status)
@@ -268,8 +336,14 @@ export class AdminDashboardComponent implements OnInit {
 
   ngOnInit(): void {
     if (!this.isPlatformAdmin()) {
-      this.tab.set('events');
+      this.tab.set(this.route.snapshot.fragment === 'reporte' ? 'report' : 'events');
     }
+    this.route.fragment.subscribe((frag) => {
+      if (!this.isPlatformAdmin() && frag === 'reporte') {
+        this.tab.set('report');
+        this.loadOrganizerReport();
+      }
+    });
     void this.bootstrapAdmin();
     this.loadCommissionContract();
   }
@@ -409,13 +483,13 @@ export class AdminDashboardComponent implements OnInit {
     const label = eventName ? `«${eventName}»` : 'este evento';
     this.notify.confirm(
       'Evento liquidado',
-      `¿Confirmas que el organizador pagó la comisión de ${label}? Se habilitará el ingreso por validador.`,
+      `¿Registras la comisión de ${label}? El ingreso del día ya se puede validar desde cualquier hora.`,
       () => {
         this.notify.loadingTheatrical('Confirmando', 'admin');
         this.api.post(`/events/${id}/settlement/confirm`, {}).subscribe({
           next: () => {
             this.notify.hide();
-            this.notify.success('Liquidación', 'Ingreso habilitado para el validador');
+            this.notify.success('Liquidación', 'Comisión registrada');
             if (this.editingId() === id) this.loadSettlement(id);
             this.loadSettlementQueue();
             this.loadAdminEvents();
@@ -618,9 +692,83 @@ export class AdminDashboardComponent implements OnInit {
         } else {
           this.notify.success('Revisión', 'Evento enviado al administrador global');
         }
+        this.editingReviewStatus.set('pendiente');
+        this.eventValidators.set([]);
         this.loadAdminEvents();
       },
       error: (err) => this.notify.error('Revisión', err?.error?.detail ?? 'No se pudo enviar'),
+    });
+  }
+
+  openOrganizerReport(): void {
+    this.tab.set('report');
+    this.loadOrganizerReport();
+  }
+
+  loadOrganizerReport(): void {
+    this.organizerReportLoading.set(true);
+    const params = this.selectedOrganizerEventId
+      ? { event_id: this.selectedOrganizerEventId }
+      : undefined;
+    this.api.get<OrganizerReport>('/dashboard/organizer-report', params).subscribe({
+      next: (report) => {
+        this.organizerReport.set(report);
+        this.organizerReportLoading.set(false);
+      },
+      error: (err) => {
+        this.organizerReport.set(null);
+        this.organizerReportLoading.set(false);
+        this.notify.showHttpError(parseHttpError(err, 'reporte'));
+      },
+    });
+  }
+
+  onOrganizerReportScopeChange(): void {
+    this.organizerReportQuery.set('');
+    this.loadOrganizerReport();
+  }
+
+  commissionPercent(rate: number | null | undefined): string {
+    if (rate == null) return 'según cada evento';
+    return `${Math.round(rate * 1000) / 10}%`;
+  }
+
+  loadEventValidators(eventId: string): void {
+    this.api.get<{ validators: EventValidator[] }>(`/events/${eventId}/validators`).subscribe({
+      next: (res) => this.eventValidators.set(res.validators ?? []),
+      error: () => this.eventValidators.set([]),
+    });
+  }
+
+  assignEventValidator(): void {
+    const eventId = this.editingId();
+    const email = this.validatorEmail.trim();
+    if (!eventId || !email) {
+      this.notify.warning('Validador', 'Escribe el correo de la persona');
+      return;
+    }
+    this.api.post<{ validators: EventValidator[] }>(`/events/${eventId}/validators`, { email }).subscribe({
+      next: (res) => {
+        this.eventValidators.set(res.validators ?? []);
+        this.validatorEmail = '';
+        this.notify.success(
+          'Validador',
+          'Quedó asignado. Si no ve «Validar entrada», debe salir de su cuenta y volver a entrar.'
+        );
+      },
+      error: (err) => this.notify.showHttpError(parseHttpError(err, 'validador')),
+    });
+  }
+
+  removeEventValidator(userId: string): void {
+    const eventId = this.editingId();
+    if (!eventId) return;
+    this.api.delete<{ validators: EventValidator[] }>(`/events/${eventId}/validators/${userId}`).subscribe({
+      next: (res) => {
+        this.eventValidators.set(res.validators ?? []);
+        this.notify.success('Validador', 'Se quitó de este evento');
+      },
+      error: (err) => this.notify.showHttpError(parseHttpError(err, 'validador')),
     });
   }
 
@@ -766,7 +914,17 @@ export class AdminDashboardComponent implements OnInit {
         finalize(() => this.adminEventsLoading.set(false))
       )
       .subscribe((events) => {
-        if (events) this.adminEvents.set(events);
+        if (!events) return;
+        this.adminEvents.set(events);
+        const editing = this.editingId();
+        if (!editing) return;
+        const current = events.find((ev) => ev.id === editing);
+        if (current?.review_status) {
+          this.editingReviewStatus.set(current.review_status);
+          if (current.review_status === 'aprobado' || this.isPlatformAdmin()) {
+            this.loadEventValidators(editing);
+          }
+        }
       });
   }
 
@@ -936,6 +1094,9 @@ export class AdminDashboardComponent implements OnInit {
 
   resetEventForm(): void {
     this.editingId.set(null);
+    this.editingReviewStatus.set(null);
+    this.eventValidators.set([]);
+    this.validatorEmail = '';
     this.castMembers = [{ name: '', photo_url: '', role: '' }];
     this.ticketTypesDraft = [];
     this.ticketTypesTouched = false;
@@ -1327,6 +1488,12 @@ export class AdminDashboardComponent implements OnInit {
   editEvent(ev: TavaEvent): void {
     this.duplicateGalleryDraft = [];
     this.editingId.set(ev.id);
+    this.editingReviewStatus.set(ev.review_status ?? null);
+    this.validatorEmail = '';
+    this.eventValidators.set([]);
+    if (ev.review_status === 'aprobado' || this.isPlatformAdmin()) {
+      this.loadEventValidators(ev.id);
+    }
     this.editingOrganizerId = ev.organizer_id ?? null;
     this.ticketTypesDraft = [];
     this.ticketTypesTouched = false;

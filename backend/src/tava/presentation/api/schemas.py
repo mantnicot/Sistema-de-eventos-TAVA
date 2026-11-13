@@ -294,6 +294,20 @@ class EventStaffResponse(BaseModel):
     seller_ids: list[UUID]
 
 
+class EventValidatorItem(BaseModel):
+    user_id: UUID
+    full_name: str
+    email: str
+
+
+class EventValidatorsResponse(BaseModel):
+    validators: list[EventValidatorItem]
+
+
+class AssignEventValidatorRequest(BaseModel):
+    email: EmailStr
+
+
 class ValidateQrRequest(BaseModel):
     qr_token: str
     event_id: UUID | None = None

@@ -5,6 +5,8 @@ export type TavoActionId =
   | 'buy_cartelera'
   | 'events_info'
   | 'create'
+  | 'want_create'
+  | 'want_create_whatsapp'
   | 'create_steps'
   | 'create_review'
   | 'create_commission'
@@ -75,6 +77,13 @@ export interface TavoResolveResult {
 
 const WHATSAPP_BASE = 'https://wa.me/573003268095?text=';
 
+export function buildOrganizerRequestUrl(): string {
+  const msg =
+    'Hola TAVA Teatro, vengo desde el asistente Tavo.\n\n' +
+    'Quiero crear y administrar mis propios eventos en la plataforma. ¿Me pueden habilitar como organizador?';
+  return WHATSAPP_BASE + encodeURIComponent(msg);
+}
+
 export function buildWhatsappUrl(doubt: string): string {
   const msg =
     `Hola TAVA Teatro, vengo desde el asistente Tavo del sistema.\n\n` +
@@ -136,7 +145,8 @@ export function menuButtons(ctx: TavoUserContext): TavoButton[] {
         { id: 'create', label: '📝 Crear / publicar evento' },
         { id: 'wa_validate', label: '✅ Validar pagos WhatsApp' },
         { id: 'create_commission', label: '📄 Comisión y contrato' },
-        { id: 'settlement', label: '💰 Liquidación T-1h' },
+        { id: 'settlement', label: '💰 Comisión y giro' },
+        { id: 'admin_panel', label: '📊 Mi reporte', route: '/admin', fragment: 'reporte' },
         { id: 'admin_panel', label: '🛠️ Ir al panel', route: '/admin' },
         { id: 'buy', label: '🎟️ Comprar boletas' },
         ...shared,
@@ -159,6 +169,7 @@ export function menuButtons(ctx: TavoUserContext): TavoButton[] {
     default:
       return [
         { id: 'buy', label: '🎟️ Comprar boletas' },
+        { id: 'want_create', label: '¿Quieres crear tu evento?' },
         ...shared,
       ];
   }
@@ -358,12 +369,39 @@ export function resolveTavoAction(
         ),
       };
 
+    case 'want_create': {
+      const firstStep = ctx.loggedIn
+        ? '1) Ya tienes cuenta. El siguiente paso es escribirnos por WhatsApp.'
+        : '1) Regístrate en TAVA e inicia sesión.';
+      return {
+        reply: msg(
+          '¿Quieres crear tu evento?\n' +
+            `${firstStep}\n` +
+            '2) Escríbenos por WhatsApp pidiendo que te habilitemos como organizador.\n' +
+            '3) Cuando el administrador de TAVA te active, verás «Mis eventos».\n' +
+            '4) Creas la obra y la envías a revisión. Si se aprueba, sale en cartelera.\n' +
+            '5) Ya aprobado, asignas quién valida el ingreso y ves tu reporte: boletas, asistentes y cuánto queda para ti y para TAVA.\n' +
+            'El día de la función se puede validar desde cualquier hora.',
+          [
+            { id: 'want_create_whatsapp', label: 'Solicitar por WhatsApp' },
+            { id: 'menu', label: '← Menú' },
+          ]
+        ),
+      };
+    }
+
+    case 'want_create_whatsapp':
+      return {
+        reply: msg(
+          'Te abro WhatsApp con la solicitud lista. Escríbenos por ahí y el administrador de TAVA te habilita como organizador.',
+          menu()
+        ),
+        openWhatsapp: buildOrganizerRequestUrl(),
+      };
+
     case 'create':
       if (ctx.role !== 'organizer' && ctx.role !== 'platform_admin') {
-        return denyStaffAction(
-          ctx,
-          'Para crear/publicar eventos necesitas rol de organizador (o ser admin de plataforma).'
-        );
+        return resolveTavoAction('want_create', events, ctx);
       }
       return {
         reply: msg(
@@ -392,7 +430,8 @@ export function resolveTavoAction(
             '5) En pago: escribes el precio que quieres recibir. El sistema avisa el precio mayor que verá el público.\n' +
             '6) Comisión 0%–15% y contrato (TAVA cobra, retiene la comisión y te gira el resto después de la función).\n' +
             '7) Video vertical de celular si subes trailer.\n' +
-            '8) Guarda y «Enviar a revisión».',
+            '8) Guarda y «Enviar a revisión».\n' +
+            '9) Cuando quede aprobado, asignas quién valida la puerta y abres la pestaña Reporte: boletas, asistentes, lo que queda para ustedes y lo que queda para TAVA.',
           [
             { id: 'create_steps', label: 'Ir al panel de eventos', route: '/admin' },
             { id: 'create_commission', label: 'Comisión' },
@@ -418,7 +457,7 @@ export function resolveTavoAction(
             '• Eventos gratuitos: sin comisión ni contrato.\n' +
             '• La puerta no se bloquea esperando que pagues la comisión: el dinero ya está en TAVA.',
           [
-            { id: 'settlement', label: 'Liquidación T-1h' },
+            { id: 'settlement', label: 'Comisión y giro' },
             { id: 'create_steps', label: 'Cómo crear' },
             { id: 'menu', label: '← Menú' },
           ]
@@ -500,10 +539,10 @@ export function resolveTavoAction(
       return {
         reply: msg(
           'Validar ingreso:\n' +
-            '1) Abre el módulo de validación.\n' +
-            '2) Escanea QR o ingresa el código.\n' +
-            '3) Si el evento tiene comisión y ya sonó el aviso T-1h, el ingreso puede estar bloqueado hasta que el admin general confirme el pago de la comisión.\n' +
-            '4) Con el ingreso habilitado, autorizas o ves si la boleta ya fue usada.',
+            '1) El organizador te asigna cuando el evento ya está aprobado.\n' +
+            '2) Abre el módulo de validación.\n' +
+            '3) El día de la función puedes escanear desde cualquier hora, no solo una hora antes.\n' +
+            '4) Escanea el QR o ingresa el código. Autorizas o ves si la boleta ya fue usada.',
           [
             { id: 'validate_entry', label: 'Ir a validación', route: '/validar' },
             { id: 'settlement', label: '¿Bloqueo comisión?' },
@@ -747,7 +786,15 @@ export function resolveTavoFreeText(
   if (/comprar|boleta|ticket/.test(t)) {
     return resolveTavoAction('buy', events, ctx);
   }
+  if (/crear (mi |un |tu )?evento|quiero crear|ser organizador|manejar mis eventos/.test(t)) {
+    if (ctx.role !== 'organizer' && ctx.role !== 'platform_admin') {
+      return resolveTavoAction('want_create', events, ctx);
+    }
+  }
   if (/crear|publicar|organizador|revisi[oó]n|aprobar/.test(t) && !/boleta/.test(t)) {
+    if (ctx.role !== 'organizer' && ctx.role !== 'platform_admin') {
+      return resolveTavoAction('want_create', events, ctx);
+    }
     if (/aprobar|revisi[oó]n|pendiente/.test(t)) {
       return resolveTavoAction('create_review', events, ctx);
     }

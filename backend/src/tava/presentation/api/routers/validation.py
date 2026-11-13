@@ -5,7 +5,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from tava.application.use_cases.validation import ValidationUseCase
-from tava.domain.enums import UserRole, ValidationResult
+from tava.domain.enums import EventReviewStatus, UserRole, ValidationResult
+from tava.domain.event_timing import door_validation_state
 from tava.infrastructure.persistence.database import get_db
 from tava.infrastructure.persistence.event_staff import can_access_event
 from tava.infrastructure.persistence.models import EventModel, TicketModel
@@ -83,6 +84,23 @@ async def _build_validation_response(
             pendientes = stats.get("pendientes_ingreso")
 
     message = MESSAGES[result]
+    if result == ValidationResult.EVENT_DISABLED and ticket:
+        disabled_event = await db.get(EventModel, ticket.event_id)
+        if disabled_event is not None and disabled_event.review_status != EventReviewStatus.APPROVED:
+            message = "Este evento aún no está aprobado para validar ingresos."
+        elif disabled_event is not None:
+            state = door_validation_state(
+                event_date=disabled_event.event_date,
+                event_time=disabled_event.event_time,
+                theatrical_details=disabled_event.theatrical_details
+                if isinstance(disabled_event.theatrical_details, dict)
+                else None,
+                status=disabled_event.status,
+            )
+            if state == "before_day":
+                message = "Todavía no es el día del evento. La puerta se habilita ese día, desde cualquier hora."
+            elif state == "after_day":
+                message = "El día de esta función ya terminó."
     if result == ValidationResult.WRONG_EVENT and ticket_event_name:
         message = f"No corresponde a este evento (es de: {ticket_event_name})"
     elif result == ValidationResult.ALREADY_USED and holder_name:

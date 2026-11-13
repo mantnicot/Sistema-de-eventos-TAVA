@@ -83,7 +83,7 @@ async def _startup_bootstrap() -> None:
 
 
 async def _settlement_worker_loop() -> None:
-    """Avisos T-1h, apartados Wompi y lotes de publicidad cada minuto."""
+    """Aviso de comisión el día del evento, apartados Wompi y lotes de publicidad cada minuto."""
     from tava.infrastructure.persistence.database import AsyncSessionLocal
     from tava.application.use_cases.settlement import SettlementUseCase
     from tava.application.use_cases.campaigns import CampaignUseCase

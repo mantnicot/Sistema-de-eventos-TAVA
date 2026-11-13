@@ -21,7 +21,14 @@ from tava.domain.commission_contract import (
 )
 from tava.domain.enums import EventReviewStatus, EventStatus, PaymentStatus, TicketKind, UserRole
 from tava.infrastructure.persistence.database import get_db
-from tava.infrastructure.persistence.event_staff import get_event_staff, list_assigned_event_ids, set_event_staff
+from tava.infrastructure.persistence.event_staff import (
+    assign_event_validator,
+    count_validator_assignments,
+    get_event_staff,
+    list_assigned_event_ids,
+    set_event_staff,
+    unassign_event_validator,
+)
 from tava.infrastructure.persistence.models import (
     CheckInModel,
     CollectibleModel,
@@ -54,8 +61,11 @@ from tava.presentation.api.schemas import (
     EventMediaResponse,
     EventResponse,
     EventReviewRequest,
+    AssignEventValidatorRequest,
     EventStaffResponse,
     EventStaffUpdateRequest,
+    EventValidatorItem,
+    EventValidatorsResponse,
     SeatingSyncRequest,
     TheatricalDetailsSchema,
     TicketTypePublicResponse,
@@ -624,6 +634,103 @@ async def update_event_staff(
         validator_ids=[UUID(x) for x in staff["validator_ids"]],
         seller_ids=[UUID(x) for x in staff["seller_ids"]],
     )
+
+
+async def _require_validator_assignment(db: AsyncSession, user, event_id: UUID) -> EventModel:
+    result = await db.execute(select(EventModel).where(EventModel.id == event_id))
+    event = result.scalar_one_or_none()
+    if not event:
+        raise HTTPException(status_code=404, detail="Evento no encontrado")
+    if is_platform_admin(user):
+        return event
+    if user.role == UserRole.ORGANIZER and event.organizer_id == user.id:
+        if event.review_status != EventReviewStatus.APPROVED:
+            raise HTTPException(
+                status_code=403,
+                detail="Podrás asignar validadores cuando TAVA apruebe el evento.",
+            )
+        return event
+    raise HTTPException(status_code=403, detail="No puedes asignar validadores de este evento")
+
+
+async def _validators_response(db: AsyncSession, event_id: UUID) -> EventValidatorsResponse:
+    result = await db.execute(
+        select(UserModel)
+        .join(EventStaffAssignmentModel, EventStaffAssignmentModel.user_id == UserModel.id)
+        .where(
+            EventStaffAssignmentModel.event_id == event_id,
+            EventStaffAssignmentModel.staff_role == "validator",
+        )
+        .order_by(UserModel.full_name.asc())
+    )
+    return EventValidatorsResponse(
+        validators=[
+            EventValidatorItem(user_id=person.id, full_name=person.full_name, email=person.email)
+            for person in result.scalars().all()
+        ]
+    )
+
+
+@router.get("/{event_id}/validators", response_model=EventValidatorsResponse)
+async def list_event_validators_endpoint(
+    event_id: UUID,
+    user=Depends(require_event_manager),
+    db: AsyncSession = Depends(get_db),
+):
+    await _require_validator_assignment(db, user, event_id)
+    return await _validators_response(db, event_id)
+
+
+@router.post("/{event_id}/validators", response_model=EventValidatorsResponse)
+async def assign_event_validator_endpoint(
+    event_id: UUID,
+    body: AssignEventValidatorRequest,
+    user=Depends(require_event_manager),
+    db: AsyncSession = Depends(get_db),
+):
+    event = await _require_validator_assignment(db, user, event_id)
+    email = str(body.email).strip().lower()
+    found = await db.execute(select(UserModel).where(func.lower(UserModel.email) == email))
+    person = found.scalar_one_or_none()
+    if not person or not person.is_active:
+        raise HTTPException(
+            status_code=404,
+            detail="No hay una cuenta activa con ese correo. La persona debe registrarse primero.",
+        )
+    if person.id == event.organizer_id or getattr(person, "is_platform_admin", False):
+        raise HTTPException(
+            status_code=400,
+            detail="Esa cuenta no se puede asignar como validador de este evento.",
+        )
+    if person.role not in (UserRole.GENERAL, UserRole.VALIDATOR):
+        raise HTTPException(
+            status_code=400,
+            detail="Esa cuenta ya tiene otro rol. Pide al administrador general que la asigne.",
+        )
+    if person.role == UserRole.GENERAL:
+        person.role = UserRole.VALIDATOR
+    await assign_event_validator(db, event_id, person.id)
+    return await _validators_response(db, event_id)
+
+
+@router.delete("/{event_id}/validators/{validator_id}", response_model=EventValidatorsResponse)
+async def remove_event_validator_endpoint(
+    event_id: UUID,
+    validator_id: UUID,
+    user=Depends(require_event_manager),
+    db: AsyncSession = Depends(get_db),
+):
+    await _require_validator_assignment(db, user, event_id)
+    await unassign_event_validator(db, event_id, validator_id)
+    person = await db.get(UserModel, validator_id)
+    if (
+        person
+        and person.role == UserRole.VALIDATOR
+        and not getattr(person, "is_platform_admin", False)
+        and await count_validator_assignments(db, validator_id) == 0
+    ):
+        person.role = UserRole.GENERAL
+    return await _validators_response(db, event_id)
 
 
 @router.get("/{event_id}", response_model=EventDetailResponse)

@@ -17,7 +17,7 @@ async def can_access_event(
     *,
     is_platform_admin: bool = False,
 ) -> bool:
-    if is_platform_admin:
+    if is_platform_admin or user_role == UserRole.ADMIN:
         return True
     if staff_role == "validator" and user_role != UserRole.VALIDATOR:
         return False
@@ -31,6 +31,55 @@ async def can_access_event(
         )
     )
     return result.scalar_one_or_none() is not None
+
+
+async def list_event_validators(session: AsyncSession, event_id: UUID) -> list[UUID]:
+    result = await session.execute(
+        select(EventStaffAssignmentModel.user_id).where(
+            EventStaffAssignmentModel.event_id == event_id,
+            EventStaffAssignmentModel.staff_role == "validator",
+        )
+    )
+    return list(result.scalars().all())
+
+
+async def assign_event_validator(session: AsyncSession, event_id: UUID, user_id: UUID) -> bool:
+    """Asigna el validador. Devuelve False si ya estaba en el evento."""
+    existing = await session.execute(
+        select(EventStaffAssignmentModel.id).where(
+            EventStaffAssignmentModel.user_id == user_id,
+            EventStaffAssignmentModel.event_id == event_id,
+            EventStaffAssignmentModel.staff_role == "validator",
+        )
+    )
+    if existing.scalar_one_or_none():
+        return False
+    session.add(
+        EventStaffAssignmentModel(user_id=user_id, event_id=event_id, staff_role="validator")
+    )
+    await session.flush()
+    return True
+
+
+async def unassign_event_validator(session: AsyncSession, event_id: UUID, user_id: UUID) -> None:
+    await session.execute(
+        delete(EventStaffAssignmentModel).where(
+            EventStaffAssignmentModel.user_id == user_id,
+            EventStaffAssignmentModel.event_id == event_id,
+            EventStaffAssignmentModel.staff_role == "validator",
+        )
+    )
+    await session.flush()
+
+
+async def count_validator_assignments(session: AsyncSession, user_id: UUID) -> int:
+    result = await session.execute(
+        select(EventStaffAssignmentModel.id).where(
+            EventStaffAssignmentModel.user_id == user_id,
+            EventStaffAssignmentModel.staff_role == "validator",
+        )
+    )
+    return len(result.scalars().all())
 
 
 async def list_assigned_event_ids(
